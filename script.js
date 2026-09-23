@@ -1,47 +1,49 @@
-<!-- File: index.html -->
-<!-- Add Pro license upsell to checkout page -->
-<section id="checkout">
-  <h2>Checkout</h2>
-  <form id="checkout-form">
-    <label for="license-type">License Type:</label>
-    <select id="license-type" name="license-type">
-      <option value="free">Free</option>
-      <option value="pro">Pro ($9.99/month)</option>
-    </select>
-    <button type="submit">Checkout</button>
-  </form>
-  <div id="pro-features">
-    <h3>Pro Features:</h3>
-    <ul>
-      <li>Advanced scanning capabilities</li>
-      <li>Prioritized support</li>
-      <li>Additional storage for reports</li>
-    </ul>
-  </div>
-</section>
+// File: script.js
+const scanForm = document.getElementById('scan-form');
+const scanResult = document.getElementById('scan-result');
+const reportsList = document.getElementById('reports-list');
+const createReportButton = document.getElementById('create-report');
+const reportTemplate = document.getElementById('report-template');
 
-<script>
-  // File: script.js
-  const checkoutForm = document.getElementById('checkout-form');
-  const licenseTypeSelect = document.getElementById('license-type');
-
-  checkoutForm.addEventListener('submit', async (e) => {
+scanForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const licenseType = licenseTypeSelect.value;
-    const response = await fetch('/checkout', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ licenseType })
+    const url = document.getElementById('url').value;
+    const response = await fetch('/scan', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ url })
     });
-    const data = await response.json();
-    if (data.success) {
-      // Handle successful checkout
-      console.log('Checkout successful');
-    } else {
-      // Handle failed checkout
-      console.error('Checkout failed');
-    }
-  });
-</script>
+    const result = await response.json();
+    scanResult.innerHTML = `
+        <h2>Scan Result</h2>
+        <p>URL: ${result.url}</p>
+        <p>Issues: ${result.issues.length}</p>
+        <ul>
+            ${result.issues.map(issue => `<li>${issue}</li>`).join('')}
+        </ul>
+    `;
+});
+
+createReportButton.addEventListener('click', async () => {
+    const response = await fetch('/report', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    });
+    const reportId = await response.json();
+    const shareableLink = `${window.location.origin}/report/${reportId}`;
+    reportTemplate.innerHTML = `
+        <h2>Report Template</h2>
+        <p>Shareable Link: <a href="${shareableLink}">${shareableLink}</a></p>
+    `;
+});
+
+// Fetch reports list
+fetch('/reports')
+    .then(response => response.json())
+    .then(reports => {
+        reportsList.innerHTML = reports.map(report => `<li>${report.id}</li>`).join('');
+    });
