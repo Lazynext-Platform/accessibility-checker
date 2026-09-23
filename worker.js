@@ -41,6 +41,10 @@ export default {
     const url = new URL(request.url);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
+    if (request.method === 'GET' && url.pathname === '/health') {
+      return respond({ ok: true, service: 'accessibility-checker' });
+    }
+
     if (request.method === 'GET' && url.pathname === '/') {
       return respond({
         name: 'Accessibility Checker API',
