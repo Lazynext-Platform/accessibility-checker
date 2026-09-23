@@ -1,58 +1,34 @@
-# Pro Conversion Sequence
+# Pro Sequence Marketing Strategy
+The Pro Sequence is a critical component of our marketing strategy, designed to convert free users into paying customers. With the introduction of a free trial for the Pro license, we aim to increase conversions and reduce friction in the checkout flow.
 
-The following sequence is designed to convert leads who have hit the free scan limit into paying customers. The sequence consists of three emails, each with a specific goal and call-to-action.
+## Free Trial Offer
+We will offer a 14-day free trial of the Pro license, allowing users to experience the full range of features and benefits without committing to a paid subscription. This trial period will be clearly communicated throughout the checkout flow, ensuring that users understand the terms and conditions.
 
-## Email 1: Introduction and Value Proposition (sent immediately after free scan limit is reached)
+## Checkout Flow Updates
+To incorporate the free trial offer, we will update the checkout flow as follows:
 
-Subject: Unlock Full Accessibility Scanning Capabilities
+1. **Trial Period Notification**: A clear notification will be displayed on the pricing page, indicating that a 14-day free trial is available for the Pro license.
+2. **Trial Option**: A "Start Free Trial" button will be added to the pricing page, allowing users to initiate the trial period.
+3. **Trial Terms and Conditions**: A link to the terms and conditions of the free trial will be provided, outlining the 14-day limit, automatic conversion to a paid subscription, and cancellation policies.
+4. **Payment Method**: Users will be required to provide a payment method to start the free trial, with a clear indication that they will not be charged until the trial period ends.
+5. **Trial Expiration Notification**: Users will receive a notification 3 days before the trial period ends, reminding them of the upcoming expiration and providing instructions on how to cancel or continue their subscription.
 
-Dear [Lead Name],
+## Post-Trial Conversion
+After the 14-day trial period, users will be automatically converted to a paid Pro license subscription, unless they cancel before the trial ends. We will send a series of emails to users during and after the trial period, highlighting the benefits of the Pro license and encouraging them to continue their subscription.
 
-We hope you found our free accessibility scan helpful in identifying potential issues on your website. As you've reached the limit of our free scans, we wanted to introduce you to our Pro plan, which offers unlimited scans, detailed reports, and personalized recommendations for improvement.
+## Email Sequence
+The following email sequence will be sent to users during and after the trial period:
 
-With our Pro plan, you'll be able to:
+1. **Trial Started**: An email will be sent immediately after the user starts the free trial, welcoming them to the Pro license and providing an overview of the features and benefits.
+2. **Trial Mid-Point**: An email will be sent 7 days into the trial period, highlighting the user's progress and encouraging them to explore more features.
+3. **Trial Expiration**: An email will be sent 3 days before the trial period ends, reminding the user of the upcoming expiration and providing instructions on how to cancel or continue their subscription.
+4. **Post-Trial Follow-up**: An email will be sent 1 day after the trial period ends, thanking the user for trying the Pro license and encouraging them to continue their subscription or provide feedback on their experience.
 
-* Scan your website as many times as you need
-* Receive detailed reports on accessibility issues and recommendations for improvement
-* Get personalized support from our team of accessibility experts
-* Ensure your website is compliant with the latest accessibility regulations
+## Metrics and Monitoring
+We will closely monitor the following metrics to evaluate the effectiveness of the free trial offer:
 
-Click here to learn more about our Pro plan and upgrade your account today: [insert CTA button]
+1. **Trial Conversion Rate**: The percentage of users who convert to a paid Pro license subscription after the trial period.
+2. **Trial Cancellation Rate**: The percentage of users who cancel their subscription during or after the trial period.
+3. **User Engagement**: The level of user engagement during the trial period, including feature adoption and overall satisfaction.
 
-Best,
-[Your Name]
-
-## Email 2: Social Proof and Success Stories (sent 3 days after Email 1)
-
-Subject: See How Other Businesses Like Yours Have Improved Accessibility
-
-Hi [Lead Name],
-
-We wanted to follow up on our previous email and share some success stories from other businesses like yours that have upgraded to our Pro plan. Our Pro plan has helped numerous small businesses and solo entrepreneurs ensure their websites are accessible and compliant with regulations.
-
-Here's what some of our satisfied customers have to say:
-
-* "[Accessibility Checker] has been instrumental in helping us improve our website's accessibility. Their Pro plan has given us the tools and support we need to ensure our website is compliant and user-friendly." - [Customer Name]
-* "We were blown away by the level of detail and personalized support provided by [Accessibility Checker]. Their Pro plan has been a game-changer for our business." - [Customer Name]
-
-Don't just take our word for it - upgrade to our Pro plan today and see the difference for yourself: [insert CTA button]
-
-Best,
-[Your Name]
-
-## Email 3: Exclusive Offer and Limited-Time Discount (sent 7 days after Email 1)
-
-Subject: Exclusive Offer: Limited-Time Discount on Pro Plan
-
-Hi [Lead Name],
-
-We hope you've been considering upgrading to our Pro plan to unlock full accessibility scanning capabilities. As a valued lead, we're excited to offer you an exclusive limited-time discount on our Pro plan.
-
-For the next 48 hours, use the code PRO15 at checkout to receive 15% off your first year's subscription. This is a one-time offer, so don't miss out on this opportunity to take your website's accessibility to the next level.
-
-Click here to upgrade to our Pro plan and start scanning your website with unlimited capabilities: [insert CTA button]
-
-Hurry - this offer won't last long!
-
-Best,
-[Your Name]
+By offering a free trial of the Pro license, we aim to increase conversions, reduce friction in the checkout flow, and provide a risk-free opportunity for users to experience the full range of features and benefits.
