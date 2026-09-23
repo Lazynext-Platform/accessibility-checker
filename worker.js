@@ -54,7 +54,7 @@ export default {
     if (request.method === 'GET' && url.pathname === '/checkout') {
       const r = await platform(env, '/api/v1/billing/checkout', {
         method: 'POST',
-        body: JSON.stringify({ product_id: 'pdt_accessibility_pro', plan: 'pro' }),
+        body: JSON.stringify({ product_id: 'pdt_0NoEqD9VCMUZnIogq4Epy', plan: 'pro' }),
       });
       const d = await r.json().catch(() => ({}));
       if (!r.ok || !d.checkout_url) return respond({ error: 'checkout unavailable', detail: d }, 502);
