@@ -1,24 +1,17 @@
 // File: script.js
-const proCtaButton = document.getElementById('pro-cta');
-
-proCtaButton.addEventListener('click', () => {
-    // Call the API to handle the Pro license purchase
-    fetch('/checkout', {
+// Add event listener to the Get Started button
+document.querySelector('button').addEventListener('click', () => {
+    // Call the API to start the scan
+    fetch('/scan', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-            license: 'pro'
+            // Add any necessary data to the request body
         })
     })
     .then(response => response.json())
-    .then(data => {
-        // Handle the response from the API
-        console.log(data);
-    })
-    .catch(error => {
-        // Handle any errors that occur
-        console.error(error);
-    });
+    .then(data => console.log(data))
+    .catch(error => console.error(error));
 });
