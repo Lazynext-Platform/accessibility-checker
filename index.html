@@ -30,6 +30,7 @@
         <input id="license" type="email" placeholder="Pro license (your purchase email) — optional" aria-label="Pro license email" style="flex:.6">
         <a id="pro" href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout" style="align-self:center">Start 14-day free trial →</a>
         <a id="cancel" href="#" style="align-self:center;font-size:.8rem;color:#6b7280">cancel</a>
+        <label style="align-self:center;font-size:.8rem;color:#6b7280;display:flex;gap:.3rem;align-items:center;white-space:nowrap"><input id="emailReport" type="checkbox" style="flex:none">email me the report</label>
     </div>
     <div id="status"></div>
     <div id="out"></div>
@@ -65,7 +66,7 @@
             go.disabled = true; statusEl.textContent = "Rendering page and scanning…"; out.innerHTML = "";
             try {
                 const license = document.getElementById("license").value.trim();
-                const r = await fetch(API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, ...(license ? { license } : {}) }) });
+                const r = await fetch(API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, ...(license ? { license } : {}), email_report: document.getElementById("emailReport").checked }) });
                 const d = await r.json();
                 if (r.status === 402) {
                     statusEl.innerHTML = `Free limit reached — <a href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout">start a free 14-day Pro trial</a> for unlimited scans, or drop your email and we'll send you a discount:`;
