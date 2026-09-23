@@ -1,38 +1,42 @@
 // File: test/license.test.mjs
-import { createProLicenseWithFreeTrial, isProLicenseValid, upgradeToPro } from '../src/license.js';
-import { KV } from '../src/platform/kv.js';
+import { startTrial, getLicenseFeatures } from '../src/license.js';
+import { getLicense, updateLicense } from '../src/kv.js';
 
-describe('License', () => {
-  beforeEach(async () => {
-    await KV.delete('licenses', 'test-license');
-    await KV.delete('quotas', 'test-user');
+describe('License System', () => {
+  it('should start a trial license', async () => {
+    const userId = 'test-user';
+    const trialLicense = await startTrial(userId);
+    expect(trialLicense.type).toBe('trial');
+    expect(trialLicense.features).toEqual({
+      feature1: true,
+      feature2: false,
+      feature3: false,
+    });
   });
 
-  it('creates a new Pro license with a 14-day free trial', async () => {
+  it('should get license features', async () => {
     const userId = 'test-user';
-    const { licenseId, expiresAt } = await createProLicenseWithFreeTrial(userId);
-
-    expect(licenseId).toBeInstanceOf(String);
-    expect(expiresAt).toBeGreaterThan(Date.now());
-    expect(expiresAt).toBeLessThan(Date.now() + (14 * 24 * 60 * 60 * 1000));
+    await startTrial(userId);
+    const features = await getLicenseFeatures(userId);
+    expect(features).toEqual({
+      feature1: true,
+      feature2: false,
+      feature3: false,
+    });
   });
 
-  it('checks if a user\'s Pro license is still valid', async () => {
+  it('should throw an error if user already has a Pro license', async () => {
     const userId = 'test-user';
-    await createProLicenseWithFreeTrial(userId);
-
-    expect(await isProLicenseValid(userId)).toBe(true);
+    await updateLicense(userId, { type: 'pro', features: {} });
+    await expect(startTrial(userId)).rejects.toThrow(
+      'User already has a Pro license'
+    );
   });
 
-  it('upgrades a user\'s license to Pro', async () => {
+  it('should throw an error if user does not have a license', async () => {
     const userId = 'test-user';
-    await createProLicenseWithFreeTrial(userId);
-
-    await upgradeToPro(userId);
-
-    const quota = await KV.get('quotas', userId);
-    expect(quota).toContain('pro:true');
-    expect(quota).toContain('trial:false');
-    expect(quota).toContain('expiresAt:null');
+    await expect(getLicenseFeatures(userId)).rejects.toThrow(
+      'User does not have a license'
+    );
   });
 });

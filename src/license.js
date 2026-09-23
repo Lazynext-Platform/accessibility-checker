@@ -1,54 +1,54 @@
 // File: src/license.js
 import { PLATFORM } from '../env.js';
-import { KV } from '../platform/kv.js';
-import { D1 } from '../platform/d1.js';
+import { getLicense, updateLicense } from '../kv.js';
 
-const LICENSES_KV = 'licenses';
-const QUOTAS_KV = 'quotas';
+const PRO_LICENSE_FEATURES = {
+  // List of features available in Pro license
+  feature1: true,
+  feature2: true,
+  feature3: true,
+};
 
-/**
- * Creates a new Pro license with a 14-day free trial.
- * @param {string} userId - The ID of the user.
- * @returns {Promise<{ licenseId: string, expiresAt: number }>} - The license ID and expiration timestamp.
- */
-async function createProLicenseWithFreeTrial(userId) {
-  const licenseId = crypto.randomUUID();
-  const expiresAt = Date.now() + (14 * 24 * 60 * 60 * 1000); // 14 days from now
+const TRIAL_LICENSE_FEATURES = {
+  // List of features available in trial license
+  feature1: true,
+  feature2: false,
+  feature3: false,
+};
 
-  await KV.put(LICENSES_KV, licenseId, JSON.stringify({ userId, expiresAt }));
-  await KV.put(QUOTAS_KV, userId, JSON.stringify({ pro: true, trial: true, expiresAt }));
+async function startTrial(userId) {
+  try {
+    const license = await getLicense(userId);
+    if (license && license.type === 'pro') {
+      throw new Error('User already has a Pro license');
+    }
 
-  return { licenseId, expiresAt };
+    const trialLicense = {
+      type: 'trial',
+      features: TRIAL_LICENSE_FEATURES,
+      expiresAt: Date.now() + 14 * 24 * 60 * 60 * 1000, // 14 days
+    };
+
+    await updateLicense(userId, trialLicense);
+    return trialLicense;
+  } catch (error) {
+    throw new Error(`Failed to start trial: ${error.message}`);
+  }
 }
 
-/**
- * Checks if a user's Pro license is still valid.
- * @param {string} userId - The ID of the user.
- * @returns {Promise<boolean>} - True if the license is valid, false otherwise.
- */
-async function isProLicenseValid(userId) {
-  const quota = await KV.get(QUOTAS_KV, userId);
-  if (!quota) return false;
-
-  const { pro, trial, expiresAt } = JSON.parse(quota);
-  if (!pro || !trial) return false;
-
-  return expiresAt > Date.now();
+async function getLicenseFeatures(userId) {
+  try {
+    const license = await getLicense(userId);
+    if (license && license.type === 'pro') {
+      return PRO_LICENSE_FEATURES;
+    } else if (license && license.type === 'trial') {
+      return TRIAL_LICENSE_FEATURES;
+    } else {
+      throw new Error('User does not have a license');
+    }
+  } catch (error) {
+    throw new Error(`Failed to get license features: ${error.message}`);
+  }
 }
 
-/**
- * Upgrades a user's license to Pro.
- * @param {string} userId - The ID of the user.
- * @returns {Promise<void>}
- */
-async function upgradeToPro(userId) {
-  const quota = await KV.get(QUOTAS_KV, userId);
-  if (!quota) throw new Error('User has no quota');
-
-  const { pro, trial, expiresAt } = JSON.parse(quota);
-  if (!pro || !trial) throw new Error('User does not have a Pro trial license');
-
-  await KV.put(QUOTAS_KV, userId, JSON.stringify({ pro: true, trial: false, expiresAt: null }));
-}
-
-export { createProLicenseWithFreeTrial, isProLicenseValid, upgradeToPro };
+export { startTrial, getLicenseFeatures };
