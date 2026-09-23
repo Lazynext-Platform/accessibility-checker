@@ -29,6 +29,7 @@
     <div class="row">
         <input id="license" type="email" placeholder="Pro license (your purchase email) — optional" aria-label="Pro license email" style="flex:.6">
         <a id="pro" href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout" style="align-self:center">Start 14-day free trial →</a>
+        <a id="cancel" href="#" style="align-self:center;font-size:.8rem;color:#6b7280">cancel</a>
     </div>
     <div id="status"></div>
     <div id="out"></div>
@@ -88,6 +89,17 @@
             }
         });
         urlEl.addEventListener("keydown", (e) => { if (e.key === "Enter") go.click(); });
+        document.getElementById("cancel").addEventListener("click", async (e) => {
+            e.preventDefault();
+            const email = document.getElementById("license").value.trim();
+            if (!email.includes("@")) { statusEl.textContent = "Enter your purchase email in the license field first."; return; }
+            if (!confirm(`Cancel the Pro subscription for ${email}? Access ends immediately.`)) return;
+            const r = await fetch("https://accessibility-checker.dry-hall-6a50.workers.dev/cancel", {
+                method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ license: email })
+            });
+            const d = await r.json().catch(() => ({}));
+            statusEl.textContent = r.ok ? "Subscription cancelled — you're on the free plan now." : `Couldn't cancel: ${d.error ?? r.status}`;
+        });
     </script>
 </body>
 </html>

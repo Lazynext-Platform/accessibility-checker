@@ -91,6 +91,19 @@ export default {
       return Response.redirect(d.checkout_url, 302);
     }
 
+    // Self-service cancellation — the license key IS the purchase email. We
+    // verify it's currently Pro, then the platform resolves and cancels the
+    // active Dodo subscription; the webhook downgrades license:<email>.
+    if (request.method === 'POST' && url.pathname === '/cancel') {
+      const b = await request.json().catch(() => ({}));
+      if (!b.license?.includes('@')) return respond({ error: 'purchase email required' }, 400);
+      if (!(await isPro(env, b.license))) return respond({ error: 'no active Pro license for that email' }, 404);
+      const r = await platform(env, '/api/v1/billing/cancel', { method: 'POST', body: JSON.stringify({ email: b.license }) });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) return respond({ error: 'cancel failed', detail: d }, 502);
+      return respond({ ok: true, status: d.status, subscription_id: d.subscription_id });
+    }
+
     if (request.method === 'POST' && url.pathname === '/scan') {
       const body = await request.json().catch(() => ({}));
 
