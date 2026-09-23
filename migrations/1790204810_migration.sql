@@ -1,0 +1,8 @@
+CREATE TABLE scan_results (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL,
+  scan_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  url VARCHAR(255) NOT NULL,
+  result JSONB NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id)
+);
