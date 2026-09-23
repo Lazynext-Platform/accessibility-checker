@@ -66,3 +66,45 @@ export function scanHtml(html) {
 export function score(issues) {
   return Math.max(0, 100 - issues.length * 10);
 }
+
+// --- rendered-DOM contrast checks (WCAG 1.4.3) -------------------------------
+
+function parseColor(s) {
+  if (!s) return null;
+  const m = String(s).match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\s*\)/i);
+  if (m) return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
+  const h = String(s).match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if (h) {
+    const hex = h[1].length === 3 ? h[1].split("").map((c) => c + c).join("") : h[1];
+    return { r: parseInt(hex.slice(0, 2), 16), g: parseInt(hex.slice(2, 4), 16), b: parseInt(hex.slice(4, 6), 16), a: 1 };
+  }
+  return null;
+}
+
+function luminance(c) {
+  const f = (v) => {
+    const x = v / 255;
+    return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b);
+}
+
+export function checkContrast(styles) {
+  const issues = [];
+  for (const el of styles ?? []) {
+    const fg = parseColor(el.color);
+    const bg = parseColor(el.bg);
+    if (!fg || !bg || fg.a === 0 || bg.a === 0) continue;
+    const l1 = luminance(fg), l2 = luminance(bg);
+    const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+    const large = el.size >= 24 || (el.size >= 18.66 && parseInt(el.weight, 10) >= 700);
+    const min = large ? 3 : 4.5;
+    if (ratio < min) {
+      issues.push({
+        rule: "wcag-1.4.3",
+        message: `contrast ${ratio.toFixed(2)}:1 below ${min}:1 on <${el.tag}> "${String(el.text).slice(0, 40)}"`,
+      });
+    }
+  }
+  return issues;
+}
