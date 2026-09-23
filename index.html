@@ -5,14 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accessibility Checker</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        #results {
-            margin-top: 20px;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <h1>Accessibility Checker</h1>
@@ -36,13 +29,14 @@
             try {
                 const scanner = new WcagScanner();
                 const results = await scanner.scan(websiteUrl);
-                const resultsHtml = results.map(result => {
+                const resultsHtml = results.map((result) => {
                     return `
                         <h2>${result.issue}</h2>
-                        <p>Element: ${result.element}</p>
+                        <p>${result.description}</p>
                         <p>Recommendation: ${result.recommendation}</p>
                     `;
                 }).join('');
+
                 resultsDiv.innerHTML = resultsHtml;
             } catch (error) {
                 console.error(error);
