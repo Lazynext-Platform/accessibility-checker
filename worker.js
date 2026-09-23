@@ -8,14 +8,14 @@ export default {
         <html>
           <body>
             <h1>Accessibility Checker</h1>
-            <form id="checker-form">
+            <form id="check-form">
               <label for="url">URL:</label>
               <input type="text" id="url" name="url"><br><br>
               <input type="submit" value="Check">
             </form>
             <div id="result"></div>
             <script>
-              document.getElementById('checker-form').addEventListener('submit', async (e) => {
+              document.getElementById('check-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const url = document.getElementById('url').value;
                 const response = await fetch('/check', {
@@ -25,16 +25,18 @@ export default {
                 });
                 const result = await response.json();
                 document.getElementById('result').innerHTML = \`
-                  <h2>Result:</h2>
+                  <h2>Accessibility Issues:</h2>
                   <ul>
-                    \${result.issues.map((issue) => \`<li>\${issue.description} (\${issue.severity})</li>\`).join('')}
+                    \${result.issues.map((issue) => \`<li>\${issue.message}</li>\`).join('')}
                   </ul>
                 \`;
               });
             </script>
           </body>
         </html>
-      `, { headers: { 'Content-Type': 'text/html' } });
+      `, {
+        headers: { 'Content-Type': 'text/html' },
+      });
     }
 
     if (req.method === 'POST' && action === 'check') {
@@ -44,14 +46,19 @@ export default {
       const issues = [];
 
       // Simple accessibility checks
-      if (!html.includes('alt=')) {
-        issues.push({ description: 'Missing alt attribute for images', severity: 'high' });
+      if (!html.includes('alt')) {
+        issues.push({ message: 'Missing alt attribute for images' });
       }
-      if (!html.includes('aria-label=')) {
-        issues.push({ description: 'Missing aria-label attribute for interactive elements', severity: 'medium' });
+      if (!html.includes('aria-label')) {
+        issues.push({ message: 'Missing aria-label attribute for interactive elements' });
+      }
+      if (html.includes('table')) {
+        issues.push({ message: 'Table used for layout, consider using CSS instead' });
       }
 
-      return new Response(JSON.stringify({ issues }), { headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ issues }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
     }
 
     return new Response('Not Found', { status: 404 });
