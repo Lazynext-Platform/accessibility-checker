@@ -1,40 +1,39 @@
 // File: test/license.test.mjs
-import {getLicenseInfo, createFreeTrialLicense, updateLicenseInfo, hasValidLicense} from '../src/license.js';
-import {kv} from '../platform/kv.js';
+import { createFreeTrialLicense, isFreeTrialActive } from '../src/license.js';
+import { kv } from '../src/platform/kv.js';
+import { d1 } from '../src/platform/d1.js';
 
-describe('License', () => {
+describe('license', () => {
   beforeEach(async () => {
-    // Clear KV store before each test
-    await kv.delete('license:test-user');
+    // Clear the KV store before each test
+    await kv.delete('license:123');
   });
 
-  it('should create a new free trial license', async () => {
-    await createFreeTrialLicense('test-user');
-    const licenseInfo = await getLicenseInfo('test-user');
-    expect(licenseInfo.licenseType).toBe('pro');
-    expect(licenseInfo.licenseStatus).toBe('trial');
-    expect(licenseInfo.scansRemaining).toBe(10);
+  afterEach(async () => {
+    // Clear the KV store after each test
+    await kv.delete('license:123');
   });
 
-  it('should update license information', async () => {
-    await createFreeTrialLicense('test-user');
-    await updateLicenseInfo('test-user', {scansRemaining: 5});
-    const licenseInfo = await getLicenseInfo('test-user');
-    expect(licenseInfo.scansRemaining).toBe(5);
+  it('creates a new free trial license', async () => {
+    await createFreeTrialLicense('user123', 'license123');
+    const license = await kv.get('license:license123');
+    expect(license).toEqual({
+      userId: 'user123',
+      expiresAt: expect.any(Number),
+      plan: 'pro',
+    });
   });
 
-  it('should check if a user has a valid license', async () => {
-    await createFreeTrialLicense('test-user');
-    expect(await hasValidLicense('test-user')).toBe(true);
-    await updateLicenseInfo('test-user', {scansRemaining: 0});
-    expect(await hasValidLicense('test-user')).toBe(false);
+  it('checks if a license is still within its free trial period', async () => {
+    await createFreeTrialLicense('user123', 'license123');
+    const isActive = await isFreeTrialActive('license123');
+    expect(isActive).toBe(true);
   });
 
-  it('should handle errors', async () => {
-    try {
-      await getLicenseInfo('non-existent-user');
-    } catch (error) {
-      expect(error.message).toBe('Failed to get license info: ');
-    }
+  it('sends a welcome email to a user', async () => {
+    const sendEmailSpy = jest.spyOn(global, 'fetch');
+    await sendWelcomeEmail('user123');
+    expect(sendEmailSpy).toHaveBeenCalledTimes(1);
+    expect(sendEmailSpy).toHaveBeenCalledWith(expect.stringContaining('/email/send'), expect.any(Object));
   });
 });
