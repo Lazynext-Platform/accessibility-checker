@@ -1,0 +1,75 @@
+```javascript
+// Import required modules
+const express = require('express');
+const router = express.Router();
+const axios = require('axios');
+const { ComplianceScan, Website } = require('../models');
+
+// Define API endpoint for initiating compliance scan
+router.post('/scan', async (req, res) => {
+  try {
+    const websiteUrl = req.body.websiteUrl;
+    const website = await Website.findOne({ where: { url: websiteUrl } });
+
+    if (!website) {
+      return res.status(404).send({ message: 'Website not found' });
+    }
+
+    const scan = await ComplianceScan.create({ websiteId: website.id, status: 'pending' });
+    res.send({ scanId: scan.id });
+
+    // Initiate scan using external API
+    axios.post('https://accessibility-api.com/scan', {
+      websiteUrl,
+      scanId: scan.id,
+    })
+      .then((response) => {
+        console.log(`Scan initiated for ${websiteUrl}`);
+      })
+      .catch((error) => {
+        console.error(`Error initiating scan: ${error.message}`);
+      });
+  } catch (error) {
+    console.error(`Error initiating scan: ${error.message}`);
+    res.status(500).send({ message: 'Internal Server Error' });
+  }
+});
+
+// Define API endpoint for retrieving scan results
+router.get('/scan/:scanId/results', async (req, res) => {
+  try {
+    const scanId = req.params.scanId;
+    const scan = await ComplianceScan.findOne({ where: { id: scanId } });
+
+    if (!scan) {
+      return res.status(404).send({ message: 'Scan not found' });
+    }
+
+    const results = await axios.get(`https://accessibility-api.com/scan/${scanId}/results`);
+    res.send(results.data);
+  } catch (error) {
+    console.error(`Error retrieving scan results: ${error.message}`);
+    res.status(500).send({ message: 'Internal Server Error' });
+  }
+});
+
+// Define API endpoint for retrieving scan status
+router.get('/scan/:scanId/status', async (req, res) => {
+  try {
+    const scanId = req.params.scanId;
+    const scan = await ComplianceScan.findOne({ where: { id: scanId } });
+
+    if (!scan) {
+      return res.status(404).send({ message: 'Scan not found' });
+    }
+
+    const status = await axios.get(`https://accessibility-api.com/scan/${scanId}/status`);
+    res.send({ status: status.data });
+  } catch (error) {
+    console.error(`Error retrieving scan status: ${error.message}`);
+    res.status(500).send({ message: 'Internal Server Error' });
+  }
+});
+
+module.exports = router;
+```
