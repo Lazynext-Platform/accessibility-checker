@@ -4,13 +4,14 @@ export default {
       return new Response(`
         <html>
           <body>
+            <h1>Accessibility Checker</h1>
             <form action="/scan" method="post">
               <input type="radio" id="url" name="type" value="url" checked>
               <label for="url">URL</label>
               <input type="radio" id="html" name="type" value="html">
               <label for="html">HTML</label>
               <br>
-              <textarea id="input" name="input"></textarea>
+              <textarea name="input" rows="10" cols="50"></textarea>
               <button type="submit">Scan</button>
             </form>
           </body>
@@ -35,7 +36,7 @@ export default {
         headers: { 'content-type': 'application/json' }
       });
     } else {
-      return new Response('Method not allowed', { status: 405 });
+      return new Response('Invalid method', { status: 405 });
     }
   }
 };
