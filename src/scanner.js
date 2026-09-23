@@ -108,3 +108,36 @@ export function checkContrast(styles) {
   }
   return issues;
 }
+
+// --- rendered-DOM facts (WCAG 1.1.1, 1.2.1, 1.3.1, 2.4.1, 4.1.2) ------------
+
+export function checkFacts(facts) {
+  const issues = [];
+  if (!facts) return issues;
+  if (facts.iframesNoTitle > 0) issues.push({ rule: "wcag-4.1.2", message: `${facts.iframesNoTitle} <iframe> without a title attribute` });
+  if (facts.duplicateIds > 0) issues.push({ rule: "wcag-4.1.1", message: `${facts.duplicateIds} duplicate id attribute(s) on the page` });
+  if (facts.ariaHiddenFocusable > 0) issues.push({ rule: "wcag-4.1.2", message: `${facts.ariaHiddenFocusable} focusable element(s) inside aria-hidden containers` });
+  if (facts.autofocus > 0) issues.push({ rule: "wcag-3.2.1", message: "autofocus attribute moves focus without user request" });
+  if (facts.blankNoopener > 0) issues.push({ rule: "wcag-3.2.5", message: `${facts.blankNoopener} target="_blank" link(s) without rel="noopener"` });
+  if (facts.mediaNoCaptions > 0) issues.push({ rule: "wcag-1.2.1", message: `${facts.mediaNoCaptions} <video>/<audio> element(s) without captions` });
+  if (facts.tablesNoHeaders > 0) issues.push({ rule: "wcag-1.3.1", message: `${facts.tablesNoHeaders} <table> without header cells (<th>)` });
+  if (facts.skipLink === false) issues.push({ rule: "wcag-2.4.1", message: "no skip-navigation link found" });
+  return issues;
+}
+
+// --- keyboard trace checks (WCAG 2.1.1, 2.1.2, 2.4.3) ------------------------
+
+export function checkFocus(trace) {
+  const issues = [];
+  if (!Array.isArray(trace) || trace.length === 0) {
+    issues.push({ rule: "wcag-2.1.1", message: "no keyboard focus trace captured" });
+    return issues;
+  }
+  const unique = new Set(trace.filter((t) => t && t !== "body"));
+  if (unique.size === 0) {
+    issues.push({ rule: "wcag-2.1.1", message: "no focusable elements found — page is keyboard-inaccessible" });
+  } else if (unique.size <= 2 && trace.length >= 8) {
+    issues.push({ rule: "wcag-2.1.2", message: `possible keyboard trap — focus cycled only across ${unique.size} element(s) in ${trace.length} Tab presses` });
+  }
+  return issues;
+}
