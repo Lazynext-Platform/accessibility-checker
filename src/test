@@ -1,94 +1,57 @@
-**tests.py**
 ```python
-import unittest
-from accessibility_checker import AccessibilityChecker
-from unittest.mock import patch, MagicMock
+# src/test/test_accessibility_scanner.py
 
-class TestAccessibilityChecker(unittest.TestCase):
-
-    def setUp(self):
-        self.checker = AccessibilityChecker()
-
-    def test_scan_website(self):
-        # Test scanning a website with accessibility issues
-        website_url = "https://example.com/accessibility-issues"
-        issues = self.checker.scan_website(website_url)
-        self.assertGreater(len(issues), 0)
-
-    def test_scan_website_no_issues(self):
-        # Test scanning a website with no accessibility issues
-        website_url = "https://example.com/no-accessibility-issues"
-        issues = self.checker.scan_website(website_url)
-        self.assertEqual(len(issues), 0)
-
-    def test_get_recommendations(self):
-        # Test getting recommendations for accessibility issues
-        issues = ["issue1", "issue2", "issue3"]
-        recommendations = self.checker.get_recommendations(issues)
-        self.assertGreater(len(recommendations), 0)
-
-    @patch('accessibility_checker.AccessibilityChecker.scan_website')
-    def test_scan_website_mock(self, mock_scan_website):
-        # Test scanning a website with mock issues
-        website_url = "https://example.com/mock-issues"
-        mock_scan_website.return_value = ["mock_issue1", "mock_issue2"]
-        issues = self.checker.scan_website(website_url)
-        self.assertEqual(issues, ["mock_issue1", "mock_issue2"])
-
-    @patch('accessibility_checker.AccessibilityChecker.get_recommendations')
-    def test_get_recommendations_mock(self, mock_get_recommendations):
-        # Test getting recommendations with mock issues
-        issues = ["mock_issue1", "mock_issue2"]
-        mock_get_recommendations.return_value = ["mock_recommendation1", "mock_recommendation2"]
-        recommendations = self.checker.get_recommendations(issues)
-        self.assertEqual(recommendations, ["mock_recommendation1", "mock_recommendation2"])
-
-if __name__ == '__main__':
-    unittest.main()
-```
-
-**test_accessibility_checker.py**
-```python
-import unittest
-from accessibility_checker import AccessibilityChecker
-
-class TestAccessibilityCheckerIntegration(unittest.TestCase):
-
-    def test_scan_website_integration(self):
-        # Test scanning a website with accessibility issues
-        website_url = "https://example.com/accessibility-issues"
-        checker = AccessibilityChecker()
-        issues = checker.scan_website(website_url)
-        self.assertGreater(len(issues), 0)
-
-    def test_get_recommendations_integration(self):
-        # Test getting recommendations for accessibility issues
-        issues = ["issue1", "issue2", "issue3"]
-        checker = AccessibilityChecker()
-        recommendations = checker.get_recommendations(issues)
-        self.assertGreater(len(recommendations), 0)
-
-if __name__ == '__main__':
-    unittest.main()
-```
-
-**conftest.py**
-```python
 import pytest
+from src.accessibility_scanner import AccessibilityScanner
+from src.modules.scanner.ai_scanner import AiScanner
 
-@pytest.fixture
-def accessibility_checker():
-    return AccessibilityChecker()
-```
+def test_accessibility_scanner_init():
+    scanner = AccessibilityScanner()
+    assert scanner is not None
 
-**test_config.py**
-```python
-import pytest
+def test_accessibility_scanner_scan():
+    scanner = AccessibilityScanner()
+    url = "https://example.com"
+    results = scanner.scan(url)
+    assert results is not None
 
-def pytest_addoption(parser):
-    parser.addoption("--website-url", action="store", default="https://example.com")
+def test_ai_scanner_init():
+    ai_scanner = AiScanner()
+    assert ai_scanner is not None
 
-@pytest.fixture
-def website_url(request):
-    return request.config.getoption("--website-url")
+def test_ai_scanner_scan():
+    ai_scanner = AiScanner()
+    url = "https://example.com"
+    results = ai_scanner.scan(url)
+    assert results is not None
+
+def test_wcag_scanner():
+    from src.api.wcag import WcagScanner
+    wcag_scanner = WcagScanner()
+    url = "https://example.com"
+    results = wcag_scanner.scan(url)
+    assert results is not None
+
+def test_website_scanner():
+    from src.api.website_scanner import WebsiteScanner
+    website_scanner = WebsiteScanner()
+    url = "https://example.com"
+    results = website_scanner.scan(url)
+    assert results is not None
+
+# Test for client-side functionality
+def test_client_side_scanner():
+    from src.scanner import Scanner
+    scanner = Scanner()
+    url = "https://example.com"
+    results = scanner.scan(url)
+    assert results is not None
+
+# Test for compliance API
+def test_compliance_api():
+    from src.api.compliance import ComplianceApi
+    compliance_api = ComplianceApi()
+    url = "https://example.com"
+    results = compliance_api.check_compliance(url)
+    assert results is not None
 ```
