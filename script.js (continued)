@@ -1,0 +1,8 @@
+// File: script.js (continued)
+// Add event listener to handle updates list item clicks
+updatesList.addEventListener('click', (event) => {
+  if (event.target.tagName === 'LI') {
+    // Handle list item click
+    console.log('Update clicked:', event.target.textContent);
+  }
+});

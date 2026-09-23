@@ -1,49 +1,25 @@
-// File: script.js
-const scanForm = document.getElementById('scan-form');
-const scanResult = document.getElementById('scan-result');
-const reportsList = document.getElementById('reports-list');
-const createReportButton = document.getElementById('create-report');
-const reportTemplate = document.getElementById('report-template');
+<!-- File: index.html -->
+<section id="whats-new" class="section">
+  <h2>What's New</h2>
+  <ul>
+    <!-- List of updates will be populated dynamically -->
+  </ul>
+</section>
 
-scanForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const url = document.getElementById('url').value;
-    const response = await fetch('/scan', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ url })
-    });
-    const result = await response.json();
-    scanResult.innerHTML = `
-        <h2>Scan Result</h2>
-        <p>URL: ${result.url}</p>
-        <p>Issues: ${result.issues.length}</p>
-        <ul>
-            ${result.issues.map(issue => `<li>${issue}</li>`).join('')}
-        </ul>
-    `;
-});
+<script>
+  // File: script.js
+  const whatsNewSection = document.getElementById('whats-new');
+  const updatesList = whatsNewSection.querySelector('ul');
 
-createReportButton.addEventListener('click', async () => {
-    const response = await fetch('/report', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    });
-    const reportId = await response.json();
-    const shareableLink = `${window.location.origin}/report/${reportId}`;
-    reportTemplate.innerHTML = `
-        <h2>Report Template</h2>
-        <p>Shareable Link: <a href="${shareableLink}">${shareableLink}</a></p>
-    `;
-});
-
-// Fetch reports list
-fetch('/reports')
+  // Fetch updates from API
+  fetch('/api/updates')
     .then(response => response.json())
-    .then(reports => {
-        reportsList.innerHTML = reports.map(report => `<li>${report.id}</li>`).join('');
-    });
+    .then(data => {
+      data.forEach(update => {
+        const listItem = document.createElement('LI');
+        listItem.textContent = update.description;
+        updatesList.appendChild(listItem);
+      });
+    })
+    .catch(error => console.error('Error fetching updates:', error));
+</script>
