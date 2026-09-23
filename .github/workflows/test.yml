@@ -1,13 +1,40 @@
-name: test
+name: Test and Deploy
+
 on:
   push:
-  pull_request:
+    branches:
+      - main
+
 jobs:
-  scanner:
+  test-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Run tests
+        run: |
+          npm test
+
+      - name: Build and deploy
+        run: |
+          npm run build
+          npm run deploy
+
+      - name: Test scanner.js
+        run: |
+          node:test test/scanner.test.mjs
+
+      - name: Test accessibility_checker.py
+        run: |
+          python -m pytest test/accessibility_checker_test.py
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
         with:
-          node-version: 22
-      - run: node --test
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./
