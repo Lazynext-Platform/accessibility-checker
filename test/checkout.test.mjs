@@ -1,20 +1,19 @@
 // File: test/checkout.test.mjs
-import { generateCheckoutLink } from '../src/checkout.js';
+import { test } from 'node:test';
+import { handleCheckoutCompletion } from '../src/checkout.js';
+import { trackTrialConversion } from '../src/analytics.js';
 
-describe('generateCheckoutLink', () => {
-  it('should generate a checkout link with UTM parameters', () => {
-    const options = {
-      utmSource: 'test-source',
-      utmMedium: 'test-medium',
-      utmCampaign: 'test-campaign',
-    };
-    const expectedLink = `https://example.com/checkout?utm_source=test-source&utm_medium=test-medium&utm_campaign=test-campaign`;
-    expect(generateCheckoutLink(options)).toBe(expectedLink);
-  });
+test('handleCheckoutCompletion tracks trial conversion', async () => {
+  const userId = 'user-123';
+  const licenseType = 'Pro';
 
-  it('should handle errors when generating the checkout link', () => {
-    const error = new Error('Test error');
-    const errorMessage = 'Error generating checkout link. Please try again.';
-    expect(handleCheckoutLinkError(error)).toBe(errorMessage);
-  });
+  const trackTrialConversionMock = jest.fn();
+  jest.mock('../src/analytics.js', () => ({
+    trackTrialConversion: trackTrialConversionMock,
+  }));
+
+  await handleCheckoutCompletion(userId, licenseType);
+
+  expect(trackTrialConversionMock).toHaveBeenCalledTimes(1);
+  expect(trackTrialConversionMock).toHaveBeenCalledWith(userId, licenseType, true);
 });

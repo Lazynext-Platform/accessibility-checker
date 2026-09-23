@@ -1,40 +1,43 @@
 // File: test/analytics.test.mjs
-import { recordUserBehavior, recordError, getUserBehavior, getErrors } from '../src/analytics.js';
-import { KV } from '@cloudflare/workers';
+import { test } from 'node:test';
+import { trackTrialConversion } from '../src/analytics.js';
+import { fetchMock } from 'fetch-mock';
 
-describe('Analytics', () => {
-  let analyticsKV;
+test('trackTrialConversion sends analytics data', async () => {
+  const userId = 'user-123';
+  const licenseType = 'Pro';
+  const converted = true;
 
-  beforeEach(() => {
-    analyticsKV = new KV('test-namespace');
+  fetchMock.post(`${globalThis.PLATFORM}/api/v1/analytics`, {
+    status: 200,
   });
 
-  afterEach(async () => {
-    await analyticsKV.delete('user:test:behavior');
-    await analyticsKV.delete('user:test:errors');
+  await trackTrialConversion(userId, licenseType, converted);
+
+  expect(fetchMock.called()).toBe(true);
+  expect(fetchMock.lastCall()[0]).toBe(`${globalThis.PLATFORM}/api/v1/analytics`);
+  expect(fetchMock.lastCall()[1].method).toBe('POST');
+  expect(fetchMock.lastCall()[1].body).toContain(userId);
+  expect(fetchMock.lastCall()[1].body).toContain(licenseType);
+  expect(fetchMock.lastCall()[1].body).toContain(String(converted));
+
+  fetchMock.restore();
+});
+
+test('trackTrialConversion handles fetch errors', async () => {
+  const userId = 'user-123';
+  const licenseType = 'Pro';
+  const converted = true;
+
+  fetchMock.post(`${globalThis.PLATFORM}/api/v1/analytics`, {
+    status: 500,
+    throws: new Error('Mocked error'),
   });
 
-  it('records user behavior', async () => {
-    await recordUserBehavior('test', 'scan');
-    const data = await analyticsKV.get('user:test:behavior');
-    expect(JSON.parse(data)).toEqual({ scan: 1 });
-  });
+  await trackTrialConversion(userId, licenseType, converted);
 
-  it('records error', async () => {
-    await recordError('test', 'scan');
-    const data = await analyticsKV.get('user:test:errors');
-    expect(JSON.parse(data)).toEqual({ scan: 1 });
-  });
+  expect(fetchMock.called()).toBe(true);
+  expect(console.error).toHaveBeenCalledTimes(1);
 
-  it('gets user behavior', async () => {
-    await analyticsKV.put('user:test:behavior', JSON.stringify({ scan: 1, report: 2 }));
-    const data = await getUserBehavior('test');
-    expect(data).toEqual({ scan: 1, report: 2 });
-  });
-
-  it('gets errors', async () => {
-    await analyticsKV.put('user:test:errors', JSON.stringify({ scan: 1, report: 2 }));
-    const data = await getErrors('test');
-    expect(data).toEqual({ scan: 1, report: 2 });
-  });
+  fetchMock.restore();
 });
