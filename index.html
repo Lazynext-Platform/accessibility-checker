@@ -9,44 +9,44 @@
         body {
             font-family: Arial, sans-serif;
         }
-        #result {
-            padding: 20px;
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        #results {
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
     <h1>Accessibility Checker</h1>
-    <input id="url" type="text" placeholder="Enter website URL">
-    <button id="scan-button">Scan for Accessibility Issues</button>
-    <div id="result"></div>
+    <input id="website-url" type="text" placeholder="Enter website URL">
+    <button id="scan-button">Scan Website</button>
+    <div id="results"></div>
 
     <script src="src/algorithms/wcag-scanner.js"></script>
     <script>
-        const urlInput = document.getElementById('url');
+        const websiteUrlInput = document.getElementById('website-url');
         const scanButton = document.getElementById('scan-button');
-        const resultDiv = document.getElementById('result');
+        const resultsDiv = document.getElementById('results');
 
         scanButton.addEventListener('click', async () => {
-            const url = urlInput.value;
-            if (!url) {
-                resultDiv.innerText = 'Please enter a website URL';
+            const websiteUrl = websiteUrlInput.value;
+            if (!websiteUrl) {
+                alert('Please enter a website URL');
                 return;
             }
 
             try {
-                const scanner = new WCAGScanner();
-                const result = await scanner.scan(url);
-                resultDiv.innerText = '';
-                result.forEach(issue => {
-                    const issueElement = document.createElement('p');
-                    issueElement.innerText = `${issue.code}: ${issue.message} (${issue.severity})`;
-                    resultDiv.appendChild(issueElement);
-                });
+                const scanner = new WcagScanner();
+                const results = await scanner.scan(websiteUrl);
+                const resultsHtml = results.map(result => {
+                    return `
+                        <h2>${result.issue}</h2>
+                        <p>Element: ${result.element}</p>
+                        <p>Recommendation: ${result.recommendation}</p>
+                    `;
+                }).join('');
+                resultsDiv.innerHTML = resultsHtml;
             } catch (error) {
-                resultDiv.innerText = `Error scanning website: ${error.message}`;
+                console.error(error);
+                alert('Error scanning website');
             }
         });
     </script>
