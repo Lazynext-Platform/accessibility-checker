@@ -71,7 +71,7 @@ export function score(issues) {
 
 // --- rendered-DOM contrast checks (WCAG 1.4.3) -------------------------------
 
-function parseColor(s) {
+export function parseColor(s) {
   if (!s) return null;
   const m = String(s).match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)(?:[,\s/]+([\d.]+))?\s*\)/i);
   if (m) return { r: +m[1], g: +m[2], b: +m[3], a: m[4] === undefined ? 1 : +m[4] };
@@ -83,7 +83,7 @@ function parseColor(s) {
   return null;
 }
 
-function luminance(c) {
+export function luminance(c) {
   const f = (v) => {
     const x = v / 255;
     return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);

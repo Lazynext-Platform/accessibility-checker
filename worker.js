@@ -1,4 +1,5 @@
 import { scanHtml, checkContrast, checkFacts, checkFocus, score } from './src/scanner.js';
+import { scanAdditionalHtml, checkContrastAAA } from './src/rules/additional.js';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -117,17 +118,19 @@ export default {
           if (!r.ok) throw new Error(`render ${r.status}`);
           const page = await r.json();
           issues = scanHtml(page.html)
+            .concat(scanAdditionalHtml(page.html))
             .concat(checkContrast(page.styles))
+            .concat(checkContrastAAA(page.styles))
             .concat(checkFacts(page.facts))
             .concat(checkFocus(page.focus));
           rendered = true;
         } catch (e) {
           renderError = String(e?.message ?? e);
           const page = await fetch(body.url).then((x) => x.text()).catch(() => '');
-          issues = scanHtml(page);
+          issues = scanHtml(page).concat(scanAdditionalHtml(page));
         }
       } else if (typeof body.html === 'string' && body.html.trim()) {
-        issues = scanHtml(body.html);
+        issues = scanHtml(body.html).concat(scanAdditionalHtml(body.html));
       } else {
         return respond({ error: 'provide {"url"} or {"html"}' }, 400);
       }
