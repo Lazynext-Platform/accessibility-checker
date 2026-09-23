@@ -53,6 +53,9 @@
     </script>
     <script>
         const API = "https://accessibility-checker.dry-hall-6a50.workers.dev/scan";
+        if (new URLSearchParams(location.search).get("upgraded")) {
+            document.getElementById("status").innerHTML = "<b>Pro activated.</b> Enter your purchase email in the license field — unlimited scans.";
+        }
         const urlEl = document.getElementById("url"), go = document.getElementById("go");
         const statusEl = document.getElementById("status"), out = document.getElementById("out");
         go.addEventListener("click", async () => {
