@@ -1,39 +1,39 @@
 // File: test/scanner.test.mjs
-import { getScanningOptions, updateScanningOptions, validateScanningOptions } from '../src/scanner.js';
+import { scan } from '../src/scanner.js';
+import { Analytics } from '../src/analytics.js';
 
-describe('Scanning options', () => {
-  it('gets default scanning options', async () => {
-    const options = await getScanningOptions();
-    expect(options).toEqual({
-      scanDepth: 5,
-      scanFrequency: 'daily',
-      ignoreUrls: [],
+describe('Scanner', () => {
+  it('tracks scan results successfully', async () => {
+    const url = 'https://example.com';
+    const scanResult = { url, result: 'passed' };
+
+    const analyticsMock = jest.spyOn(Analytics.prototype, 'trackEvent').mockResolvedValue();
+
+    const result = await scan(url);
+
+    expect(analyticsMock).toHaveBeenCalledTimes(1);
+    expect(analyticsMock).toHaveBeenCalledWith('scan_result', {
+      url,
+      result: scanResult,
     });
   });
 
-  it('updates scanning options', async () => {
-    const newOptions = {
-      scanDepth: 3,
-      scanFrequency: 'weekly',
-      ignoreUrls: ['https://example.com'],
-    };
-    const result = await updateScanningOptions(newOptions);
-    expect(result).toBe(true);
-  });
+  it('tracks scan errors', async () => {
+    const url = 'https://example.com';
+    const error = new Error('Test error');
 
-  it('validates scanning options', () => {
-    const validOptions = {
-      scanDepth: 5,
-      scanFrequency: 'daily',
-      ignoreUrls: [],
-    };
-    expect(() => validateScanningOptions(validOptions)).not.toThrow();
+    const analyticsMock = jest.spyOn(Analytics.prototype, 'trackEvent').mockResolvedValue();
 
-    const invalidOptions = {
-      scanDepth: 15,
-      scanFrequency: 'invalid',
-      ignoreUrls: 'string',
-    };
-    expect(() => validateScanningOptions(invalidOptions)).toThrow();
+    try {
+      await scan(url);
+      throw error;
+    } catch (caughtError) {
+      expect(caughtError).toBe(error);
+      expect(analyticsMock).toHaveBeenCalledTimes(1);
+      expect(analyticsMock).toHaveBeenCalledWith('scan_error', {
+        url,
+        error: error.message,
+      });
+    }
   });
 });

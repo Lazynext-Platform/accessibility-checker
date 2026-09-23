@@ -1,43 +1,42 @@
 // File: test/analytics.test.mjs
-import { test } from 'node:test';
-import { trackTrialConversion } from '../src/analytics.js';
-import { fetchMock } from 'fetch-mock';
+import { Analytics } from '../src/analytics.js';
 
-test('trackTrialConversion sends analytics data', async () => {
-  const userId = 'user-123';
-  const licenseType = 'Pro';
-  const converted = true;
+describe('Analytics', () => {
+  it('tracks events successfully', async () => {
+    const serviceUrl = 'https://example-analytics-service.com/track';
+    const analytics = new Analytics(serviceUrl);
+    const eventName = 'test_event';
+    const eventData = { test: 'data' };
 
-  fetchMock.post(`${globalThis.PLATFORM}/api/v1/analytics`, {
-    status: 200,
+    const fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue({
+      ok: true,
+    });
+
+    await analytics.trackEvent(eventName, eventData);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(serviceUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ event: eventName, data: eventData }),
+    });
   });
 
-  await trackTrialConversion(userId, licenseType, converted);
+  it('handles tracking errors', async () => {
+    const serviceUrl = 'https://example-analytics-service.com/track';
+    const analytics = new Analytics(serviceUrl);
+    const eventName = 'test_event';
+    const eventData = { test: 'data' };
 
-  expect(fetchMock.called()).toBe(true);
-  expect(fetchMock.lastCall()[0]).toBe(`${globalThis.PLATFORM}/api/v1/analytics`);
-  expect(fetchMock.lastCall()[1].method).toBe('POST');
-  expect(fetchMock.lastCall()[1].body).toContain(userId);
-  expect(fetchMock.lastCall()[1].body).toContain(licenseType);
-  expect(fetchMock.lastCall()[1].body).toContain(String(converted));
+    const fetchMock = jest.spyOn(global, 'fetch').mockRejectedValue(
+      new Error('Test error')
+    );
 
-  fetchMock.restore();
-});
+    await analytics.trackEvent(eventName, eventData);
 
-test('trackTrialConversion handles fetch errors', async () => {
-  const userId = 'user-123';
-  const licenseType = 'Pro';
-  const converted = true;
-
-  fetchMock.post(`${globalThis.PLATFORM}/api/v1/analytics`, {
-    status: 500,
-    throws: new Error('Mocked error'),
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(console.error).toHaveBeenCalledTimes(1);
   });
-
-  await trackTrialConversion(userId, licenseType, converted);
-
-  expect(fetchMock.called()).toBe(true);
-  expect(console.error).toHaveBeenCalledTimes(1);
-
-  fetchMock.restore();
 });
