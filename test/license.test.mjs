@@ -1,42 +1,40 @@
 // File: test/license.test.mjs
-import { startTrial, getLicenseFeatures } from '../src/license.js';
-import { getLicense, updateLicense } from '../src/kv.js';
+import {getLicenseInfo, createFreeTrialLicense, updateLicenseInfo, hasValidLicense} from '../src/license.js';
+import {kv} from '../platform/kv.js';
 
-describe('License System', () => {
-  it('should start a trial license', async () => {
-    const userId = 'test-user';
-    const trialLicense = await startTrial(userId);
-    expect(trialLicense.type).toBe('trial');
-    expect(trialLicense.features).toEqual({
-      feature1: true,
-      feature2: false,
-      feature3: false,
-    });
+describe('License', () => {
+  beforeEach(async () => {
+    // Clear KV store before each test
+    await kv.delete('license:test-user');
   });
 
-  it('should get license features', async () => {
-    const userId = 'test-user';
-    await startTrial(userId);
-    const features = await getLicenseFeatures(userId);
-    expect(features).toEqual({
-      feature1: true,
-      feature2: false,
-      feature3: false,
-    });
+  it('should create a new free trial license', async () => {
+    await createFreeTrialLicense('test-user');
+    const licenseInfo = await getLicenseInfo('test-user');
+    expect(licenseInfo.licenseType).toBe('pro');
+    expect(licenseInfo.licenseStatus).toBe('trial');
+    expect(licenseInfo.scansRemaining).toBe(10);
   });
 
-  it('should throw an error if user already has a Pro license', async () => {
-    const userId = 'test-user';
-    await updateLicense(userId, { type: 'pro', features: {} });
-    await expect(startTrial(userId)).rejects.toThrow(
-      'User already has a Pro license'
-    );
+  it('should update license information', async () => {
+    await createFreeTrialLicense('test-user');
+    await updateLicenseInfo('test-user', {scansRemaining: 5});
+    const licenseInfo = await getLicenseInfo('test-user');
+    expect(licenseInfo.scansRemaining).toBe(5);
   });
 
-  it('should throw an error if user does not have a license', async () => {
-    const userId = 'test-user';
-    await expect(getLicenseFeatures(userId)).rejects.toThrow(
-      'User does not have a license'
-    );
+  it('should check if a user has a valid license', async () => {
+    await createFreeTrialLicense('test-user');
+    expect(await hasValidLicense('test-user')).toBe(true);
+    await updateLicenseInfo('test-user', {scansRemaining: 0});
+    expect(await hasValidLicense('test-user')).toBe(false);
+  });
+
+  it('should handle errors', async () => {
+    try {
+      await getLicenseInfo('non-existent-user');
+    } catch (error) {
+      expect(error.message).toBe('Failed to get license info: ');
+    }
   });
 });
