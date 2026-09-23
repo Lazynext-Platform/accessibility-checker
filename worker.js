@@ -1,3 +1,5 @@
+import { scanHtml, checkContrast, score } from './src/scanner.js';
+
 export default {
   async fetch(req) {
     if (req.method === 'GET') {
@@ -6,39 +8,64 @@ export default {
           <body>
             <h1>Accessibility Checker</h1>
             <form action="/scan" method="post">
-              <input type="radio" id="url" name="type" value="url" checked>
-              <label for="url">URL</label>
-              <input type="radio" id="html" name="type" value="html">
-              <label for="html">HTML</label>
-              <br>
-              <textarea name="input" rows="10" cols="50"></textarea>
+              <input type="text" name="url" placeholder="Enter URL">
               <button type="submit">Scan</button>
             </form>
           </body>
         </html>
       `, {
-        headers: { 'content-type': 'text/html' }
+        headers: {
+          'Content-Type': 'text/html',
+        },
       });
     } else if (req.method === 'POST') {
       const { url, html } = await req.json();
-      let htmlToScan;
+      let rendered = false;
+      let issues = [];
+      let scoreValue = 0;
+
       if (url) {
-        const response = await fetch(url);
-        htmlToScan = await response.text();
+        try {
+          const renderResponse = await fetch(`${env.PLATFORM_URL}/render`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${env.PLATFORM_TOKEN}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ url }),
+          });
+
+          if (renderResponse.ok) {
+            const { html: renderedHtml, styles } = await renderResponse.json();
+            issues = [...scanHtml(renderedHtml), ...checkContrast(styles)];
+            rendered = true;
+          } else {
+            const response = await fetch(url);
+            const text = await response.text();
+            issues = scanHtml(text);
+          }
+        } catch (e) {
+          const response = await fetch(url);
+          const text = await response.text();
+          issues = scanHtml(text);
+        }
       } else if (html) {
-        htmlToScan = html;
-      } else {
-        return new Response('Invalid request', { status: 400 });
+        issues = scanHtml(html);
       }
-      const issues = scanHtml(htmlToScan);
-      const scoreValue = score(issues);
-      return new Response(JSON.stringify({ score: scoreValue, issues }), {
-        headers: { 'content-type': 'application/json' }
+
+      scoreValue = score(issues);
+      return new Response(JSON.stringify({ score: scoreValue, issues, rendered }), {
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
     } else {
-      return new Response('Invalid method', { status: 405 });
+      return new Response('Method not allowed', {
+        status: 405,
+        headers: {
+          'Allow': 'GET, POST',
+        },
+      });
     }
-  }
+  },
 };
-
-import { scanHtml, score } from './src/scanner.js';
