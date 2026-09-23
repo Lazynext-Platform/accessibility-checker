@@ -1,49 +1,24 @@
 // File: script.js
-const scanForm = document.getElementById('scan-form');
-const scanResults = document.getElementById('scan-results');
-const reportList = document.getElementById('report-list');
-const checkoutForm = document.getElementById('checkout-form');
+const proCtaButton = document.getElementById('pro-cta');
 
-scanForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const url = document.getElementById('url').value;
-    const response = await fetch('/scan', {
+proCtaButton.addEventListener('click', () => {
+    // Call the API to handle the Pro license purchase
+    fetch('/checkout', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ url })
-    });
-    const result = await response.json();
-    scanResults.innerHTML = `
-        <h2>Scan Results</h2>
-        <p>Score: ${result.score}</p>
-        <p>Errors: ${result.errors}</p>
-        <p>Warnings: ${result.warnings}</p>
-    `;
-});
-
-checkoutForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const plan = document.getElementById('plan').value;
-    const response = await fetch('/checkout', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ plan })
-    });
-    const result = await response.json();
-    console.log(result);
-});
-
-fetch('/reports')
+        body: JSON.stringify({
+            license: 'pro'
+        })
+    })
     .then(response => response.json())
-    .then(reports => {
-        reportList.innerHTML = '';
-        reports.forEach(report => {
-            const li = document.createElement('li');
-            li.textContent = report.name;
-            reportList.appendChild(li);
-        });
+    .then(data => {
+        // Handle the response from the API
+        console.log(data);
+    })
+    .catch(error => {
+        // Handle any errors that occur
+        console.error(error);
     });
+});
