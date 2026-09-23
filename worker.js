@@ -1,27 +1,42 @@
 // File: worker.js
-import { scheduleReport } from 'src/scheduler.js';
+import { getScanningOptions, updateScanningOptions, validateScanningOptions } from './src/scanner.js';
 
-export async function handleRequest(request) {
-  const { method, url } = request;
+addEventListener('fetch', (event) => {
+  event.respondWith(handleRequest(event.request));
+});
 
-  if (method === 'POST' && url.pathname === '/schedule') {
+async function handleRequest(request) {
+  if (request.method === 'GET' && request.url.pathname === '/scan') {
+    const scanningOptions = await getScanningOptions();
+    return new Response(JSON.stringify(scanningOptions), {
+      headers: { 'Content-Type': 'application/json' },
+    });
+  } else if (request.method === 'POST' && request.url.pathname === '/scan') {
+    const newOptions = await request.json();
     try {
-      const { scanId, schedule } = await request.json();
-      const result = await scheduleReport(scanId, schedule);
-      return new Response(JSON.stringify(result), {
-        headers: { 'Content-Type': 'application/json' },
-      });
+      validateScanningOptions(newOptions);
+      const result = await updateScanningOptions(newOptions);
+      if (result) {
+        return new Response('Scanning options updated successfully', {
+          status: 200,
+          headers: { 'Content-Type': 'text/plain' },
+        });
+      } else {
+        return new Response('Failed to update scanning options', {
+          status: 500,
+          headers: { 'Content-Type': 'text/plain' },
+        });
+      }
     } catch (error) {
-      console.error(error);
-      return new Response('Failed to schedule report', {
-        status: 500,
+      return new Response('Invalid scanning options: ' + error.message, {
+        status: 400,
         headers: { 'Content-Type': 'text/plain' },
       });
     }
+  } else {
+    return new Response('Not found', {
+      status: 404,
+      headers: { 'Content-Type': 'text/plain' },
+    });
   }
-
-  return new Response('Not Found', {
-    status: 404,
-    headers: { 'Content-Type': 'text/plain' },
-  });
 }
