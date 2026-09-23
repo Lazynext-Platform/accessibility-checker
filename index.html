@@ -33,6 +33,24 @@
     <div id="status"></div>
     <div id="out"></div>
     <p style="color:#6b7280;font-size:.85rem">Free: 3 rendered scans/day. Pro $9/mo: unlimited + email reports.</p>
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:1.5rem 0">
+    <p style="font-size:.9rem"><b>Get accessibility tips + product updates</b></p>
+    <div class="row">
+        <input id="lead" type="email" placeholder="you@company.com" aria-label="Email for updates">
+        <button id="join">Join</button>
+    </div>
+    <div id="leadStatus"></div>
+    <script>
+        document.getElementById("join").onclick = async () => {
+            const email = document.getElementById("lead").value.trim();
+            const st = document.getElementById("leadStatus");
+            if (!email.includes("@")) { st.textContent = "Enter a valid email."; return; }
+            const r = await fetch("https://accessibility-checker.dry-hall-6a50.workers.dev/lead", {
+                method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email })
+            });
+            st.textContent = r.ok ? "You're on the list — first tip lands soon." : "Couldn't save that — try again.";
+        };
+    </script>
     <script>
         const API = "https://accessibility-checker.dry-hall-6a50.workers.dev/scan";
         const urlEl = document.getElementById("url"), go = document.getElementById("go");
@@ -47,7 +65,7 @@
                 const d = await r.json();
                 if (r.status === 402) { statusEl.innerHTML = `Free limit reached — <a href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout">go Pro</a> for unlimited scans.`; return; }
                 if (!r.ok) throw new Error(d.error || r.statusText);
-                statusEl.innerHTML = `Score: <span id="score">${d.score}</span>/100` + (d.rendered ? " · rendered" : " · static");
+                statusEl.innerHTML = `Score: <span id="score">${d.score}</span>/100` + (d.rendered ? " · rendered" : " · static") + (d.report ? ` · <a href="${d.report}" target="_blank">share report</a>` : "");
                 out.innerHTML = d.issues.length
                     ? d.issues.map(i => `<div class="issue"><div class="rule">${i.rule ?? "issue"}</div>${i.message}</div>`).join("")
                     : '<p class="ok">No issues found — nice work.</p>';
