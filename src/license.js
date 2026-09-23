@@ -1,47 +1,54 @@
 // File: src/license.js
-import { DodoCheckout } from '../api/dodoCheckout';
-import { PLATFORM } from '../env';
-import { KV } from '../platform/kv';
-import { sendEmail } from '../api/brevo';
+import { PLATFORM } from '../env.js';
+import { KV } from '../platform/kv.js';
+import { D1 } from '../platform/d1.js';
 
-const FREE_TRIAL_DAYS = 30;
+const LICENSES_KV = 'licenses';
+const QUOTAS_KV = 'quotas';
 
-export async function integrateFreeTrialProLicense(userId) {
-  try {
-    // Get user's current license
-    const userLicense = await KV.get(`license:${userId}`);
-    if (userLicense && userLicense.pro) {
-      // User already has a Pro license, do not integrate free trial
-      return;
-    }
+/**
+ * Creates a new Pro license with a 14-day free trial.
+ * @param {string} userId - The ID of the user.
+ * @returns {Promise<{ licenseId: string, expiresAt: number }>} - The license ID and expiration timestamp.
+ */
+async function createProLicenseWithFreeTrial(userId) {
+  const licenseId = crypto.randomUUID();
+  const expiresAt = Date.now() + (14 * 24 * 60 * 60 * 1000); // 14 days from now
 
-    // Create a new Pro license with free trial
-    const newLicense = {
-      pro: true,
-      trial: true,
-      expiresAt: Date.now() + FREE_TRIAL_DAYS * 24 * 60 * 60 * 1000,
-    };
+  await KV.put(LICENSES_KV, licenseId, JSON.stringify({ userId, expiresAt }));
+  await KV.put(QUOTAS_KV, userId, JSON.stringify({ pro: true, trial: true, expiresAt }));
 
-    // Update user's license in KV
-    await KV.put(`license:${userId}`, newLicense);
-
-    // Send email to user about free trial
-    await sendEmail({
-      to: userId,
-      subject: 'Free Trial of Pro License',
-      body: `You have been granted a free trial of our Pro license for ${FREE_TRIAL_DAYS} days.`,
-    });
-
-    // Integrate with Dodo checkout
-    const checkout = new DodoCheckout(PLATFORM.DODO_CHECKOUT_API_KEY);
-    await checkout.createSubscription({
-      userId,
-      plan: 'pro',
-      trialDays: FREE_TRIAL_DAYS,
-    });
-  } catch (error) {
-    // Handle error explicitly
-    console.error(`Error integrating free trial Pro license: ${error}`);
-    throw error;
-  }
+  return { licenseId, expiresAt };
 }
+
+/**
+ * Checks if a user's Pro license is still valid.
+ * @param {string} userId - The ID of the user.
+ * @returns {Promise<boolean>} - True if the license is valid, false otherwise.
+ */
+async function isProLicenseValid(userId) {
+  const quota = await KV.get(QUOTAS_KV, userId);
+  if (!quota) return false;
+
+  const { pro, trial, expiresAt } = JSON.parse(quota);
+  if (!pro || !trial) return false;
+
+  return expiresAt > Date.now();
+}
+
+/**
+ * Upgrades a user's license to Pro.
+ * @param {string} userId - The ID of the user.
+ * @returns {Promise<void>}
+ */
+async function upgradeToPro(userId) {
+  const quota = await KV.get(QUOTAS_KV, userId);
+  if (!quota) throw new Error('User has no quota');
+
+  const { pro, trial, expiresAt } = JSON.parse(quota);
+  if (!pro || !trial) throw new Error('User does not have a Pro trial license');
+
+  await KV.put(QUOTAS_KV, userId, JSON.stringify({ pro: true, trial: false, expiresAt: null }));
+}
+
+export { createProLicenseWithFreeTrial, isProLicenseValid, upgradeToPro };

@@ -1,44 +1,36 @@
 // File: src/emailSequence.js
-import { sendEmail } from '../email';
-import { getLicense, updateLicense } from '../kv';
-import { getPlatformServiceBinding } from '../platform';
+import { sendEmail } from '../email.js';
+import { getTrialUsers } from '../db.js';
+import { PLATFORM } from '../env.js';
 
-const EMAIL_SEQUENCE = [
-  {
-    day: 3,
-    subject: 'Getting started with Accessibility Checker',
-    body: 'Welcome to Accessibility Checker! We hope you\'re enjoying your free trial so far.',
-  },
-  {
-    day: 7,
-    subject: 'Unlock the full potential of Accessibility Checker',
-    body: 'Your free trial is halfway through. Consider upgrading to a paid plan to unlock more features.',
-  },
-  {
-    day: 14,
-    subject: 'Last chance to upgrade before your trial ends',
-    body: 'Your free trial is ending soon. Don\'t miss out on the opportunity to upgrade to a paid plan.',
-  },
-];
-
-export async function sendEmailSequence(userId) {
+const emailSequence = async () => {
   try {
-    const license = await getLicense(userId);
-    if (!license || license.status !== 'trial') return;
-
-    const today = new Date();
-    const trialStartDate = new Date(license.startDate);
-    const daysSinceTrialStarted = Math.floor((today - trialStartDate) / (1000 * 3600 * 24));
-
-    const emailToSent = EMAIL_SEQUENCE.find((email) => email.day === daysSinceTrialStarted);
-    if (emailToSent) {
-      await sendEmail({
-        to: license.email,
-        subject: emailToSent.subject,
-        body: emailToSent.body,
+    const trialUsers = await getTrialUsers();
+    trialUsers.forEach((user) => {
+      sendEmail({
+        to: user.email,
+        subject: 'Your trial is starting',
+        body: 'Welcome to our trial sequence',
       });
-    }
+      // Send follow-up emails after 3 and 7 days
+      setTimeout(async () => {
+        sendEmail({
+          to: user.email,
+          subject: 'How are you doing?',
+          body: 'Checking in on your progress',
+        });
+      }, 3 * 24 * 60 * 60 * 1000);
+      setTimeout(async () => {
+        sendEmail({
+          to: user.email,
+          subject: 'Last chance to upgrade',
+          body: 'Your trial is ending soon',
+        });
+      }, 7 * 24 * 60 * 60 * 1000);
+    });
   } catch (error) {
     console.error('Error sending email sequence:', error);
   }
-}
+};
+
+export { emailSequence };
