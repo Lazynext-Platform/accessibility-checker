@@ -1,28 +1,50 @@
 // File: src/scanner.js
-import { Analytics } from './analytics.js';
+import {PLATFORM} from 'env';
+import {KV} from '@cloudflare/kv';
 
-const analyticsServiceUrl = 'https://example-analytics-service.com/track';
-const analytics = new Analytics(analyticsServiceUrl);
+const kv = new KV(PLATFORM.KV_NAMESPACE);
 
-export async function scan(url) {
+// Function to generate a new Pro license with a free trial period
+async function generateProLicenseTrial(userId) {
   try {
-    const scanResult = await performScan(url);
-    await analytics.trackEvent('scan_result', {
-      url,
-      result: scanResult,
-    });
-    return scanResult;
+    // Set the trial period to 14 days
+    const trialPeriod = 14 * 24 * 60 * 60 * 1000; // 14 days in milliseconds
+    const expiresAt = Date.now() + trialPeriod;
+
+    // Generate the license
+    const license = {
+      userId,
+      licenseType: 'Pro',
+      trial: true,
+      expiresAt,
+    };
+
+    // Store the license in KV
+    await kv.put(`license:${userId}`, JSON.stringify(license));
+
+    return license;
   } catch (error) {
-    await analytics.trackEvent('scan_error', {
-      url,
-      error: error.message,
-    });
-    throw error;
+    throw new Error(`Failed to generate Pro license trial: ${error.message}`);
   }
 }
 
-// Perform scan logic here
-async function performScan(url) {
-  // Simulate a scan result for demonstration purposes
-  return { url, result: 'passed' };
+// Function to check if a user has a valid Pro license
+async function hasValidProLicense(userId) {
+  try {
+    const license = await kv.get(`license:${userId}`);
+    if (!license) return false;
+
+    const licenseData = JSON.parse(license);
+    if (!licenseData || !licenseData.licenseType || licenseData.licenseType !== 'Pro') return false;
+
+    // Check if the license is still within the trial period
+    if (licenseData.trial && licenseData.expiresAt > Date.now()) return true;
+
+    // If not a trial or trial has expired, consider the license invalid for this context
+    return false;
+  } catch (error) {
+    throw new Error(`Failed to check for valid Pro license: ${error.message}`);
+  }
 }
+
+export {generateProLicenseTrial, hasValidProLicense};

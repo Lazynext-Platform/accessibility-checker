@@ -1,25 +1,26 @@
 // File: worker.js
-import { scanner } from './src/scanner.js';
+import {generateProLicenseTrial} from 'src/scanner.js';
 
-// Handle upgrade to Pro license API call
-self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('/checkout')) {
-    event.respondWith(handleCheckout(event.request));
-  }
+addEventListener('fetch', (event) => {
+  event.respondWith(handleRequest(event.request));
 });
 
-async function handleCheckout(request) {
-  const { licenseKey, paymentMethod } = await request.json();
-  // Call platform API to upgrade to Pro license
-  const response = await fetch(env.PLATFORM + '/api/v1/billing/upgrade', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      licenseKey: licenseKey,
-      paymentMethod: paymentMethod
-    })
-  });
-  return response;
+async function handleRequest(request) {
+  if (request.method === 'POST' && request.url.includes('/api/register')) {
+    const userId = await handleUserRegistration(request);
+    if (userId) {
+      await generateProLicenseTrial(userId);
+      return new Response('User registered and Pro trial license generated', {status: 201});
+    } else {
+      return new Response('Failed to register user', {status: 500});
+    }
+  }
+  // Other routes and logic
+}
+
+// Placeholder function for handling user registration
+async function handleUserRegistration(request) {
+  // Implement actual registration logic here
+  // For demonstration, assume registration is successful and returns a userId
+  return 'new-user-id';
 }
