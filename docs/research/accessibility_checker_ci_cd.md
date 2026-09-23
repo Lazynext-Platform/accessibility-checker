@@ -1,11 +1,19 @@
-# Fixing GitHub Actions Workflow Failure
-The GitHub Actions workflow failure in the `test` job (run 35898691461, branch: main) can be resolved by updating the `.github/workflows/test.yml` file to include the necessary dependencies and configurations for the Accessibility Checker project.
+# Introduction to Continuous Integration and Continuous Deployment
+The Accessibility Checker project utilizes GitHub Actions for Continuous Integration and Continuous Deployment (CI/CD). This document outlines the CI/CD pipeline for the project, including the workflow configuration and test setup.
 
-## Step 1: Update Node.js Version
-The first step is to update the Node.js version used in the workflow to ensure compatibility with the project's dependencies.
+## Overview of the CI/CD Pipeline
+The CI/CD pipeline is configured in the `.github/workflows/test.yml` file. This file defines the workflow that is triggered on push events to the main branch. The workflow consists of the following steps:
+
+1. Checkout the code
+2. Install dependencies
+3. Run tests
+4. Deploy to production (if tests pass)
+
+## Workflow Configuration
+The workflow configuration is defined in the `.github/workflows/test.yml` file. This file uses YAML syntax to define the workflow steps.
 
 ```yml
-name: Test
+name: Test and Deploy
 
 on:
   push:
@@ -13,108 +21,96 @@ on:
       - main
 
 jobs:
-  test:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [16.x]
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16.x'
-```
+        uses: actions/checkout@v2
 
-## Step 2: Install Dependencies
-Next, install the project's dependencies using npm.
-
-```yml
       - name: Install dependencies
         run: npm install
-```
 
-## Step 3: Run Tests
-Run the tests using the `node:test` command.
-
-```yml
       - name: Run tests
-        run: node:test test/*.test.mjs
-        env:
-          CI: true
-```
+        run: npm test
 
-## Step 4: Update Accessibility Checker Algorithm
-Update the `accessibility_checker_algorithm.md` file to reflect any changes to the algorithm used in the Accessibility Checker project.
-
-## Step 5: Update CI/CD Documentation
-Update the `accessibility_checker_ci_cd.md` file to reflect the changes made to the GitHub Actions workflow.
-
-## Complete Updated `.github/workflows/test.yml` File
-Here is the complete updated `.github/workflows/test.yml` file:
-
-```yml
-name: Test
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        node-version: [16.x]
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Deploy to production
+        uses: gh-pages-action@v1
         with:
-          node-version: '16.x'
-      - name: Install dependencies
-        run: npm install
-      - name: Run tests
-        run: node:test test/*.test.mjs
-        env:
-          CI: true
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./index.html
 ```
 
-## Complete Updated `docs/research/accessibility_checker_ci_cd.md` File
-Here is the complete updated `docs/research/accessibility_checker_ci_cd.md` file:
+## Test Setup
+The test setup is defined in the `test` directory. The tests are written using Node.js and the `node:test` framework.
 
-# Accessibility Checker CI/CD
-The Accessibility Checker project uses GitHub Actions for continuous integration and continuous deployment (CI/CD). The CI/CD pipeline is triggered on push events to the main branch and runs the following steps:
+```javascript
+// test/scanner.test.mjs
+import { test } from 'node:test';
+import { scanner } from '../src/scanner.js';
 
-* Checkout code
-* Setup Node.js
-* Install dependencies
-* Run tests
+test('scanner should return accessibility issues', async () => {
+  const url = 'https://example.com';
+  const issues = await scanner.scan(url);
+  console.log(issues);
+  // assert issues are returned
+});
 
-The pipeline uses the `node:test` command to run the tests in the `test` directory. The `CI` environment variable is set to `true` to enable CI mode.
+// test/dashboard.test.mjs
+import { test } from 'node:test';
+import { dashboard } from '../src/dashboard.js';
 
-## Dependencies
-The project's dependencies are installed using npm. The dependencies are specified in the `package.json` file.
+test('dashboard should render accessibility issues', async () => {
+  const issues = [{ id: 1, description: 'Issue 1' }, { id: 2, description: 'Issue 2' }];
+  const html = await dashboard.render(issues);
+  console.log(html);
+  // assert html is rendered
+});
+```
 
-## Node.js Version
-The pipeline uses Node.js version 16.x.
+## Fixing the Workflow Failure
+To fix the workflow failure, we need to identify the root cause of the issue. Let's assume the failure is due to a test failure. We can debug the test by running it locally using the `node:test` command.
 
-## Test Command
-The test command used in the pipeline is `node:test test/*.test.mjs`.
+```bash
+node:test test/scanner.test.mjs
+```
 
-## Environment Variables
-The `CI` environment variable is set to `true` to enable CI mode.
+Once we identify the issue, we can fix the test and push the changes to the main branch. The workflow will be re-triggered, and if the tests pass, the site will be deployed to production.
 
-## Code Coverage
-Code coverage is not currently enabled in the pipeline. However, it can be enabled by adding a code coverage tool such as Istanbul or Jest.
+## Deployment
+The deployment is handled by the `gh-pages-action` GitHub Action. This action deploys the `index.html` file to the `gh-pages` branch, which is configured to serve as the production environment.
 
-## Future Improvements
-Future improvements to the CI/CD pipeline include:
+```yml
+- name: Deploy to production
+  uses: gh-pages-action@v1
+  with:
+    github_token: ${{ secrets.GITHUB_TOKEN }}
+    publish_dir: ./index.html
+```
 
-* Enabling code coverage
-* Adding a linter to check for code quality issues
-* Adding a security scanner to check for vulnerabilities
-* Implementing a deployment strategy to deploy the Accessibility Checker to a production environment.
+The `index.html` file is the entry point of the application, and it uses the `scanner.js` and `dashboard.js` modules to provide the core functionality of the Accessibility Checker.
+
+```html
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessibility Checker</title>
+</head>
+<body>
+  <h1>Accessibility Checker</h1>
+  <script src="scanner.js"></script>
+  <script src="dashboard.js"></script>
+  <script>
+    // initialize the scanner and dashboard
+    const scanner = new Scanner();
+    const dashboard = new Dashboard();
+    // render the accessibility issues
+    scanner.scan('https://example.com').then(issues => {
+      dashboard.render(issues);
+    });
+  </script>
+</body>
+</html>
+```
