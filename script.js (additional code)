@@ -1,0 +1,14 @@
+// File: script.js (additional code)
+// Function to update the Pro features section based on the selected license type
+function updateProFeatures() {
+  const proFeaturesDiv = document.getElementById('pro-features');
+  const licenseType = licenseTypeSelect.value;
+  if (licenseType === 'pro') {
+    proFeaturesDiv.style.display = 'block';
+  } else {
+    proFeaturesDiv.style.display = 'none';
+  }
+}
+
+// Add event listener to the license type select element
+licenseTypeSelect.addEventListener('change', updateProFeatures);

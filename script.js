@@ -1,64 +1,47 @@
 <!-- File: index.html -->
-<!-- Upgrade to Pro license section -->
-<section id="upgrade-to-pro" class="section">
-  <h2>Upgrade to Pro License</h2>
-  <p>Get more features and support with our Pro license.</p>
-  <button id="upgrade-button" class="button">Upgrade Now</button>
-  <div id="upgrade-form" class="modal" style="display:none;">
-    <div class="modal-content">
-      <h3>Upgrade to Pro License</h3>
-      <form id="upgrade-form-submit">
-        <label for="license-key">License Key:</label>
-        <input type="text" id="license-key" name="license-key"><br><br>
-        <label for="payment-method">Payment Method:</label>
-        <select id="payment-method" name="payment-method">
-          <option value="credit-card">Credit Card</option>
-          <option value="paypal">PayPal</option>
-        </select><br><br>
-        <button id="submit-upgrade" class="button">Submit</button>
-      </form>
-    </div>
+<!-- Add Pro license upsell to checkout page -->
+<section id="checkout">
+  <h2>Checkout</h2>
+  <form id="checkout-form">
+    <label for="license-type">License Type:</label>
+    <select id="license-type" name="license-type">
+      <option value="free">Free</option>
+      <option value="pro">Pro ($9.99/month)</option>
+    </select>
+    <button type="submit">Checkout</button>
+  </form>
+  <div id="pro-features">
+    <h3>Pro Features:</h3>
+    <ul>
+      <li>Advanced scanning capabilities</li>
+      <li>Prioritized support</li>
+      <li>Additional storage for reports</li>
+    </ul>
   </div>
 </section>
 
 <script>
   // File: script.js
-  const upgradeButton = document.getElementById('upgrade-button');
-  const upgradeForm = document.getElementById('upgrade-form');
-  const submitUpgrade = document.getElementById('submit-upgrade');
+  const checkoutForm = document.getElementById('checkout-form');
+  const licenseTypeSelect = document.getElementById('license-type');
 
-  upgradeButton.addEventListener('click', () => {
-    upgradeForm.style.display = 'block';
-  });
-
-  submitUpgrade.addEventListener('click', (e) => {
+  checkoutForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const licenseKey = document.getElementById('license-key').value;
-    const paymentMethod = document.getElementById('payment-method').value;
-
-    // Call API to upgrade to Pro license
-    fetch('/checkout', {
+    const licenseType = licenseTypeSelect.value;
+    const response = await fetch('/checkout', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        licenseKey: licenseKey,
-        paymentMethod: paymentMethod
-      })
-    })
-    .then((response) => response.json())
-    .then((data) => {
-      if (data.success) {
-        // Show success message
-        alert('Upgrade to Pro license successful!');
-      } else {
-        // Show error message
-        alert('Error upgrading to Pro license: ' + data.error);
-      }
-    })
-    .catch((error) => {
-      console.error('Error upgrading to Pro license:', error);
+      body: JSON.stringify({ licenseType })
     });
+    const data = await response.json();
+    if (data.success) {
+      // Handle successful checkout
+      console.log('Checkout successful');
+    } else {
+      // Handle failed checkout
+      console.error('Checkout failed');
+    }
   });
 </script>
