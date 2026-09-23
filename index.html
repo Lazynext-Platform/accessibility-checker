@@ -28,11 +28,11 @@
     </div>
     <div class="row">
         <input id="license" type="email" placeholder="Pro license (your purchase email) — optional" aria-label="Pro license email" style="flex:.6">
-        <a id="pro" href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout" style="align-self:center">Go Pro →</a>
+        <a id="pro" href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout" style="align-self:center">Start 14-day free trial →</a>
     </div>
     <div id="status"></div>
     <div id="out"></div>
-    <p style="color:#6b7280;font-size:.85rem">Free: 3 rendered scans/day. Pro $9/mo: unlimited + email reports.</p>
+    <p style="color:#6b7280;font-size:.85rem">Free: 3 rendered scans/day. Pro $9/mo after a 14-day free trial: unlimited + email reports. Card required up front; cancel any time.</p>
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:1.5rem 0">
     <p style="font-size:.9rem"><b>Get accessibility tips + product updates</b></p>
     <div class="row">
@@ -67,7 +67,7 @@
                 const r = await fetch(API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, ...(license ? { license } : {}) }) });
                 const d = await r.json();
                 if (r.status === 402) {
-                    statusEl.innerHTML = `Free limit reached — <a href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout">go Pro</a> for unlimited scans, or drop your email and we'll send you a discount:`;
+                    statusEl.innerHTML = `Free limit reached — <a href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout">start a free 14-day Pro trial</a> for unlimited scans, or drop your email and we'll send you a discount:`;
                     out.innerHTML = `<div class="row"><input id="limitEmail" type="email" placeholder="you@company.com"><button id="limitJoin">Notify me</button></div>`;
                     document.getElementById("limitJoin").onclick = async () => {
                         const em = document.getElementById("limitEmail").value.trim();
