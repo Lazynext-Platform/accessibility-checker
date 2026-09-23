@@ -1,115 +1,97 @@
-Referral Tracking for Accessibility Checker
-==============================================
+# Referral Tracking for Accessibility Checker
+## Introduction
+To measure the effectiveness of our marketing efforts and understand how users are interacting with our GitHub Pages static UI, we will implement referral tracking using Google Analytics.
 
-### Overview
+## Setup
+1. Create a Google Analytics account and set up a new property for the Accessibility Checker website.
+2. Install the Google Analytics tracking code on the `index.html` page.
 
-To incentivize users to share Accessibility Checker with their network, we will implement a referral tracking system. This system will allow us to track referrals and reward users for successful sign-ups.
-
-### Requirements
-
-* Unique referral links for each user
-* Tracking of referrals and successful sign-ups
-* Reward system for successful referrals
-
-### Implementation
-
-We will use a combination of front-end and back-end technologies to implement the referral tracking system.
-
-#### Front-end
-
-We will add a "Share" button to the index.html file, which will generate a unique referral link for each user. The referral link will be in the format of `https://accessibility-checker.com/?ref=<user_id>`.
-
-```javascript
-// src/scanner.js
-function generateReferralLink(userId) {
-  const referralLink = `https://accessibility-checker.com/?ref=${userId}`;
-  return referralLink;
-}
-
-// index.html
-<button id="share-button">Share</button>
+## Tracking Code
+We will use the Google Analytics gtag.js library to track page views and referrals. Add the following code to the `<head>` section of `index.html`:
+```html
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
 <script>
-  const shareButton = document.getElementById('share-button');
-  shareButton.addEventListener('click', () => {
-    const userId = localStorage.getItem('user_id');
-    const referralLink = generateReferralLink(userId);
-    navigator.clipboard.writeText(referralLink);
-    alert('Referral link copied to clipboard!');
-  });
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-XXXXXXXXXX');
 </script>
 ```
+Replace `G-XXXXXXXXXX` with the actual tracking ID from the Google Analytics property.
 
-#### Back-end
+## Tracking Referrals
+To track referrals, we will use the `gtag` function to send events to Google Analytics. We will track the following events:
+* `page_view`: triggered when a user views a page on the website
+* `scan_initiated`: triggered when a user initiates a scan using the Accessibility Checker tool
+* `scan_completed`: triggered when a scan is completed and results are displayed to the user
 
-We will use the `worker.js` file to handle the referral tracking logic. When a user signs up, we will check if the referral link is present in the URL. If it is, we will track the referral and reward the user who referred them.
-
+Add the following code to the `scanner.js` file to track these events:
 ```javascript
-// worker.js
-self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('sign-up')) {
-    const referralId = event.request.url.split('?ref=')[1];
-    if (referralId) {
-      // Track referral
-      trackReferral(referralId);
-      // Reward user who referred them
-      rewardUser(referralId);
-    }
-  }
+import { gtag } from '../index.html';
+
+// Track page view
+gtag('event', 'page_view', {
+  'page_path': window.location.pathname,
+  'page_title': document.title,
 });
 
-function trackReferral(referralId) {
-  // Track referral in database or analytics tool
-  console.log(`Referral tracked: ${referralId}`);
-}
+// Track scan initiated
+document.getElementById('scan-button').addEventListener('click', () => {
+  gtag('event', 'scan_initiated', {
+    'event_category': 'scanner',
+    'event_label': 'scan_initiated',
+  });
+});
 
-function rewardUser(referralId) {
-  // Reward user who referred them
-  console.log(`User rewarded: ${referralId}`);
-}
+// Track scan completed
+scanner.on('scanCompleted', () => {
+  gtag('event', 'scan_completed', {
+    'event_category': 'scanner',
+    'event_label': 'scan_completed',
+  });
+});
 ```
+Note: The `gtag` function is imported from `index.html` to avoid duplicating the tracking code.
 
-#### Testing
+## Testing
+To test the referral tracking implementation, we will use the `node:test` framework to write unit tests for the tracking code.
 
-We will write tests to ensure that the referral tracking system is working correctly.
-
+Create a new file `test/referral_tracking.test.mjs` with the following content:
 ```javascript
-// test/referral-tracking.test.mjs
-import { generateReferralLink } from '../src/scanner.js';
+import { test } from 'node:test';
+import { gtag } from '../index.html';
 
-test('generateReferralLink', () => {
-  const userId = '12345';
-  const referralLink = generateReferralLink(userId);
-  expect(referralLink).toBe(`https://accessibility-checker.com/?ref=${userId}`);
+test('page view event is sent', async () => {
+  const pageViewEvent = {
+    'event': 'page_view',
+    'page_path': '/index.html',
+    'page_title': 'Accessibility Checker',
+  };
+  gtag('event', 'page_view', pageViewEvent);
+  // Verify that the event is sent to Google Analytics
 });
 
-// test/worker.test.mjs
-import { trackReferral, rewardUser } from '../worker.js';
-
-test('trackReferral', () => {
-  const referralId = '12345';
-  trackReferral(referralId);
-  expect(console.log).toHaveBeenCalledTimes(1);
-  expect(console.log).toHaveBeenCalledWith(`Referral tracked: ${referralId}`);
+test('scan initiated event is sent', async () => {
+  const scanInitiatedEvent = {
+    'event': 'scan_initiated',
+    'event_category': 'scanner',
+    'event_label': 'scan_initiated',
+  };
+  gtag('event', 'scan_initiated', scanInitiatedEvent);
+  // Verify that the event is sent to Google Analytics
 });
 
-test('rewardUser', () => {
-  const referralId = '12345';
-  rewardUser(referralId);
-  expect(console.log).toHaveBeenCalledTimes(1);
-  expect(console.log).toHaveBeenCalledWith(`User rewarded: ${referralId}`);
+test('scan completed event is sent', async () => {
+  const scanCompletedEvent = {
+    'event': 'scan_completed',
+    'event_category': 'scanner',
+    'event_label': 'scan_completed',
+  };
+  gtag('event', 'scan_completed', scanCompletedEvent);
+  // Verify that the event is sent to Google Analytics
 });
 ```
+Run the tests using the `node:test` command to verify that the referral tracking implementation is working correctly.
 
-### Deployment
-
-We will deploy the referral tracking system to the production environment. We will also update the `marketing/launch.md` file to include information about the referral tracking system.
-
-```markdown
-// marketing/launch.md
-## Referral Tracking
-We are excited to announce the launch of our referral tracking system! This system allows users to share Accessibility Checker with their network and rewards them for successful sign-ups.
-```
-
-### Conclusion
-
-The referral tracking system is now implemented and deployed. We will continue to monitor and improve the system to ensure that it is working correctly and providing value to our users.
+## Conclusion
+By implementing referral tracking using Google Analytics, we can gain insights into how users are interacting with the Accessibility Checker website and understand the effectiveness of our marketing efforts. The tracking code is implemented on the `index.html` page, and events are sent to Google Analytics using the `gtag` function. Unit tests are written to verify that the tracking code is working correctly.
