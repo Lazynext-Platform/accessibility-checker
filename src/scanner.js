@@ -136,8 +136,21 @@ export function checkFocus(trace) {
   const unique = new Set(trace.filter((t) => t && t !== "body"));
   if (unique.size === 0) {
     issues.push({ rule: "wcag-2.1.1", message: "no focusable elements found — page is keyboard-inaccessible" });
-  } else if (unique.size <= 2 && trace.length >= 8) {
-    issues.push({ rule: "wcag-2.1.2", message: `possible keyboard trap — focus cycled only across ${unique.size} element(s) in ${trace.length} Tab presses` });
+    return issues;
+  }
+  if (unique.size === 1) {
+    issues.push({ rule: "wcag-2.1.1", message: "only one focusable element — Tab cannot move through page content" });
+    return issues;
+  }
+  // A real trap: focus gets stuck on one element mid-trace while other
+  // focusable elements exist but were never reached afterwards.
+  let run = 1, maxRun = 1;
+  for (let i = 1; i < trace.length; i++) {
+    run = trace[i] === trace[i - 1] ? run + 1 : 1;
+    maxRun = Math.max(maxRun, run);
+  }
+  if (maxRun >= 4) {
+    issues.push({ rule: "wcag-2.1.2", message: `possible keyboard trap — focus stuck on the same element for ${maxRun} consecutive Tab presses` });
   }
   return issues;
 }
