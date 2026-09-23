@@ -1,66 +1,43 @@
 export default {
   async fetch(req) {
-    const url = new URL(req.url);
-    const action = url.pathname.slice(1);
-
-    if (req.method === 'GET' && action === '') {
+    if (req.method === 'GET') {
       return new Response(`
         <html>
           <body>
-            <h1>Accessibility Checker</h1>
-            <form id="check-form">
-              <label for="url">URL:</label>
-              <input type="text" id="url" name="url"><br><br>
-              <input type="submit" value="Check">
+            <form action="/scan" method="post">
+              <input type="radio" id="url" name="type" value="url" checked>
+              <label for="url">URL</label>
+              <input type="radio" id="html" name="type" value="html">
+              <label for="html">HTML</label>
+              <br>
+              <textarea id="input" name="input"></textarea>
+              <button type="submit">Scan</button>
             </form>
-            <div id="result"></div>
-            <script>
-              document.getElementById('check-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const url = document.getElementById('url').value;
-                const response = await fetch('/check', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ url }),
-                });
-                const result = await response.json();
-                document.getElementById('result').innerHTML = \`
-                  <h2>Accessibility Issues:</h2>
-                  <ul>
-                    \${result.issues.map((issue) => \`<li>\${issue.message}</li>\`).join('')}
-                  </ul>
-                \`;
-              });
-            </script>
           </body>
         </html>
       `, {
-        headers: { 'Content-Type': 'text/html' },
+        headers: { 'content-type': 'text/html' }
       });
-    }
-
-    if (req.method === 'POST' && action === 'check') {
-      const { url } = await req.json();
-      const response = await fetch(url);
-      const html = await response.text();
-      const issues = [];
-
-      // Simple accessibility checks
-      if (!html.includes('alt')) {
-        issues.push({ message: 'Missing alt attribute for images' });
+    } else if (req.method === 'POST') {
+      const { url, html } = await req.json();
+      let htmlToScan;
+      if (url) {
+        const response = await fetch(url);
+        htmlToScan = await response.text();
+      } else if (html) {
+        htmlToScan = html;
+      } else {
+        return new Response('Invalid request', { status: 400 });
       }
-      if (!html.includes('aria-label')) {
-        issues.push({ message: 'Missing aria-label attribute for interactive elements' });
-      }
-      if (html.includes('table')) {
-        issues.push({ message: 'Table used for layout, consider using CSS instead' });
-      }
-
-      return new Response(JSON.stringify({ issues }), {
-        headers: { 'Content-Type': 'application/json' },
+      const issues = scanHtml(htmlToScan);
+      const scoreValue = score(issues);
+      return new Response(JSON.stringify({ score: scoreValue, issues }), {
+        headers: { 'content-type': 'application/json' }
       });
+    } else {
+      return new Response('Method not allowed', { status: 405 });
     }
-
-    return new Response('Not Found', { status: 404 });
-  },
+  }
 };
+
+import { scanHtml, score } from './src/scanner.js';
