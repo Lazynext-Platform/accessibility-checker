@@ -20,7 +20,7 @@ async function platform(env, path, init = {}) {
 }
 
 async function kvGet(env, key) {
-  const r = await platform(env, `/kv/get?key=${encodeURIComponent(key)}`);
+  const r = await platform(env, '/kv/get', { method: 'POST', body: JSON.stringify({ key }) });
   if (!r.ok) return null;
   const d = await r.json().catch(() => null);
   return d?.value ?? null;
