@@ -81,3 +81,13 @@ describe('checkAdditionalRules', () => {
   });
 });
 ```
+---
+
+## Verification Note (manual audit, 2026-09-24)
+
+Two specific claims above were checked against the actual codebase and are **incorrect**:
+
+- `src/scanner.js` contains no `fetch` calls — it is pure string-scanning functions. The only outbound fetch is `worker.js` → `fetch(body.url)` which already has `.catch(() => '')` handling.
+- `package.json` has zero dependencies — nothing exists to pin.
+
+Do not create fix tasks for those two items. The coverage-gap observation remains valid.
