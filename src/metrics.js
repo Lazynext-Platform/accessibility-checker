@@ -1,32 +1,37 @@
-// File: src/metrics.js
-export class Metrics {
-  async getUsers() {
-    // Fetch users from KV
-    return await KV.get('users');
-  }
+import { env } from './env.js';
 
-  async getRevenue() {
-    // Fetch revenue from KV
-    return await KV.get('revenue');
-  }
+const metrics = {
+  trackEvent: (category, action, label) => {
+    if (env.analyticsEnabled) {
+      window.gtag('event', action, {
+        event_category: category,
+        event_label: label,
+      });
+    }
+  },
 
-  async getMrr() {
-    // Fetch MRR from KV
-    return await KV.get('mrr');
-  }
+  trackPageView: (path) => {
+    if (env.analyticsEnabled) {
+      window.gtag('config', env.gaTrackingId, {
+        page_path: path,
+      });
+    }
+  },
 
-  async getUptimePct() {
-    // Fetch uptime percentage from KV
-    return await KV.get('uptime_pct');
-  }
+  init: () => {
+    if (env.analyticsEnabled) {
+      const script = document.createElement('script');
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${env.gaTrackingId}`;
+      document.head.appendChild(script);
 
-  async getErrorRate() {
-    // Fetch error rate from KV
-    return await KV.get('error_rate');
-  }
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        window.dataLayer.push(arguments);
+      }
+      gtag('js', new Date());
+      gtag('config', env.gaTrackingId);
+    }
+  },
+};
 
-  async getDeployCount() {
-    // Fetch deploy count from KV
-    return await KV.get('deploy_count');
-  }
-}
+export { metrics };
