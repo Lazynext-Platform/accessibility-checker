@@ -1,80 +1,66 @@
-import os
-import requests
-from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-from accessibility_checker import AccessibilityChecker
+```python
+import json
+from src.api.compliance import ComplianceChecker
+from src.api.website_scanner import WebsiteScanner
+from src.algorithms.wcag_scanner import WcagScanner
 
-class AIScanner:
+class AiScanner:
     def __init__(self, url):
         self.url = url
-        self.accessibility_checker = AccessibilityChecker()
+        self.compliance_checker = ComplianceChecker()
+        self.website_scanner = WebsiteScanner()
+        self.wcag_scanner = WcagScanner()
 
     def scan(self):
-        try:
-            # Initialize Chrome driver
-            driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+        # Scan website for accessibility issues
+        issues = self.wcag_scanner.scan(self.url)
 
-            # Navigate to the URL
-            driver.get(self.url)
+        # Check compliance with accessibility regulations
+        compliance = self.compliance_checker.check(issues)
 
-            # Wait for the page to load
-            timeout = 10  # seconds
-            WebDriverWait(driver, timeout).until(EC.presence_of_all_elements_located((By.TAG_NAME, 'body')))
+        # Scan website for additional accessibility issues using AI
+        ai_issues = self._ai_scan(issues)
 
-            # Get the HTML content of the page
-            html = driver.page_source
+        # Combine all issues
+        all_issues = issues + ai_issues
 
-            # Parse the HTML content using BeautifulSoup
-            soup = BeautifulSoup(html, 'html.parser')
+        # Return the combined issues and compliance result
+        return {
+            'issues': all_issues,
+            'compliance': compliance
+        }
 
-            # Remove all script and style elements
-            for script in soup(["script", "style"]):
-                script.decompose()
+    def _ai_scan(self, issues):
+        # Import the necessary JavaScript module
+        from js2py import EvalJs
+        context = EvalJs()
+        with open('src/algorithms/wcag-scanner.js', 'r') as f:
+            context.execute(f.read())
 
-            # Get the text from the HTML content
-            text = soup.get_text()
+        # Call the JavaScript function to perform the AI scan
+        ai_scan_function = context.ai_scan
+        ai_issues = ai_scan_function(self.url, issues)
 
-            # Break the text into lines and remove leading and trailing space on each line
-            lines = (line.strip() for line in text.splitlines())
+        # Convert the JavaScript result to a Python list
+        ai_issues = json.loads(ai_issues)
 
-            # Break multi-headlines into a line each
-            chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+        return ai_issues
 
-            # Drop blank lines
-            text = '\n'.join(chunk for chunk in chunks if chunk)
-
-            # Check for accessibility issues
-            issues = self.accessibility_checker.check(text)
-
-            # Close the Chrome driver
-            driver.quit()
-
-            return issues
-
-        except TimeoutException:
-            print("Timed out waiting for page to load")
-            return None
-
-        except Exception as e:
-            print("An error occurred: ", str(e))
-            return None
-
-def main():
-    url = "https://example.com"
-    ai_scanner = AIScanner(url)
-    issues = ai_scanner.scan()
-    if issues:
-        print("Accessibility issues found:")
+    def get_recommendations(self, issues):
+        # Get recommendations for fixing accessibility issues
+        recommendations = []
         for issue in issues:
-            print(issue)
-    else:
-        print("No accessibility issues found.")
+            recommendation = self._get_recommendation(issue)
+            recommendations.append(recommendation)
 
-if __name__ == "__main__":
-    main()
+        return recommendations
+
+    def _get_recommendation(self, issue):
+        # Get a recommendation for fixing a specific accessibility issue
+        # This can be implemented using a machine learning model or a rule-based system
+        # For now, just return a generic recommendation
+        return {
+            'issue': issue,
+            'recommendation': 'Fix this issue to improve accessibility'
+        }
+```
