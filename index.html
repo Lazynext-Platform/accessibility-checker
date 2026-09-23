@@ -1,48 +1,93 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Accessibility Checker</title>
+    <title>Accessibility Checker — WCAG scanner</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-        }
-        #result {
-            margin-top: 20px;
-        }
+        :root { font-family: -apple-system, system-ui, sans-serif; }
+        body { max-width: 720px; margin: 3rem auto; padding: 0 1rem; color: #1a1a2e; }
+        h1 { font-size: 1.6rem; }
+        .row { display: flex; gap: .5rem; margin: 1.25rem 0; }
+        input { flex: 1; padding: .7rem .9rem; border: 1px solid #c9c9d4; border-radius: 8px; font-size: 1rem; }
+        button { padding: .7rem 1.2rem; border: 0; border-radius: 8px; background: #4f46e5; color: #fff; font-size: 1rem; cursor: pointer; }
+        button:disabled { opacity: .5; cursor: wait; }
+        #score { font-size: 2.4rem; font-weight: 700; }
+        .issue { border: 1px solid #e5e5ee; border-left: 4px solid #e11d48; border-radius: 6px; padding: .7rem 1rem; margin: .5rem 0; }
+        .rule { font-family: ui-monospace, monospace; font-size: .8rem; color: #6b7280; }
+        #status { color: #6b7280; margin-top: 1rem; }
+        .ok { color: #059669; font-weight: 600; }
     </style>
 </head>
 <body>
     <h1>Accessibility Checker</h1>
-    <input type="text" id="url" placeholder="Enter website URL">
-    <button id="scan-button">Scan for Accessibility Issues</button>
-    <div id="result"></div>
-
-    <script type="module">
-        import { scanWebsite } from './src/scanner.js';
-
-        const urlInput = document.getElementById('url');
-        const scanButton = document.getElementById('scan-button');
-        const resultDiv = document.getElementById('result');
-
-        scanButton.addEventListener('click', async () => {
-            const url = urlInput.value;
-            if (!url) {
-                resultDiv.innerText = 'Please enter a website URL';
-                return;
-            }
-
+    <p>Scan any public page for WCAG accessibility issues — rendered in a real browser engine.</p>
+    <div class="row">
+        <input id="url" type="url" placeholder="https://example.com" aria-label="Website URL">
+        <button id="go">Scan</button>
+    </div>
+    <div class="row">
+        <input id="license" type="email" placeholder="Pro license (your purchase email) — optional" aria-label="Pro license email" style="flex:.6">
+        <a id="pro" href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout" style="align-self:center">Go Pro →</a>
+    </div>
+    <div id="status"></div>
+    <div id="out"></div>
+    <p style="color:#6b7280;font-size:.85rem">Free: 3 rendered scans/day. Pro $9/mo: unlimited + email reports.</p>
+    <hr style="border:none;border-top:1px solid #e5e7eb;margin:1.5rem 0">
+    <p style="font-size:.9rem"><b>Get accessibility tips + product updates</b></p>
+    <div class="row">
+        <input id="lead" type="email" placeholder="you@company.com" aria-label="Email for updates">
+        <button id="join">Join</button>
+    </div>
+    <div id="leadStatus"></div>
+    <script>
+        document.getElementById("join").onclick = async () => {
+            const email = document.getElementById("lead").value.trim();
+            const st = document.getElementById("leadStatus");
+            if (!email.includes("@")) { st.textContent = "Enter a valid email."; return; }
+            const r = await fetch("https://accessibility-checker.dry-hall-6a50.workers.dev/lead", {
+                method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email })
+            });
+            st.textContent = r.ok ? "You're on the list — first tip lands soon." : "Couldn't save that — try again.";
+        };
+    </script>
+    <script>
+        const API = "https://accessibility-checker.dry-hall-6a50.workers.dev/scan";
+        if (new URLSearchParams(location.search).get("upgraded")) {
+            document.getElementById("status").innerHTML = "<b>Pro activated.</b> Enter your purchase email in the license field — unlimited scans.";
+        }
+        const urlEl = document.getElementById("url"), go = document.getElementById("go");
+        const statusEl = document.getElementById("status"), out = document.getElementById("out");
+        go.addEventListener("click", async () => {
+            const url = urlEl.value.trim();
+            if (!/^https?:\/\//i.test(url)) { statusEl.textContent = "Enter a full URL (https://…)"; return; }
+            go.disabled = true; statusEl.textContent = "Rendering page and scanning…"; out.innerHTML = "";
             try {
-                const issues = await scanWebsite(url);
-                const issueList = issues.map(issue => `<li>${issue}</li>`).join('');
-                resultDiv.innerHTML = `<ul>${issueList}</ul>`;
-            } catch (error) {
-                resultDiv.innerText = `Error scanning website: ${error.message}`;
+                const license = document.getElementById("license").value.trim();
+                const r = await fetch(API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, ...(license ? { license } : {}) }) });
+                const d = await r.json();
+                if (r.status === 402) {
+                    statusEl.innerHTML = `Free limit reached — <a href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout">go Pro</a> for unlimited scans, or drop your email and we'll send you a discount:`;
+                    out.innerHTML = `<div class="row"><input id="limitEmail" type="email" placeholder="you@company.com"><button id="limitJoin">Notify me</button></div>`;
+                    document.getElementById("limitJoin").onclick = async () => {
+                        const em = document.getElementById("limitEmail").value.trim();
+                        const lr = await fetch("https://accessibility-checker.dry-hall-6a50.workers.dev/lead", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: em }) });
+                        out.innerHTML = lr.ok ? "<p class='ok'>You're on the list — check your inbox.</p>" : "<p>Couldn't save that.</p>";
+                    };
+                    return;
+                }
+                if (!r.ok) throw new Error(d.error || r.statusText);
+                statusEl.innerHTML = `Score: <span id="score">${d.score}</span>/100` + (d.rendered ? " · rendered" : " · static") + (d.report ? ` · <a href="${d.report}" target="_blank">share report</a>` : "");
+                out.innerHTML = d.issues.length
+                    ? d.issues.map(i => `<div class="issue"><div class="rule">${i.rule ?? "issue"}</div>${i.message}</div>`).join("")
+                    : '<p class="ok">No issues found — nice work.</p>';
+            } catch (e) {
+                statusEl.textContent = "Scan failed: " + e.message;
+            } finally {
+                go.disabled = false;
             }
         });
+        urlEl.addEventListener("keydown", (e) => { if (e.key === "Enter") go.click(); });
     </script>
 </body>
 </html>
-```
