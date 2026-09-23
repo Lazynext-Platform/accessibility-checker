@@ -16,7 +16,7 @@
 </head>
 <body>
     <h1>Accessibility Checker</h1>
-    <input type="text" id="url" placeholder="Enter website URL">
+    <input id="url" type="text" placeholder="Enter website URL">
     <button id="scan-button">Scan</button>
     <div id="result"></div>
 
@@ -37,13 +37,13 @@
             try {
                 const result = await scanWebsite(url);
                 resultDiv.innerText = 'Accessibility issues found:';
-                const issueList = document.createElement('ul');
+                const ul = document.createElement('ul');
                 result.forEach(issue => {
-                    const issueItem = document.createElement('li');
-                    issueItem.innerText = issue;
-                    issueList.appendChild(issueItem);
+                    const li = document.createElement('li');
+                    li.innerText = issue;
+                    ul.appendChild(li);
                 });
-                resultDiv.appendChild(issueList);
+                resultDiv.appendChild(ul);
             } catch (error) {
                 resultDiv.innerText = 'Error scanning website: ' + error.message;
             }
