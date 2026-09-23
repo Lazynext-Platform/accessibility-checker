@@ -36,11 +36,13 @@ export function scanHtml(html) {
     issues.push({ rule: "wcag-1.3.1", message: "no headings found on the page" });
   }
 
+  const labelSpans = [...src.matchAll(/<label\b[^>]*>[\s\S]*?<\/label>/gi)].map((m) => [m.index, m.index + m[0].length]);
   for (const m of src.matchAll(/<input\b[^>]*>/gi)) {
     const tag = m[0];
     if (/type=["'](?:hidden|submit|button|image)/i.test(tag)) continue;
     const idm = tag.match(/\bid=["']([^"']+)/i);
-    const labeled = idm && new RegExp(`<label[^>]*\\bfor=["']${idm[1]}["']`, "i").test(src);
+    const wrapped = labelSpans.some(([s, e]) => m.index > s && m.index < e);
+    const labeled = wrapped || (idm && new RegExp(`<label[^>]*\\bfor=["']${idm[1]}["']`, "i").test(src));
     if (!labeled && !/aria-label/i.test(tag)) {
       issues.push({ rule: "wcag-3.3.2", message: `<input> has no associated label: ${tag.slice(0, 80)}` });
     }
