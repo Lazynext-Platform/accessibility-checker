@@ -1,13 +1,17 @@
 // File: script.js
-// Update the script.js file to include the 'What's New' section
-function init() {
-  // Existing code...
-  
-  // Add 'What's New' section to the page
-  const whatsNewSection = document.getElementById('whats-new');
-  if (whatsNewSection) {
-    // Existing code...
-  }
-}
-
-init();
+// Add event listener to button
+document.querySelector('button').addEventListener('click', () => {
+    // Call API to start scan
+    fetch('/scan', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            // Add scan parameters here
+        })
+    })
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error(error));
+});
