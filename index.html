@@ -33,6 +33,7 @@
         <label style="align-self:center;font-size:.8rem;color:#6b7280;display:flex;gap:.3rem;align-items:center;white-space:nowrap"><input id="emailReport" type="checkbox" style="flex:none">email me the report</label>
         <label style="align-self:center;font-size:.8rem;color:#6b7280;display:flex;gap:.3rem;align-items:center;white-space:nowrap"><input id="siteScan" type="checkbox" style="flex:none">whole site</label>
         <a id="monitor" href="#" style="align-self:center;font-size:.8rem;color:#6b7280">monitor daily</a>
+        <a id="myMonitors" href="#" style="align-self:center;font-size:.8rem;color:#6b7280">my monitors</a>
     </div>
     <div id="status"></div>
     <div id="out"></div>
@@ -119,6 +120,27 @@
             statusEl.textContent = r.ok
                 ? `Monitoring ${url} — we rescan it daily and email you if the score drops.`
                 : (r.status === 402 ? "Monitoring needs a Pro license — start the free trial above." : `Couldn't set up monitoring: ${d.error ?? r.status}`);
+        });
+        document.getElementById("myMonitors").addEventListener("click", async (e) => {
+            e.preventDefault();
+            const email = document.getElementById("license").value.trim();
+            if (!email.includes("@")) { statusEl.textContent = "Enter your purchase email in the license field to see your monitors."; return; }
+            const r = await fetch(`https://accessibility-checker.dry-hall-6a50.workers.dev/monitor?license=${encodeURIComponent(email)}`);
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) { statusEl.textContent = r.status === 402 ? "Monitoring needs a Pro license — start the free trial above." : `Couldn't load monitors: ${d.error ?? r.status}`; return; }
+            const mons = d.monitors ?? [];
+            if (!mons.length) { out.innerHTML = ""; statusEl.textContent = "No monitors on this license — enter a URL above and click monitor daily."; return; }
+            statusEl.textContent = `${mons.length} monitor${mons.length === 1 ? "" : "s"} on ${email}`;
+            out.innerHTML = mons.map((m) => `<div class="card"><b>${m.url}</b><br><span style="color:#6b7280;font-size:.85rem">last score: ${m.last_score ?? "pending"} · scans: ${m.scans ?? 0} · alerts sent: ${m.alerts ?? 0}</span><br><a href="#" data-mon-stop="${m.url}" style="font-size:.8rem;color:#b91c1c">stop monitoring</a></div>`).join("");
+            out.querySelectorAll("[data-mon-stop]").forEach((a) => a.addEventListener("click", async (ev) => {
+                ev.preventDefault();
+                const url = a.getAttribute("data-mon-stop");
+                const r2 = await fetch("https://accessibility-checker.dry-hall-6a50.workers.dev/monitor", {
+                    method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ license: email, url })
+                });
+                statusEl.textContent = r2.ok ? `Stopped monitoring ${url}.` : "Couldn't remove that monitor — try again.";
+                if (r2.ok) a.closest(".card").remove();
+            }));
         });
     </script>
 </body>
