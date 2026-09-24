@@ -61,3 +61,40 @@ test("AAA tier flags AA-pass/enhanced-fail contrast only (1.4.6)", () => {
   const aa = checkContrastAAA([{ color: "#777777", bg: "#ffffff", size: 16, weight: "400", tag: "p", text: "x" }]);
   assert.equal(aa.length, 0);
 });
+
+import { scanKeyboardStatics } from "../src/rules/additional.js";
+
+test("inline handler preventDefault on Tab flagged as trap risk", () => {
+  const out = scanKeyboardStatics(`<div onkeydown="if(event.keyCode===9) event.preventDefault()">x</div>`);
+  assert.ok(rules(out).includes("wcag-2.1.2"));
+});
+
+test("key handler without Tab suppression is clean", () => {
+  const out = scanKeyboardStatics(`<div onkeydown="if(event.key==='Enter') submit()">x</div>`);
+  assert.equal(out.length, 0);
+});
+
+test("open dialog with no focusable or dismiss control flagged", () => {
+  const out = scanKeyboardStatics(`<dialog open><p>Are you sure?</p></dialog>`);
+  assert.ok(rules(out).includes("wcag-2.1.2"));
+});
+
+test("open dialog with a close button is clean", () => {
+  const out = scanKeyboardStatics(`<dialog open><p>Sure?</p><button>Close</button></dialog>`);
+  assert.equal(rules(out).includes("wcag-2.1.2"), false);
+});
+
+test("closed dialog is not modal — clean", () => {
+  const out = scanKeyboardStatics(`<dialog><p>hidden</p></dialog>`);
+  assert.equal(out.length, 0);
+});
+
+test("positive tabindex flagged under 2.4.3 (F44)", () => {
+  const out = scanKeyboardStatics(`<a href="/x" tabindex="5">link</a>`);
+  assert.ok(rules(out).includes("wcag-2.4.3"));
+});
+
+test("tabindex 0 and -1 are fine", () => {
+  const out = scanKeyboardStatics(`<div tabindex="0"></div><div tabindex="-1"></div>`);
+  assert.equal(rules(out).includes("wcag-2.4.3"), false);
+});

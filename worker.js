@@ -1,5 +1,5 @@
 import { scanHtml, checkContrast, checkFacts, checkFocus, score } from './src/scanner.js';
-import { scanAdditionalHtml, checkContrastAAA } from './src/rules/additional.js';
+import { scanAdditionalHtml, checkContrastAAA, scanKeyboardStatics } from './src/rules/additional.js';
 import { scanWcag22 } from './src/rules/wcag22.js';
 import { checkCrossPages } from './src/rules/crosspage.js';
 import { crawlSite } from './src/crawl.js';
@@ -194,7 +194,8 @@ export default {
           sitePages = crawl.pages.map((p) => {
             const pageIssues = scanHtml(p.html)
               .concat(scanAdditionalHtml(p.html))
-              .concat(scanWcag22(p.html));
+              .concat(scanWcag22(p.html))
+              .concat(scanKeyboardStatics(p.html));
             return { url: p.url, score: score(pageIssues), issues: pageIssues };
           });
           issues = sitePages.flatMap((p) => p.issues.map((i) => ({ ...i, url: p.url })))
@@ -214,16 +215,17 @@ export default {
             .concat(checkContrast(page.styles))
             .concat(checkContrastAAA(page.styles))
             .concat(checkFacts(page.facts))
-            .concat(checkFocus(page.focus));
+            .concat(checkFocus(page.focus))
+            .concat(scanKeyboardStatics(page.html));
           rendered = true;
         } catch (e) {
           renderError = String(e?.message ?? e);
           const page = await fetch(body.url).then((x) => x.text()).catch(() => '');
-          issues = scanHtml(page).concat(scanAdditionalHtml(page)).concat(scanWcag22(page));
+          issues = scanHtml(page).concat(scanAdditionalHtml(page)).concat(scanWcag22(page)).concat(scanKeyboardStatics(page));
         }
       } else if (typeof body.html === 'string' && body.html.trim()) {
         if (body.html.length > 512_000) return respond({ error: 'html too large (512KB max)' }, 413);
-        issues = scanHtml(body.html).concat(scanAdditionalHtml(body.html)).concat(scanWcag22(body.html));
+        issues = scanHtml(body.html).concat(scanAdditionalHtml(body.html)).concat(scanWcag22(body.html)).concat(scanKeyboardStatics(body.html));
       } else {
         return respond({ error: 'provide {"url"} or {"html"}' }, 400);
       }

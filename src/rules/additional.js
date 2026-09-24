@@ -117,3 +117,60 @@ export function checkContrastAAA(styles) {
   }
   return issues;
 }
+
+// --- keyboard trap statics (WCAG 2.1.2) + focus order (2.4.3) -------------
+// checkFocus catches traps dynamically on rendered scans via the focus trace;
+// these catch the same mechanisms statically so pasted HTML and crawled pages
+// get coverage too. Deliberately narrow: only patterns that cannot false-
+// positive on ordinary markup.
+export function scanKeyboardStatics(html) {
+  const issues = [];
+  if (typeof html !== "string" || !html) return issues;
+
+  // Inline key handlers that preventDefault() a Tab key event — the literal
+  // mechanism of a keyboard trap.
+  for (const h of html.matchAll(/\bonkey(?:down|press|up)\s*=\s*(["'])([\s\S]*?)\1/gi)) {
+    const body = h[2];
+    const swallowsTab =
+      /preventDefault\s*\(/.test(body) &&
+      /keyCode\s*[=!]=+\s*9\b|\.which\s*[=!]=+\s*9\b|key\s*===?\s*['"]Tab['"]|code\s*===?\s*['"]Tab['"]/i.test(body);
+    if (swallowsTab) {
+      issues.push({
+        rule: "wcag-2.1.2",
+        message: "key handler calls preventDefault() on Tab — keyboard focus can become trapped",
+      });
+      break;
+    }
+  }
+
+  // A modal <dialog open> with no keyboard-reachable way to leave it. Scoped
+  // to <dialog> only: its </dialog> close tag is unambiguous (role="dialog"
+  // regions can't be reliably bounded without a full parser).
+  for (const m of html.matchAll(/<dialog\b([^>]*)>([\s\S]*?)<\/dialog>/gi)) {
+    if (!/\bopen\b/i.test(m[1])) continue;
+    const region = m[2];
+    const focusable = /<(?:button|a\b[^>]*\bhref|input|select|textarea)\b|\btabindex\s*=/i.test(region);
+    const escapeHatch =
+      /\boncancel\s*=/i.test(m[1]) ||
+      /\bonkey\w+\s*=\s*(["'])[\s\S]*?\1/i.test(m[0]) && /Escape|keyCode\s*[=!]=+\s*27|key\s*===?\s*['"]Escape/i.test(region + m[0]);
+    if (!focusable && !escapeHatch) {
+      issues.push({
+        rule: "wcag-2.1.2",
+        message: "open <dialog> has no keyboard-reachable dismiss control — focus can enter but not leave",
+      });
+      break;
+    }
+  }
+
+  // Positive tabindex is WCAG failure technique F44 — it overrides the
+  // natural focus order and desyncs it from the visual order.
+  const posTab = html.match(/\btabindex\s*=\s*["']?([1-9]\d*)/i);
+  if (posTab) {
+    issues.push({
+      rule: "wcag-2.4.3",
+      message: `tabindex="${posTab[1]}" overrides natural focus order — use document order instead`,
+    });
+  }
+
+  return issues;
+}
