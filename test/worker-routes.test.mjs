@@ -83,6 +83,43 @@ test('GET /report/:id 404s when absent and escapes stored content', async () => 
   const html = await (await get('/report/abc', {}, env)).text();
   assert.ok(html.includes('&lt;script&gt;'), 'report URL is escaped');
   assert.ok(!html.includes('<script>alert'), 'no raw injected markup');
+  assert.ok(html.includes('/report/abc.csv') && html.includes('/report/abc.pdf'), 'report offers exports');
+});
+
+test('GET /report/:id.csv exports findings as CSV', async () => {
+  const env = mockEnv({
+    'report:abc': JSON.stringify({ url: 'https://x', ts: 0, score: 88, rendered: false, issues: [{ rule: 'wcag-x', message: 'say "hi"', fix: 'fix, it' }] }),
+  });
+  const r = await get('/report/abc.csv', {}, env);
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type'), /text\/csv/);
+  assert.match(r.headers.get('content-disposition'), /accessibility-report-abc\.csv/);
+  const csv = await r.text();
+  assert.ok(csv.startsWith('rule,page,finding,fix'));
+  assert.ok(csv.includes('"say ""hi"""'), 'quotes escaped');
+  assert.ok(csv.includes('"fix, it"'), 'commas quoted');
+});
+
+test('GET /report/:id.pdf proxies the platform PDF render', async () => {
+  const env = mockEnv(
+    { 'report:abc': JSON.stringify({ url: 'https://x', ts: 0, score: 88, rendered: false, issues: [] }) },
+    { '/pdf': async (req) => {
+        const b = await req.json();
+        assert.equal(b.url, 'https://checker.test/report/abc');
+        return new Response('%PDF-fake', { headers: { 'content-type': 'application/pdf' } });
+      } },
+  );
+  const r = await get('/report/abc.pdf', {}, env);
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('content-type'), 'application/pdf');
+  assert.match(r.headers.get('content-disposition'), /accessibility-report-abc\.pdf/);
+});
+
+test('POST /lead is rate limited per IP per day', async () => {
+  const day = new Date().toISOString().slice(0, 10);
+  const env = mockEnv({ [`rl:lead:anon:${day}`]: '10' });
+  const r = await post('/lead', { email: 'a@b.com' }, {}, env);
+  assert.equal(r.status, 429);
 });
 
 test('GET /checkout redirects to the Dodo session the platform returns', async () => {

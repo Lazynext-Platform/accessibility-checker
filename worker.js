@@ -140,23 +140,45 @@ export default {
     if (request.method === 'POST' && url.pathname === '/lead') {
       const b = await request.json().catch(() => ({}));
       if (!isEmail(b.email)) return respond({ error: 'valid email required' }, 400);
+      // Per-IP daily cap: unauthenticated lead submission would otherwise let a
+      // bot burn Brevo quota and fire an unsolicited sequence email per victim.
+      const day = new Date().toISOString().slice(0, 10);
+      const ip = request.headers.get('cf-connecting-ip') ?? 'anon';
+      const rlKey = `rl:lead:${ip}:${day}`;
+      const used = parseInt((await kvGet(env, rlKey)) ?? '0', 10);
+      if (used >= 10) return respond({ error: 'rate limit — try again later' }, 429);
+      await kvPut(env, rlKey, String(used + 1), 90000);
       const r = await platform(env, '/leads', { method: 'POST', body: JSON.stringify({ email: b.email, source: 'accessibility-checker' }) });
       const d = await r.json().catch(() => ({}));
       return respond({ ok: r.ok, ...(r.ok ? {} : { detail: d }) }, r.ok ? 200 : 502);
     }
 
     // Shareable report — scans persist here for 30 days.
+    // Suffixes: /report/:id.csv → CSV export, /report/:id.pdf → PDF via platform /pdf.
     if (request.method === 'GET' && url.pathname.startsWith('/report/')) {
-      const id = url.pathname.slice(8);
+      const seg = url.pathname.slice(8);
+      const fmt = seg.endsWith('.csv') ? 'csv' : seg.endsWith('.pdf') ? 'pdf' : 'html';
+      const id = fmt === 'html' ? seg : seg.slice(0, -4);
       const raw = await kvGet(env, `report:${id}`);
       if (!raw) return respond({ error: 'report not found or expired' }, 404);
       const rep = JSON.parse(raw);
+      if (fmt === 'csv') {
+        const cell = (v) => `"${String(v ?? '').replaceAll('"', '""')}"`;
+        const csv = ['rule,page,finding,fix', ...rep.issues.map((i) => [i.rule, i.url ?? '', i.message, i.fix ?? ''].map(cell).join(','))].join('\r\n');
+        return new Response(csv, { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="accessibility-report-${id}.csv"` } });
+      }
+      if (fmt === 'pdf') {
+        const r = await platform(env, '/pdf', { method: 'POST', body: JSON.stringify({ url: `${url.origin}/report/${id}` }) });
+        if (!r.ok) return respond({ error: 'pdf export unavailable' }, 502);
+        return new Response(r.body, { headers: { 'content-type': 'application/pdf', 'content-disposition': `attachment; filename="accessibility-report-${id}.pdf"` } });
+      }
       const rows = rep.issues.map((i) => `<tr><td style="font-family:monospace">${esc(i.rule)}</td><td>${esc(i.message)}${i.fix ? `<br><span style="color:#555;font-size:0.9em">Fix: ${esc(i.fix)}</span>` : ''}</td></tr>`).join('');
       return new Response(`<!doctype html><meta charset="utf-8"><title>Accessibility report — ${esc(rep.url ?? 'paste')}</title>
 <body style="font-family:system-ui;max-width:800px;margin:2rem auto;padding:0 1rem">
 <h1>Accessibility report</h1><p><b>${esc(rep.url ?? 'pasted HTML')}</b> · ${new Date(rep.ts).toUTCString()} · rendered: ${rep.rendered}</p>
 <p style="font-size:3rem;margin:0"><b>${rep.score}</b>/100</p>
 ${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms ? 'conforms' : `${rep.section508.criteria_failed.length} WCAG criteria failed — FPC ${esc(rep.section508.clauses_implicated.join(', '))}`}</p>` : ''}
+<p><a href="/report/${esc(id)}.csv">Download CSV</a> · <a href="/report/${esc(id)}.pdf">Download PDF</a></p>
 <table style="width:100%;border-collapse:collapse">${rows || '<tr><td>No issues found.</td></tr>'}</table>
 <p><a href="/">Run your own scan →</a></p>`,
         { headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" } });
