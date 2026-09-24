@@ -53,7 +53,9 @@ export async function crawlSite(startUrl, { maxPages = 10, fetchImpl = fetch, de
     const url = queue.shift();
     let res;
     try {
-      res = await fetchImpl(url, { signal: AbortSignal.timeout(timeoutMs) });
+      // Throwaway query param defeats edge caches — monitoring/rescans must
+      // measure the page as it is now, not a cached copy. Wire URL only.
+      res = await fetchImpl(`${url}${url.includes("?") ? "&" : "?"}_lz=${Date.now()}`, { signal: AbortSignal.timeout(timeoutMs) });
     } catch {
       skipped++;
       continue;

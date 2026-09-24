@@ -4,8 +4,12 @@ import { crawlSite, extractLinks } from "../src/crawl.js";
 
 function stubFetch(pages) {
   return async (url) => {
-    if (!(url in pages)) return { status: 404, headers: new Map(), text: async () => "" };
-    const p = pages[url];
+    // crawlSite appends a cache-buster (_lz=) to the wire URL — strip it for lookup
+    const clean = new URL(url);
+    clean.searchParams.delete("_lz");
+    const key = clean.toString();
+    if (!(key in pages)) return { status: 404, headers: new Map(), text: async () => "" };
+    const p = pages[key];
     return {
       status: p.status ?? 200,
       headers: { get: (k) => (k === "content-type" ? p.type ?? "text/html" : null) },
@@ -68,11 +72,17 @@ test("crawlSite counts failed and non-HTML responses as skipped", async () => {
 test("crawlSite never fetches asset links (filtered at extraction)", async () => {
   let fetched = [];
   const spy = async (url) => {
-    fetched.push(url);
+    const clean = new URL(url);
+    clean.searchParams.delete("_lz");
+    fetched.push(clean.toString());
     return { status: 200, headers: { get: () => "text/html" }, text: async () => "" };
   };
   const pages = { "https://s.com/": { html: `<a href="/data.json">d</a>` } };
-  const f = async (url) => (url in pages ? spy(url) : { status: 404, headers: new Map(), text: async () => "" });
+  const f = async (url) => {
+    const clean = new URL(url);
+    clean.searchParams.delete("_lz");
+    return clean.toString() in pages ? spy(url) : { status: 404, headers: new Map(), text: async () => "" };
+  };
   const r = await crawlSite("https://s.com/", { fetchImpl: f, delayMs: 0 });
   assert.deepEqual(fetched, ["https://s.com/"]); // /data.json filtered before fetch
   assert.equal(r.skipped, 0);
@@ -94,4 +104,18 @@ test("crawlSite respects maxPages", async () => {
   };
   const r = await crawlSite("https://s.com/", { fetchImpl: stubFetch(pages), delayMs: 0, maxPages: 2 });
   assert.equal(r.count, 2);
+});
+
+test("crawlSite cache-busts wire URLs (recorded URLs stay clean)", async () => {
+  const seen = [];
+  const r = await crawlSite("https://s.com/", {
+    fetchImpl: async (u) => {
+      seen.push(u);
+      return { status: 200, headers: { get: () => "text/html" }, text: async () => "" };
+    },
+    delayMs: 0,
+  });
+  assert.equal(r.count, 1);
+  assert.match(seen[0], /[?&]_lz=\d+/);
+  assert.equal(r.pages[0].url, "https://s.com/"); // stored URL carries no buster
 });

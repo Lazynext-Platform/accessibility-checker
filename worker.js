@@ -14,6 +14,16 @@ const CORS = {
 };
 const FREE_LIMIT = 3; // rendered scans per IP per day
 
+// Append a throwaway query param so edge caches (cf-cache-status HIT serves
+// stale HTML for hours on cached sites) can't feed a scan yesterday's page —
+// a scanner must measure the page as it is now. Wire URL only; stored/report
+// URLs stay clean. Fragment-safe.
+const cacheBust = (u) => {
+  const h = u.indexOf("#");
+  const base = h === -1 ? u : u.slice(0, h);
+  return `${base}${base.includes("?") ? "&" : "?"}_lz=${Date.now()}${h === -1 ? "" : u.slice(h)}`;
+};
+
 // Escape user- and scanned-page-controlled text before it lands in report HTML
 // or email bodies — report URLs are shareable, so raw interpolation is stored XSS.
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -226,7 +236,7 @@ export default {
         }
       } else if (body.url && /^https?:\/\//i.test(body.url)) {
         try {
-          const r = await platform(env, '/render', { method: 'POST', body: JSON.stringify({ url: body.url }) });
+          const r = await platform(env, '/render', { method: 'POST', body: JSON.stringify({ url: cacheBust(body.url) }) });
           if (!r.ok) throw new Error(`render ${r.status}`);
           const page = await r.json();
           issues = scanHtml(page.html)
@@ -240,7 +250,7 @@ export default {
           rendered = true;
         } catch (e) {
           renderError = String(e?.message ?? e);
-          const page = await fetch(body.url).then((x) => x.text()).catch(() => '');
+          const page = await fetch(cacheBust(body.url)).then((x) => x.text()).catch(() => '');
           issues = scanHtml(page).concat(scanAdditionalHtml(page)).concat(scanWcag22(page)).concat(scanKeyboardStatics(page));
         }
       } else if (typeof body.html === 'string' && body.html.trim()) {
