@@ -36,6 +36,16 @@ function respond(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', ...CORS } });
 }
 
+// Single-file UI: everything is inline, and API calls stay same-origin on both
+// hosts (workers.dev fetches resolve to this same script).
+const UI_HEADERS = {
+  'content-security-policy': "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  'permissions-policy': 'camera=(), microphone=(), geolocation=()',
+};
+
 async function platform(env, path, init = {}) {
   const r = await env.PLATFORM.fetch(new Request(`https://platform.internal${path}`, {
     ...init,
@@ -103,7 +113,7 @@ export default {
       // canonical surface, workers.dev/github.io stay working.
       const wantsHtml = (request.headers.get('accept') ?? '').includes('text/html') || url.hostname === 'checker.lazynext.com';
       if (wantsHtml) {
-        return new Response(PAGE_HTML, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+        return new Response(PAGE_HTML, { headers: { 'content-type': 'text/html; charset=utf-8', ...UI_HEADERS } });
       }
       return respond({
         name: 'Accessibility Checker API',

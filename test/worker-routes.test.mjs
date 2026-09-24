@@ -48,6 +48,8 @@ test('GET / serves the usage doc to API callers and the UI to browsers', async (
   const ui = await get('/', { headers: { accept: 'text/html' } });
   assert.match(ui.headers.get('content-type'), /text\/html/);
   assert.match(await ui.text(), /Accessibility Checker/);
+  assert.match(ui.headers.get('content-security-policy') ?? '', /frame-ancestors 'none'/);
+  assert.equal(ui.headers.get('x-content-type-options'), 'nosniff');
 });
 
 test('discovery files serve with correct content types', async () => {
