@@ -1,84 +1,115 @@
-# Referral Tracking for Accessibility Checker
-To set up referral tracking for the Accessibility Checker, we will use Google Analytics to monitor website traffic and referrals. Since the deployed site will be a client-side version of the product, we will focus on tracking events and referrals on the static UI.
+# Referral Tracking
+To measure the effectiveness of our marketing campaigns, we need to implement referral tracking. This will allow us to see which campaigns are driving the most conversions and adjust our strategy accordingly.
 
-## Step 1: Create a Google Analytics Account
-Create a new Google Analytics account and set up a new property for the Accessibility Checker website. This will provide a unique tracking ID that will be used to track website traffic and referrals.
+## Google Ads Conversions
+We will be using Google Ads conversions to track the effectiveness of our campaigns. To implement this, we need to add the Google Ads conversion tracking code to our website.
 
-## Step 2: Add Google Analytics Tracking Code
-Add the Google Analytics tracking code to the `index.html` file. This code will track page views and other events on the website.
-```html
-<!-- Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
+### Conversion Action
+The conversion action will be set to "Accessibility Scan Completed". This will trigger when a user completes an accessibility scan using our tool.
+
+### Conversion Tracking Code
+The conversion tracking code will be added to the `index.html` file. We will use the `gtag` function to track conversions.
+
+```javascript
+// Add this code to the index.html file
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXX"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', 'G-XXXXXXXXXX');
+  gtag('config', 'G-XXXXXX');
 </script>
-<!-- End Google Analytics -->
-```
-Replace `G-XXXXXXXXXX` with the actual tracking ID from the Google Analytics account.
 
-## Step 3: Track Referrals
-To track referrals, we need to set up event tracking in Google Analytics. We will track the following events:
-* `referral`: triggered when a user clicks on a referral link
-* `scan`: triggered when a user scans a website for accessibility issues
-* `result`: triggered when the scan results are displayed
+// Add this code to the scanner.js file
+import { gtag } from '../index.html';
 
-Add the following code to the `index.html` file to track these events:
-```javascript
-// Track referral event
-function trackReferral() {
-  gtag('event', 'referral', {
-    'event_category': 'referral',
-    'event_label': 'referral_link'
-  });
-}
-
-// Track scan event
-function trackScan() {
-  gtag('event', 'scan', {
-    'event_category': 'scan',
-    'event_label': 'website_scan'
-  });
-}
-
-// Track result event
-function trackResult() {
-  gtag('event', 'result', {
-    'event_category': 'result',
-    'event_label': 'scan_results'
+// Call this function when the accessibility scan is completed
+function trackConversion() {
+  gtag('event', 'conversion', {
+    'send_to': 'AW-XXXXXX/XXXXXX',
+    'event_category': 'Accessibility Scan',
+    'event_label': 'Scan Completed',
+    'value': 1.0
   });
 }
 ```
-## Step 4: Integrate with Existing Code
-Integrate the event tracking code with the existing code in the `src` directory. For example, in the `src/scanner.js` file, add the `trackScan()` function call when the scan is initiated:
+
+### UTM Parameters
+We will also be using UTM parameters to track the source of our traffic. This will allow us to see which campaigns are driving the most conversions.
+
 ```javascript
-// src/scanner.js
-import { trackScan } from '../index';
+// Add this code to the crawl.js file
+import { URLSearchParams } from 'url';
 
-// ...
+// Get the UTM parameters from the URL
+function getUtmParams() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const utmSource = urlParams.get('utm_source');
+  const utmMedium = urlParams.get('utm_medium');
+  const utmCampaign = urlParams.get('utm_campaign');
+  return { utmSource, utmMedium, utmCampaign };
+}
 
-async function scanWebsite(url) {
-  // ...
-  trackScan();
-  // ...
+// Call this function when the accessibility scan is completed
+function trackConversion() {
+  const utmParams = getUtmParams();
+  gtag('event', 'conversion', {
+    'send_to': 'AW-XXXXXX/XXXXXX',
+    'event_category': 'Accessibility Scan',
+    'event_label': 'Scan Completed',
+    'value': 1.0,
+    'utm_source': utmParams.utmSource,
+    'utm_medium': utmParams.utmMedium,
+    'utm_campaign': utmParams.utmCampaign
+  });
 }
 ```
-Similarly, add the `trackResult()` function call when the scan results are displayed:
+
+## Referral Tracking Tests
+We will be using Jest to test our referral tracking code.
+
 ```javascript
-// src/scanner.js
-import { trackResult } from '../index';
+// tests/referral-tracking.test.mjs
+import { gtag } from '../index.html';
+import { getUtmParams } from '../crawl.js';
 
-// ...
+describe('Referral Tracking', () => {
+  it('should track conversions', () => {
+    const trackConversionSpy = jest.spyOn(gtag, 'event');
+    trackConversion();
+    expect(trackConversionSpy).toHaveBeenCalledTimes(1);
+    expect(trackConversionSpy).toHaveBeenCalledWith('conversion', expect.objectContaining({
+      'send_to': 'AW-XXXXXX/XXXXXX',
+      'event_category': 'Accessibility Scan',
+      'event_label': 'Scan Completed',
+      'value': 1.0
+    }));
+  });
 
-async function displayResults(results) {
-  // ...
-  trackResult();
-  // ...
-}
+  it('should get UTM parameters', () => {
+    const urlParams = new URLSearchParams('utm_source=google&utm_medium=cpc&utm_campaign=accessibility_scan');
+    window.history.pushState({}, '', `?${urlParams.toString()}`);
+    const utmParams = getUtmParams();
+    expect(utmParams).toEqual({
+      utmSource: 'google',
+      utmMedium: 'cpc',
+      utmCampaign: 'accessibility_scan'
+    });
+  });
+});
 ```
-## Step 5: Test and Verify
-Test and verify that the event tracking is working correctly by checking the Google Analytics dashboard. Make sure that the events are being tracked correctly and that the referrals are being attributed to the correct sources.
 
-By following these steps, we can set up referral tracking for the Accessibility Checker and gain insights into how users are interacting with the website.
+## Deployment
+To deploy our referral tracking code, we need to update our `index.html` file and our `scanner.js` file. We also need to update our `crawl.js` file to get the UTM parameters from the URL.
+
+```javascript
+// package.json
+"scripts": {
+  "deploy": "npm run build && npm run deploy:index.html"
+}
+
+// Add this script to deploy our index.html file
+"deploy:index.html": "cp index.html ../deploy/"
+```
+
+By implementing referral tracking, we can measure the effectiveness of our marketing campaigns and adjust our strategy accordingly. This will allow us to optimize our campaigns and drive more conversions.
