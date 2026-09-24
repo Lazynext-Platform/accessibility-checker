@@ -40,12 +40,17 @@ alert when a page's score drops ≥ 10 points), `GET /health`.
   tokens (1.3.5), onfocus context change (3.2.1), onchange auto-submit
   (3.2.2), accesskey / single-char shortcuts (2.1.4), images of text (1.4.5),
   multiple navigation mechanisms (2.4.5), justified text without hyphenation
-  (1.4.8 — warn-class heuristic)
+  (1.4.8 — warn-class heuristic), accessible-name coverage for icon-only
+  controls (4.1.2), motion actuation (2.5.4), orientation lock (1.3.4),
+  hover/focus content without Escape dismissal (1.4.13 — warn-class), and
+  down-event navigation (2.5.2)
 - **Rendered layout checks**: target size 24×24px (2.5.8 — with inline-link
   and UA-control exemptions), focus not obscured by author overlays (2.4.11),
   visible focus indicator (2.4.13), non-text contrast of control boundaries
   (1.4.11 — 3:1 vs adjacent background), text-spacing override clipping
-  (1.4.12 — WCAG metric injection, delta-only)
+  (1.4.12 — WCAG metric injection, delta-only), and use of color (1.4.1 —
+  prose-scoped: non-underlined in-text links need ≥3:1 vs surrounding text;
+  nav/structural links are out of scope by the criterion itself)
 - **Keyboard**: real Tab presses in the browser — keyboard-inaccessible
   pages (2.1.1), focus traps (2.1.2), focus-order gaps and cycles (2.4.3),
   dialog Escape handling; statics catch Tab-swallowing handlers and
