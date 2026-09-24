@@ -1,38 +1,71 @@
-# Accessibility Checker CI/CD
-## Introduction
-The Accessibility Checker is an AI-powered tool that scans small business websites for accessibility compliance issues and provides recommendations for improvement. To ensure the reliability and performance of this tool, we need to set up and configure a robust Continuous Integration/Continuous Deployment (CI/CD) pipeline. This document outlines the steps to configure Cloudflare Worker analytics and performance monitoring for the Accessibility Checker.
+# Introduction to Continuous Integration and Continuous Deployment (CI/CD)
+The Accessibility Checker project aims to provide a seamless experience for small business owners and solo entrepreneurs to ensure their websites are compliant with accessibility regulations. To achieve this, we need to set up a CI/CD pipeline that automates the testing, building, and deployment of our application.
 
-## Prerequisites
-Before setting up the CI/CD pipeline, make sure you have the following:
-* A Cloudflare account with a Worker script set up for the Accessibility Checker
-* A GitHub repository for the Accessibility Checker code
-* Node.js and npm installed on your machine
+## Overview of the CI/CD Pipeline
+Our CI/CD pipeline will consist of the following stages:
+1. **Test**: Run automated tests to ensure the code is stable and functions as expected.
+2. **Build**: Bundle the code into a production-ready format.
+3. **Deploy**: Deploy the built code to a Cloudflare Worker.
 
-## Step 1: Set up Cloudflare Worker Analytics
-To set up analytics for the Cloudflare Worker, follow these steps:
-* Log in to your Cloudflare account and navigate to the Workers tab
-* Click on the Worker script for the Accessibility Checker
-* Click on the Analytics tab
-* Enable the Analytics toggle switch
-* Configure the analytics settings as desired (e.g., set up data retention, enable metrics)
+## Configuring GitHub Actions for Automated Testing
+We will use GitHub Actions to automate the testing of our code. The `.github/workflows/test.yml` file is already set up to run our tests using Node.js.
 
-## Step 2: Configure Performance Monitoring
-To configure performance monitoring for the Cloudflare Worker, follow these steps:
-* Log in to your Cloudflare account and navigate to the Workers tab
-* Click on the Worker script for the Accessibility Checker
-* Click on the Performance tab
-* Enable the Performance Monitoring toggle switch
-* Configure the performance monitoring settings as desired (e.g., set up metrics, enable tracing)
-
-## Step 3: Set up GitHub Actions Workflow
-To automate the deployment of the Accessibility Checker to Cloudflare Workers, we will use GitHub Actions. Create a new file in the `.github/workflows` directory called `deploy.yml` with the following contents:
 ```yml
-name: Deploy to Cloudflare Workers
+name: Test
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install dependencies
+        run: npm install
+      - name: Run tests
+        run: npm test
+```
+
+## Building the Application for Production
+To build our application for production, we will use the `npm run build` script. This script will bundle our code into a single file that can be executed by a Cloudflare Worker.
+
+```json
+// package.json
+"scripts": {
+  "build": "webpack --mode production"
+}
+```
+
+## Deploying to Cloudflare Worker
+To deploy our built code to a Cloudflare Worker, we will use the Cloudflare Workers CLI. First, we need to install the CLI using npm:
+
+```bash
+npm install -g @cloudflare/wrangler
+```
+
+Next, we need to configure the CLI to use our Cloudflare account. We can do this by running the following command:
+
+```bash
+wrangler login
+```
+
+Once we are logged in, we can deploy our code to a Cloudflare Worker using the following command:
+
+```bash
+wrangler publish --name accessibility-checker
+```
+
+We can automate this process by adding a new step to our GitHub Actions workflow:
+
+```yml
+name: Deploy
+
+on:
+  push:
+    branches: [ main ]
 
 jobs:
   deploy:
@@ -42,90 +75,16 @@ jobs:
         uses: actions/checkout@v2
       - name: Install dependencies
         run: npm install
-      - name: Deploy to Cloudflare Workers
+      - name: Build application
+        run: npm run build
+      - name: Deploy to Cloudflare Worker
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_WORKER_NAME: ${{ secrets.CLOUDFLARE_WORKER_NAME }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
         run: |
-          npm run deploy
+          wrangler config --token $CF_API_TOKEN --account-id $CF_ACCOUNT_ID
+          wrangler publish --name accessibility-checker
 ```
-This workflow will deploy the Accessibility Checker to Cloudflare Workers whenever code is pushed to the `main` branch.
-
-## Step 4: Configure Secrets
-To use the GitHub Actions workflow, we need to configure secrets for the Cloudflare API token, account ID, and worker name. Follow these steps:
-* Go to the GitHub repository settings
-* Click on Actions
-* Click on Secrets
-* Add the following secrets:
-	+ CLOUDFLARE_API_TOKEN
-	+ CLOUDFLARE_ACCOUNT_ID
-	+ CLOUDFLARE_WORKER_NAME
-
-## Step 5: Test the Deployment
-To test the deployment, make a change to the Accessibility Checker code and push it to the `main` branch. The GitHub Actions workflow should deploy the updated code to Cloudflare Workers. Verify that the deployment was successful by checking the Cloudflare Workers dashboard.
-
-## Step 6: Monitor Performance and Analytics
-To monitor the performance and analytics of the Accessibility Checker, follow these steps:
-* Log in to your Cloudflare account and navigate to the Workers tab
-* Click on the Worker script for the Accessibility Checker
-* Click on the Analytics or Performance tab
-* Verify that the metrics and data are being collected correctly
-
-By following these steps, we have set up and configured Cloudflare Worker analytics and performance monitoring for the Accessibility Checker. This will help us ensure the reliability and performance of the tool and provide valuable insights into its usage. 
-
-## Testing
-We will use node:test to test the deployment script. Create a new file called `test/deploy.test.mjs` with the following contents:
-```javascript
-import { test } from 'node:test';
-import { deploy } from '../src/deploy.mjs';
-
-test('deploy script', async () => {
-  const result = await deploy();
-  console.log(result);
-});
-```
-This test will verify that the deployment script is working correctly.
-
-## Code
-We will use the `cloudflare-workers` package to interact with the Cloudflare Workers API. Create a new file called `src/deploy.mjs` with the following contents:
-```javascript
-import { CloudflareWorkers } from 'cloudflare-workers';
-
-const cloudflare = new CloudflareWorkers({
-  apiToken: process.env.CLOUDFLARE_API_TOKEN,
-  accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
-});
-
-export async function deploy() {
-  const worker = await cloudflare.getWorker({
-    name: process.env.CLOUDFLARE_WORKER_NAME,
-  });
-
-  if (!worker) {
-    throw new Error(`Worker not found: ${process.env.CLOUDFLARE_WORKER_NAME}`);
-  }
-
-  const script = await cloudflare.getScript({
-    workerId: worker.id,
-  });
-
-  if (!script) {
-    throw new Error(`Script not found for worker: ${worker.id}`);
-  }
-
-  const updatedScript = await cloudflare.updateScript({
-    workerId: worker.id,
-    script: {
-      ...script,
-      content: 'updated content',
-    },
-  });
-
-  return updatedScript;
-}
-```
-This code will deploy the updated Accessibility Checker code to Cloudflare Workers.
 
 ## Conclusion
-In this document, we have outlined the steps to set up and configure Cloudflare Worker analytics and performance monitoring for the Accessibility Checker. We have also created a GitHub Actions workflow to automate the deployment of the tool and tested the deployment script using node:test. By following these steps, we can ensure the reliability and performance of the Accessibility Checker and provide valuable insights into its usage.
+In this document, we have configured a CI/CD pipeline for the Accessibility Checker project using GitHub Actions and Cloudflare Workers. Our pipeline automates the testing, building, and deployment of our application, ensuring that our code is stable and functions as expected. With this pipeline in place, we can focus on developing new features and improving the overall quality of our application.
