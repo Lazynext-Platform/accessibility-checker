@@ -1,33 +1,48 @@
 # Accessibility Checker Integration
-The Accessibility Checker is designed to be a client-side tool, allowing small business owners and solo entrepreneurs to scan their websites for accessibility compliance issues directly in the browser. To achieve this, we need to integrate the `scanner.js` module into the `index.html` file.
-
-## Scanner.js Overview
-The `scanner.js` module is responsible for scanning a given website for accessibility issues. It uses the `crawl.js` module to crawl the website and extract relevant information, and then applies the rules defined in `src/rules` to identify accessibility issues.
+## Overview
+The Accessibility Checker is an AI-powered tool that scans small business websites for accessibility compliance issues and provides recommendations for improvement. This document outlines the integration of the `scanner.js` module with the `index.html` file to enable client-side functionality.
 
 ## Integration Approach
-To integrate the `scanner.js` module into `index.html`, we will use the following approach:
+To integrate the `scanner.js` module with the `index.html` file, we will use the following approach:
 
-1. Create a new JavaScript file, `accessibility-checker.js`, that will serve as the entry point for the Accessibility Checker.
-2. In `accessibility-checker.js`, import the `scanner.js` module and create a new instance of the scanner.
-3. Use the scanner instance to scan the website and retrieve the accessibility issues.
-4. Display the accessibility issues in the `index.html` file using HTML and CSS.
+1. Create a new JavaScript file, `accessibility_checker.js`, that will serve as the main entry point for the client-side functionality.
+2. Import the `scanner.js` module into the `accessibility_checker.js` file.
+3. Create a function that initializes the scanner and performs the accessibility check.
+4. Add an event listener to the `index.html` file that calls the initialization function when the page loads.
 
-## accessibility-checker.js
+## accessibility_checker.js
 ```javascript
-import { Scanner } from './src/scanner.js';
+import { scanner } from './src/scanner.js';
 
-const scanner = new Scanner();
+function initAccessibilityChecker() {
+  const scannerInstance = new scanner();
+  scannerInstance.scan(document.documentElement)
+    .then((results) => {
+      const accessibilityIssues = results.filter((issue) => issue.severity === 'error');
+      const recommendations = results.filter((issue) => issue.severity === 'warning');
+      renderResults(accessibilityIssues, recommendations);
+    })
+    .catch((error) => {
+      console.error('Error scanning for accessibility issues:', error);
+    });
+}
 
-const scanWebsite = async (url) => {
-  try {
-    const issues = await scanner.scan(url);
-    return issues;
-  } catch (error) {
-    console.error(error);
-  }
-};
+function renderResults(accessibilityIssues, recommendations) {
+  const resultsContainer = document.getElementById('accessibility-results');
+  resultsContainer.innerHTML = '';
+  accessibilityIssues.forEach((issue) => {
+    const issueElement = document.createElement('li');
+    issueElement.textContent = issue.description;
+    resultsContainer.appendChild(issueElement);
+  });
+  recommendations.forEach((recommendation) => {
+    const recommendationElement = document.createElement('li');
+    recommendationElement.textContent = recommendation.description;
+    resultsContainer.appendChild(recommendationElement);
+  });
+}
 
-export { scanWebsite };
+document.addEventListener('DOMContentLoaded', initAccessibilityChecker);
 ```
 
 ## index.html
@@ -38,55 +53,46 @@ export { scanWebsite };
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Accessibility Checker</title>
-  <link rel="stylesheet" href="styles.css">
+  <style>
+    #accessibility-results {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+  </style>
 </head>
 <body>
   <h1>Accessibility Checker</h1>
-  <input id="url-input" type="text" placeholder="Enter website URL">
-  <button id="scan-button">Scan</button>
-  <div id="issues-container"></div>
-
-  <script type="module" src="accessibility-checker.js"></script>
-  <script>
-    import { scanWebsite } from './accessibility-checker.js';
-
-    const urlInput = document.getElementById('url-input');
-    const scanButton = document.getElementById('scan-button');
-    const issuesContainer = document.getElementById('issues-container');
-
-    scanButton.addEventListener('click', async () => {
-      const url = urlInput.value;
-      const issues = await scanWebsite(url);
-      issuesContainer.innerHTML = '';
-      issues.forEach((issue) => {
-        const issueElement = document.createElement('div');
-        issueElement.textContent = issue.description;
-        issuesContainer.appendChild(issueElement);
-      });
-    });
-  </script>
+  <ul id="accessibility-results"></ul>
+  <script type="module" src="accessibility_checker.js"></script>
 </body>
 </html>
 ```
 
-## Test: accessibility-checker.test.mjs
+## Test: accessibility_checker.test.mjs
 ```javascript
-import { scanWebsite } from './accessibility-checker.js';
+import { initAccessibilityChecker } from './accessibility_checker.js';
 
-describe('Accessibility Checker', () => {
-  it('scans a website and returns accessibility issues', async () => {
-    const url = 'https://example.com';
-    const issues = await scanWebsite(url);
-    expect(issues).toBeInstanceOf(Array);
+describe('initAccessibilityChecker', () => {
+  it('should scan the document for accessibility issues', async () => {
+    const scannerSpy = jest.spyOn(scanner, 'scan');
+    await initAccessibilityChecker();
+    expect(scannerSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('handles errors during scanning', async () => {
-    const url = 'invalid-url';
-    try {
-      await scanWebsite(url);
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error);
-    }
+  it('should render the accessibility issues and recommendations', async () => {
+    const accessibilityIssues = [
+      { severity: 'error', description: 'Issue 1' },
+      { severity: 'error', description: 'Issue 2' },
+    ];
+    const recommendations = [
+      { severity: 'warning', description: 'Recommendation 1' },
+      { severity: 'warning', description: 'Recommendation 2' },
+    ];
+    const renderResultsSpy = jest.fn();
+    await initAccessibilityChecker();
+    renderResultsSpy(accessibilityIssues, recommendations);
+    expect(renderResultsSpy).toHaveBeenCalledTimes(1);
   });
 });
 ```
