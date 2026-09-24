@@ -396,3 +396,24 @@ test("long content without section headings flags wcag-2.4.10 (AAA advisory)", (
   const short = "<p>short</p>";
   assert.ok(!rules(scanAdditionalHtml(short)).includes("wcag-2.4.10"));
 });
+
+test("invalid aria-* attribute names flag wcag-4.1.2; valid attrs pass", () => {
+  assert.ok(rules(scanAdditionalHtml('<div aria-lable="x">t</div>')).includes("wcag-4.1.2"));
+  assert.ok(rules(scanAdditionalHtml('<button aria-popup="true">b</button>')).includes("wcag-4.1.2"));
+  assert.ok(!rules(scanAdditionalHtml('<button aria-label="ok" aria-expanded="false">b</button>')).includes("wcag-4.1.2"));
+});
+
+test("body aria-hidden flags wcag-4.1.2", () => {
+  assert.ok(rules(scanAdditionalHtml('<body aria-hidden="true"><p>x</p></body>')).includes("wcag-4.1.2"));
+  assert.ok(!rules(scanAdditionalHtml('<body><p>x</p></body>')).includes("wcag-4.1.2"));
+});
+
+test("duplicate unnamed landmarks flag wcag-1.3.1; named or nested pass", () => {
+  assert.ok(rules(scanAdditionalHtml('<main><p>a</p></main><main><p>b</p></main>')).includes("wcag-1.3.1"));
+  assert.ok(rules(scanAdditionalHtml('<nav><a>x</a></nav><nav><a>y</a></nav>')).includes("wcag-1.3.1"));
+  assert.ok(rules(scanAdditionalHtml('<div role="search"></div><div role="search"></div>')).includes("wcag-1.3.1"));
+  // named landmarks are distinguishable — no flag
+  assert.ok(!rules(scanAdditionalHtml('<nav aria-label="primary"><a>x</a></nav><nav aria-label="secondary"><a>y</a></nav>')).includes("wcag-1.3.1"));
+  // article-nested <header> tags aren't banners — no flag
+  assert.ok(!rules(scanAdditionalHtml('<article><header>h1</header></article><article><header>h2</header></article>')).includes("wcag-1.3.1"));
+});

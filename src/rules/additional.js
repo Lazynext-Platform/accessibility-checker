@@ -404,6 +404,67 @@ export function scanAdditionalHtml(html) {
     }
   }
 
+  // WCAG 4.1.2 — aria-* attribute names that aren't real ARIA attributes
+  // (typos like aria-lable, invented props) are silently ignored by AT.
+  {
+    const ARIA_ATTRS = new Set([
+      "activedescendant", "atomic", "autocomplete", "braillelabel", "brailleroledescription",
+      "busy", "checked", "colcount", "colindex", "colindextext", "colspan", "controls",
+      "current", "describedby", "description", "details", "disabled", "dropeffect",
+      "errormessage", "expanded", "flowto", "grabbed", "haspopup", "hidden", "invalid",
+      "keyshortcuts", "label", "labelledby", "level", "live", "modal", "multiline",
+      "multiselectable", "orientation", "owns", "placeholder", "posinset", "pressed",
+      "readonly", "relevant", "required", "roledescription", "rowcount", "rowindex",
+      "rowindextext", "rowspan", "selected", "setsize", "sort", "valuemax", "valuemin",
+      "valuenow", "valuetext",
+    ]);
+    const badAttrs = new Set();
+    for (const m of src.matchAll(/\baria-([a-z]+)\s*=/gi)) {
+      const a = m[1].toLowerCase();
+      if (!ARIA_ATTRS.has(a)) badAttrs.add("aria-" + a);
+    }
+    if (badAttrs.size) {
+      issues.push({
+        rule: "wcag-4.1.2",
+        message: `invalid ARIA attribute name(s) — assistive tech ignores attributes it doesn't know: ${[...badAttrs].slice(0, 3).join(", ")}`,
+      });
+    }
+  }
+
+  // WCAG 4.1.2 — aria-hidden on <body> removes the entire page from the
+  // accessibility tree; always a defect (it survives into the DOM this way).
+  if (/<body\b[^>]*aria-hidden\s*=\s*["']true["']/i.test(src)) {
+    issues.push({
+      rule: "wcag-4.1.2",
+      message: "<body aria-hidden=true> hides the whole page from assistive technology",
+    });
+  }
+
+  // WCAG 1.3.1 — landmark regions of the same type must be distinguishable:
+  // two <main>/banner/contentinfo landmarks with no unique accessible name
+  // can't be told apart in landmark navigation.
+  {
+    const landmarkHits = [];
+    for (const m of src.matchAll(/<(main|nav)\b([^>]*)>|<(\w+)\b([^>]*\brole\s*=\s*["'](banner|contentinfo|main|navigation|complementary|search|form|region)["'][^>]*)>/gi)) {
+      // Only <main>/<nav> tags are unconditional landmarks — header/footer/
+      // aside/section are context-dependent (article-nested headers aren't
+      // banners), so counting them would false-positive. Explicit role=
+      // always is a landmark regardless of nesting.
+      const ltype = m[1] ? (m[1].toLowerCase() === "nav" ? "navigation" : "main") : m[5].toLowerCase();
+      const named = /\baria-label(?:ledby)?\s*=\s*["'][^"']+["']/i.test(m[2] || m[4] || "");
+      landmarkHits.push({ ltype, named });
+    }
+    const counts = new Map();
+    for (const h of landmarkHits) if (!h.named) counts.set(h.ltype, (counts.get(h.ltype) ?? 0) + 1);
+    const dups = [...counts.entries()].filter(([t, n]) => n > 1 && ["main", "banner", "contentinfo", "navigation", "complementary", "search"].includes(t)).map(([t]) => t);
+    if (dups.length) {
+      issues.push({
+        rule: "wcag-1.3.1",
+        message: `multiple unnamed "${dups.join('", "')}" landmarks — same-type landmarks need aria-label to be told apart`,
+      });
+    }
+  }
+
   // WCAG 1.3.1 — list/table structure must be real, not visual-only.
   {
     // <li> outside <ul>/<ol>: strip every valid list block; leftovers violate.
