@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Keyboard trap fixture</title></head>
+<body>
+  <main>
+    <h1>Trap fixture</h1>
+    <a href="#top">top link</a>
+    <div id="trap-region">
+      <button id="t1">trap one</button>
+      <button id="t2">trap two</button>
+    </div>
+    <a href="#never">never reached</a>
+  </main>
+  <script>
+    // A real keyboard trap: once focus enters #trap-region, Tab/Shift+Tab are
+    // hijacked to cycle between the two buttons forever — focus can never
+    // reach the "never reached" link or leave the region by keyboard.
+    const a = document.getElementById('t1'), b = document.getElementById('t2');
+    for (const el of [a, b]) {
+      el.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          (e.target === a ? b : a).focus();
+        }
+      });
+    }
+  </script>
+</body>
+</html>

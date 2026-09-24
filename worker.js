@@ -6,6 +6,8 @@ import { withRecommendations } from './src/recommendations.js';
 import { checkCrossPages } from './src/rules/crosspage.js';
 import { crawlSite } from './src/crawl.js';
 import { monitorKey, buildMonitorRecord } from './src/monitor.js';
+import { checkFocusDepth } from './src/rules/focuscycle.js';
+import { isEmail, isHttpUrl, isToken, withinBytes } from './src/validator.js';
 import { PAGE_HTML } from './src/page.js';
 import { STATIC_FILES } from './src/static.js';
 
@@ -127,7 +129,7 @@ export default {
     // Lead capture → platform /leads → Brevo contact + D1 event.
     if (request.method === 'POST' && url.pathname === '/lead') {
       const b = await request.json().catch(() => ({}));
-      if (!b.email?.includes('@')) return respond({ error: 'valid email required' }, 400);
+      if (!isEmail(b.email)) return respond({ error: 'valid email required' }, 400);
       const r = await platform(env, '/leads', { method: 'POST', body: JSON.stringify({ email: b.email, source: 'accessibility-checker' }) });
       const d = await r.json().catch(() => ({}));
       return respond({ ok: r.ok, ...(r.ok ? {} : { detail: d }) }, r.ok ? 200 : 502);
@@ -166,7 +168,7 @@ ${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms
     // customer clicks the confirmation link we email them (/confirm).
     if (request.method === 'POST' && url.pathname === '/cancel') {
       const b = await request.json().catch(() => ({}));
-      if (!b.license?.includes('@')) return respond({ error: 'purchase email required' }, 400);
+      if (!isEmail(b.license)) return respond({ error: 'purchase email required' }, 400);
       if (!(await isPro(env, b.license))) return respond({ error: 'no active Pro license for that email' }, 404);
       await requestConfirm(env, url.origin, b.license, 'cancel');
       return respond({ ok: true, confirm: 'email' });
@@ -175,7 +177,7 @@ ${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms
     // Executes a pending license action once the emailed link is clicked.
     if (request.method === 'GET' && url.pathname === '/confirm') {
       const token = url.searchParams.get('token') ?? '';
-      const raw = /^[a-f0-9-]{36}$/i.test(token) ? await kvGet(env, `pending:${token}`) : null;
+      const raw = isToken(token) ? await kvGet(env, `pending:${token}`) : null;
       const pend = raw ? JSON.parse(raw) : null;
       if (!pend) return confirmPage('Link expired', '<p>This confirmation link is invalid or has expired.</p>');
       await platform(env, '/kv/delete', { method: 'POST', body: JSON.stringify({ key: `pending:${token}` }) });
@@ -218,7 +220,7 @@ ${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms
       let renderError = null;
       let sitePages = null;
 
-      if (body.url && /^https?:\/\//i.test(body.url) && body.site === true) {
+      if (isHttpUrl(body.url) && body.site === true) {
         // Site-wide scan: BFS same-origin pages, apply the HTML ruleset to
         // each, aggregate with per-page attribution. Free: 3 pages, Pro: 10.
         const maxPages = pro ? 10 : 3;
@@ -237,7 +239,7 @@ ${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms
         } catch (e) {
           return respond({ error: 'site crawl failed', detail: String(e?.message ?? e) }, 502);
         }
-      } else if (body.url && /^https?:\/\//i.test(body.url)) {
+      } else if (isHttpUrl(body.url)) {
         try {
           const r = await platform(env, '/render', { method: 'POST', body: JSON.stringify({ url: cacheBust(body.url) }) });
           if (!r.ok) throw new Error(`render ${r.status}`);
@@ -249,6 +251,7 @@ ${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms
             .concat(checkContrastAAA(page.styles))
             .concat(checkFacts(page.facts))
             .concat(checkFocus(page.focus))
+            .concat(checkFocusDepth(page.focus, page.focusable, page.escape))
             .concat(scanKeyboardStatics(page.html));
           rendered = true;
         } catch (e) {
@@ -257,7 +260,7 @@ ${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms
           issues = scanHtml(page).concat(scanAdditionalHtml(page)).concat(scanWcag22(page)).concat(scanKeyboardStatics(page));
         }
       } else if (typeof body.html === 'string' && body.html.trim()) {
-        if (body.html.length > 512_000) return respond({ error: 'html too large (512KB max)' }, 413);
+        if (!withinBytes(body.html, 512_000)) return respond({ error: 'html too large (512KB max)' }, 413);
         issues = scanHtml(body.html).concat(scanAdditionalHtml(body.html)).concat(scanWcag22(body.html)).concat(scanKeyboardStatics(body.html));
       } else {
         return respond({ error: 'provide {"url"} or {"html"}' }, 400);
@@ -292,7 +295,7 @@ ${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms
     if (url.pathname === '/monitor' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       if (!(await isPro(env, b.license))) return respond({ error: 'pro license required', upgrade: '/checkout' }, 402);
-      if (!b.url || !/^https?:\/\//i.test(b.url)) return respond({ error: 'provide {"url"}' }, 400);
+      if (!isHttpUrl(b.url)) return respond({ error: 'provide {"url"}' }, 400);
       await requestConfirm(env, url.origin, b.license, 'monitor_add', { url: b.url });
       return respond({ ok: true, confirm: 'email' });
     }
