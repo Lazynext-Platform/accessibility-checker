@@ -1,0 +1,63 @@
+name: Accessibility Checker
+description: >-
+  Scan a deployed URL for WCAG 2.1/2.2 violations and fail the build when the
+  score drops below a threshold. Renders the page in real Chromium, presses
+  Tab to trace keyboard focus, and computes contrast from computed styles.
+author: Lazynext
+branding:
+  icon: check-circle
+  color: purple
+inputs:
+  url:
+    description: URL to scan (must be publicly reachable, or pass a license for higher limits)
+    required: true
+  license:
+    description: Pro license key (purchase email) — raises limits and enables rendered scans under load
+    required: false
+    default: ""
+  site:
+    description: Crawl same-origin pages (3 free / 10 Pro) and report the mean score
+    required: false
+    default: "false"
+  fail-under:
+    description: Fail the step when the score is below this value (0-100)
+    required: false
+    default: "80"
+  fail-on:
+    description: Comma-separated rule ids that always fail the build (e.g. wcag-1.1.1,wcag-2.1.2)
+    required: false
+    default: ""
+  api:
+    description: Scan endpoint override
+    required: false
+    default: "https://checker.lazynext.com/scan"
+outputs:
+  score:
+    description: Accessibility score (0-100)
+    value: ${{ steps.scan.outputs.score }}
+  issues:
+    description: Number of findings
+    value: ${{ steps.scan.outputs.issues }}
+runs:
+  using: composite
+  steps:
+    - id: scan
+      shell: bash
+      env:
+        URL: ${{ inputs.url }}
+        LICENSE: ${{ inputs.license }}
+        SITE: ${{ inputs.site }}
+        FAIL_UNDER: ${{ inputs.fail-under }}
+        FAIL_ON: ${{ inputs.fail-on }}
+        API: ${{ inputs.api }}
+      run: |
+        out=$(node "$GITHUB_ACTION_PATH/scripts/ci-scan.mjs" \
+          --url "$URL" ${LICENSE:+--license "$LICENSE"} \
+          --site "$SITE" --fail-under "$FAIL_UNDER" \
+          ${FAIL_ON:+--fail-on "$FAIL_ON"} --api "$API") || status=$?
+        echo "$out"
+        score=$(echo "$out" | sed -n 's/^Accessibility score: \([0-9]*\).*/\1/p' | head -1)
+        count=$(echo "$out" | grep -c '  wcag-')
+        echo "score=${score:-0}" >> "$GITHUB_OUTPUT"
+        echo "issues=${count:-0}" >> "$GITHUB_OUTPUT"
+        exit ${status:-0}

@@ -94,9 +94,26 @@ alert when a page's score drops ≥ 10 points), `GET /health`.
 - `worker.js` — Cloudflare Worker: scan API, rate limits, license checks,
   shareable reports, lead capture, trial checkout, self-service cancel,
   emailed Pro reports, MCP/A2A/widget/PWA surfaces
-- `accessibility_checker.py` — standalone Python engine
 - `index.html` — the Pages site (scan UI, site scans, monitors, trial CTA,
   cancel, email-report opt-in, 402 lead funnel)
+- `action.yml` + `scripts/ci-scan.mjs` — GitHub Action for CI gating
+
+## GitHub Action
+
+Gate a deploy on accessibility score:
+
+```yaml
+- uses: Lazynext-Platform/accessibility-checker@main
+  with:
+    url: https://staging.example.com
+    fail-under: 80            # fail the build below this score
+    # license: ${{ secrets.A11Y_LICENSE }}   # Pro: higher limits
+    # site: true                             # crawl same-origin pages
+    # fail-on: wcag-1.1.1,wcag-2.1.2         # rules that always fail
+```
+
+Outputs `score` and `issues`; findings land in the step summary with the
+report link. Standalone: `node scripts/ci-scan.mjs --url <u> --fail-under 80`.
 - `sdk/js` + `sdk/go` — API clients; `scripts/` — sync-page bundle + CLI
 - `test/` — `node --test` suite (109 tests), runs in CI on every push
 
