@@ -176,8 +176,9 @@ export default {
       return new Response(`<!doctype html><meta charset="utf-8"><title>Accessibility report — ${esc(rep.url ?? 'paste')}</title>
 <body style="font-family:system-ui;max-width:800px;margin:2rem auto;padding:0 1rem">
 <h1>Accessibility report</h1><p><b>${esc(rep.url ?? 'pasted HTML')}</b> · ${new Date(rep.ts).toUTCString()} · rendered: ${rep.rendered}</p>
-<p style="font-size:3rem;margin:0"><b>${rep.score}</b>/100</p>
+<p style="font-size:3rem;margin:0"><b>${rep.score}</b>/100${rep.site ? ' <span style="font-size:1rem;color:#555">site-wide (mean of ' + esc(String((rep.pages ?? []).length)) + ' pages)</span>' : ''}</p>
 ${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms ? 'conforms' : `${rep.section508.criteria_failed.length} WCAG criteria failed — FPC ${esc(rep.section508.clauses_implicated.join(', '))}`}</p>` : ''}
+${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;border-collapse:collapse;margin:0.5rem 0">${rep.pages.map((p) => `<tr><td style="font-family:monospace;font-size:0.85em">${esc(p.url)}</td><td style="text-align:right"><b>${p.score}</b>/100</td></tr>`).join('')}</table>` : ''}
 <p><a href="/report/${esc(id)}.csv">Download CSV</a> · <a href="/report/${esc(id)}.pdf">Download PDF</a></p>
 <table style="width:100%;border-collapse:collapse">${rows || '<tr><td>No issues found.</td></tr>'}</table>
 <p><a href="/">Run your own scan →</a></p>`,
