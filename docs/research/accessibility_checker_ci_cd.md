@@ -1,21 +1,34 @@
-# Introduction to Continuous Integration and Continuous Deployment (CI/CD)
-The Accessibility Checker tool requires a robust and automated deployment process to ensure timely updates and a seamless user experience. This document outlines the implementation of a Continuous Integration and Continuous Deployment (CI/CD) pipeline using GitHub Actions.
-
-## Prerequisites
-- GitHub repository with the Accessibility Checker codebase
-- GitHub Actions workflow file (.yml) in the .github/workflows directory
-- Node.js and npm installed on the development machine
+# Introduction to CI/CD for Accessibility Checker
+The Accessibility Checker is an AI-powered tool designed to scan small business websites for accessibility compliance issues and provide recommendations for improvement. As the project grows, implementing a Continuous Integration/Continuous Deployment (CI/CD) pipeline is crucial for automating testing and deployment processes, ensuring the tool remains reliable, efficient, and up-to-date.
 
 ## CI/CD Pipeline Overview
-The CI/CD pipeline will consist of the following stages:
-1. **Build**: Install dependencies, build, and bundle the Accessibility Checker code
-2. **Test**: Run unit tests and integration tests to ensure the code is functional and stable
-3. **Deploy**: Deploy the built and tested code to the production environment
+The CI/CD pipeline for Accessibility Checker will be designed to automate the following processes:
+- **Code Validation**: Automatically validate code changes for syntax errors, formatting, and best practices.
+- **Unit Testing**: Run unit tests to ensure individual components of the Accessibility Checker are functioning as expected.
+- **Integration Testing**: Perform integration tests to verify how different components interact with each other.
+- **Deployment**: Automatically deploy the Accessibility Checker to production after successful testing.
 
-## GitHub Actions Workflow File
-Create a new file in the .github/workflows directory, e.g., `deploy.yml`, with the following contents:
+## Tools and Technologies
+For the CI/CD pipeline, we will utilize the following tools and technologies:
+- **GitHub Actions**: For automating the build, test, and deployment processes.
+- **Node.js**: As the runtime environment for the Accessibility Checker.
+- **Jest**: For unit testing and integration testing.
+
+## CI/CD Pipeline Steps
+The pipeline will consist of the following steps:
+1. **Checkout Code**: Checkout the code from the GitHub repository.
+2. **Install Dependencies**: Install all dependencies required for the project using `npm install`.
+3. **Linting and Formatting**: Run linting and formatting checks using `eslint` and `prettier`.
+4. **Unit Testing**: Execute unit tests using `jest`.
+5. **Integration Testing**: Perform integration tests using `jest`.
+6. **Build**: Build the Accessibility Checker for production.
+7. **Deployment**: Deploy the built Accessibility Checker to the production environment.
+
+## Implementing the CI/CD Pipeline
+To implement the CI/CD pipeline, we will create a new GitHub Actions workflow file named `.github/workflows/ci-cd.yml`.
+
 ```yml
-name: Deploy Accessibility Checker
+name: CI/CD Pipeline
 
 on:
   push:
@@ -23,7 +36,7 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -32,34 +45,61 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build and bundle
+      - name: Linting and formatting
+        run: |
+          npm run lint
+          npm run format
+
+      - name: Unit testing
+        run: npm run test:unit
+
+      - name: Integration testing
+        run: npm run test:integration
+
+      - name: Build
         run: npm run build
 
-      - name: Run tests
-        run: npm run test
-
-      - name: Deploy to production
-        uses: peaceiris/actions-gh-pages@v3
+      - name: Deployment
+        uses: gh-pages/action@v2
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+          publish_dir: ./build
 ```
-This workflow file defines a pipeline that:
-- Triggers on push events to the main branch
-- Checks out the code
-- Installs dependencies using npm
-- Builds and bundles the code using the `build` script
-- Runs tests using the `test` script
-- Deploys the built and bundled code to the production environment using the `peaceiris/actions-gh-pages` action
 
-## Configuration and Secrets
-To use the `peaceiris/actions-gh-pages` action, you need to configure the `GITHUB_TOKEN` secret in your repository settings. Go to your repository settings > Actions > Secrets, and add a new secret named `GITHUB_TOKEN` with the value of your GitHub token.
+## Testing the CI/CD Pipeline
+To test the CI/CD pipeline, we will create test files for unit testing and integration testing using Jest.
 
-## Deployment
-The deployment process will create a `dist` directory containing the built and bundled Accessibility Checker code. This directory will be published to the `gh-pages` branch, which will serve as the production environment.
+```javascript
+// tests/unit/crawl.test.js
+import crawl from '../src/crawl';
 
-## Verification
-To verify the deployment, navigate to your repository settings > GitHub Pages, and ensure that the `gh-pages` branch is selected as the source. Then, visit the deployed site at `https://<your-username>.github.io/<your-repo-name>` to test the Accessibility Checker tool.
+describe('crawl function', () => {
+  it('should crawl a website and return accessibility issues', async () => {
+    const websiteUrl = 'https://example.com';
+    const issues = await crawl(websiteUrl);
+    expect(issues).toBeInstanceOf(Array);
+  });
+});
+```
+
+```javascript
+// tests/integration/accessibility-checker.test.js
+import { AccessibilityChecker } from '../src/accessibility-checker';
+
+describe('AccessibilityChecker class', () => {
+  it('should create an instance of AccessibilityChecker', () => {
+    const checker = new AccessibilityChecker();
+    expect(checker).toBeInstanceOf(AccessibilityChecker);
+  });
+
+  it('should scan a website and return accessibility issues', async () => {
+    const websiteUrl = 'https://example.com';
+    const checker = new AccessibilityChecker();
+    const issues = await checker.scan(websiteUrl);
+    expect(issues).toBeInstanceOf(Array);
+  });
+});
+```
 
 ## Conclusion
-The CI/CD pipeline using GitHub Actions ensures a scalable and automated deployment process for the Accessibility Checker tool. With this pipeline in place, the development team can focus on delivering new features and updates, while the pipeline handles the build, test, and deployment processes.
+The CI/CD pipeline for Accessibility Checker automates testing and deployment processes, ensuring the tool remains reliable and efficient. By utilizing GitHub Actions, Node.js, and Jest, we can ensure that the Accessibility Checker is thoroughly tested and deployed to production after each code change.
