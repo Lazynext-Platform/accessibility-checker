@@ -1,0 +1,69 @@
+// manifest.js — every rule the scanner can emit, with WCAG metadata.
+// Served at GET /rules. Kept honest by test/rules-manifest.test.mjs, which
+// extracts every emitted rule id from the sources and asserts set equality.
+
+// how: static = markup scan · rendered = needs computed styles/focus trace ·
+//      crosspage = needs a site scan (multiple pages)
+
+export const RULES = [
+  // ── Perceivable ────────────────────────────────────────────────────────
+  { rule: "wcag-1.1.1",  name: "Non-text Content",          level: "A",   wcag: "2.0", how: "static",    detects: "img/area/image-input/embed/svg/canvas/object missing alt, title, or fallback text" },
+  { rule: "wcag-1.2.1",  name: "Audio-only and Video-only (Prerecorded)", level: "A", wcag: "2.0", how: "rendered", detects: "<video>/<audio> elements without captions or a text alternative" },
+  { rule: "wcag-1.3.1",  name: "Info and Relationships",    level: "A",   wcag: "2.0", how: "static",    detects: "heading skips/no <h1>/no headings, missing <main> landmark, stray <li>/<dt>/<dd>, <fieldset> w/o <legend>, <optgroup> w/o label, tables w/o <th>, duplicate landmarks" },
+  { rule: "wcag-1.3.3",  name: "Sensory Characteristics",   level: "A",   wcag: "2.0", how: "static",    detects: "instructions relying on position/shape/sound alone (e.g. 'the menu on the left')" },
+  { rule: "wcag-1.3.4",  name: "Orientation",               level: "AA",  wcag: "2.1", how: "static",    detects: "CSS locking orientation (orientation: media query w/o fallback)" },
+  { rule: "wcag-1.3.5",  name: "Identify Input Purpose",    level: "AA",  wcag: "2.1", how: "static",    detects: "personal-data fields (email/name/tel/etc.) missing autocomplete" },
+  { rule: "wcag-1.4.1",  name: "Use of Color",              level: "A",   wcag: "2.0", how: "rendered",  detects: "links inside prose distinguished by color alone (<3:1 vs body text, no underline)" },
+  { rule: "wcag-1.4.2",  name: "Audio Control",             level: "A",   wcag: "2.0", how: "static",    detects: "autoplaying <audio>/<video> (unmuted) without pause/stop controls" },
+  { rule: "wcag-1.4.3",  name: "Contrast (Minimum)",        level: "AA",  wcag: "2.0", how: "rendered",  detects: "text below 4.5:1 contrast ratio (3:1 large text)" },
+  { rule: "wcag-1.4.4",  name: "Resize Text",               level: "AA",  wcag: "2.0", how: "static",    detects: "viewport user-scalable=no or maximum-scale < 2" },
+  { rule: "wcag-1.4.5",  name: "Images of Text",            level: "AA",  wcag: "2.0", how: "static",    detects: "images whose alt text suggests they carry significant text (heuristic)" },
+  { rule: "wcag-1.4.6",  name: "Contrast (Enhanced)",       level: "AAA", wcag: "2.0", how: "rendered",  detects: "text below 7:1 contrast ratio — reported separately from AA failures" },
+  { rule: "wcag-1.4.8",  name: "Visual Presentation",       level: "AAA", wcag: "2.0", how: "static",    detects: "text-align: justify without hyphenation support" },
+  { rule: "wcag-1.4.10", name: "Reflow",                    level: "AA",  wcag: "2.1", how: "static",    detects: "fixed pixel widths on content containers that prevent reflow at 320px" },
+  { rule: "wcag-1.4.11", name: "Non-text Contrast",         level: "AA",  wcag: "2.1", how: "rendered",  detects: "control boundaries/states below 3:1 against adjacent colors" },
+  { rule: "wcag-1.4.12", name: "Text Spacing",              level: "AA",  wcag: "2.1", how: "rendered",  detects: "content clipped when WCAG text-spacing metrics are applied" },
+  { rule: "wcag-1.4.13", name: "Content on Hover or Focus", level: "AAA", wcag: "2.1", how: "static",    detects: "title-attr/popup content with no dismiss mechanism (warn-class heuristic)" },
+  // ── Operable ───────────────────────────────────────────────────────────
+  { rule: "wcag-2.1.1",  name: "Keyboard",                  level: "A",   wcag: "2.0", how: "rendered",  detects: "no focusable elements, unreachable focusables, tabindex=-1 on natively focusable elements, scrollable regions not keyboard-reachable" },
+  { rule: "wcag-2.1.2",  name: "No Keyboard Trap",          level: "A",   wcag: "2.0", how: "rendered",  detects: "Tab-swallowing keydown handlers, undismissable dialogs, focus stall/cycle in a real 24-press Tab trace, Escape ignored inside dialogs" },
+  { rule: "wcag-2.1.4",  name: "Character Key Shortcuts",   level: "A",   wcag: "2.1", how: "static",    detects: "accesskey attributes / single-character key handlers with no remapping or off switch" },
+  { rule: "wcag-2.2.1",  name: "Timing Adjustable",         level: "A",   wcag: "2.0", how: "static",    detects: "<meta http-equiv=refresh> timed reload/redirect" },
+  { rule: "wcag-2.2.2",  name: "Pause, Stop, Hide",         level: "A",   wcag: "2.0", how: "static",    detects: "<marquee> and auto-moving content with no pause control" },
+  { rule: "wcag-2.3.1",  name: "Three Flashes",             level: "A",   wcag: "2.0", how: "static",    detects: "<blink> / text-decoration:blink flashing content" },
+  { rule: "wcag-2.4.1",  name: "Bypass Blocks",             level: "A",   wcag: "2.0", how: "rendered",  detects: "no skip-navigation link to main content" },
+  { rule: "wcag-2.4.2",  name: "Page Titled",               level: "A",   wcag: "2.0", how: "static",    detects: "missing or empty <title>" },
+  { rule: "wcag-2.4.3",  name: "Focus Order",               level: "A",   wcag: "2.0", how: "rendered",  detects: "positive tabindex, focusables Tab never reaches, focus entering regions it can't exit" },
+  { rule: "wcag-2.4.4",  name: "Link Purpose (In Context)", level: "A",   wcag: "2.0", how: "static",    detects: "vague link text ('click here'), javascript:/dead '#'-only links, dangling fragment targets" },
+  { rule: "wcag-2.4.5",  name: "Multiple Ways",             level: "AA",  wcag: "2.0", how: "static",    detects: "sites offering only one way to find pages (no search/sitemap/consistent nav)" },
+  { rule: "wcag-2.4.6",  name: "Headings and Labels",       level: "AA",  wcag: "2.0", how: "static",    detects: "empty headings, empty <label> wrapping no control" },
+  { rule: "wcag-2.4.7",  name: "Focus Visible",             level: "AA",  wcag: "2.0", how: "static",    detects: "inline or stylesheet outline:none/0 without a :focus-visible replacement" },
+  { rule: "wcag-2.4.10", name: "Section Headings",          level: "AAA", wcag: "2.0", how: "static",    detects: "long text content organized without headings" },
+  { rule: "wcag-2.4.11", name: "Focus Not Obscured (Minimum)", level: "AA", wcag: "2.2", how: "rendered", detects: "focused element covered by sticky/fixed overlays at its scroll position" },
+  { rule: "wcag-2.4.13", name: "Focus Appearance",          level: "AAA", wcag: "2.2", how: "rendered",  detects: "focus indicator absent or below size/contrast thresholds in the live trace" },
+  { rule: "wcag-2.5.1",  name: "Pointer Gestures",          level: "A",   wcag: "2.1", how: "static",    detects: "multipoint/path-based gesture handlers (pointerdown+pointermove, ongesture*) with no single-pointer equivalent" },
+  { rule: "wcag-2.5.2",  name: "Pointer Cancellation",      level: "A",   wcag: "2.1", how: "static",    detects: "actions firing on the down-event (mousedown/touchstart navigate/submit) with no way to abort" },
+  { rule: "wcag-2.5.3",  name: "Label in Name",             level: "A",   wcag: "2.1", how: "static",    detects: "aria-label that doesn't contain the control's visible text" },
+  { rule: "wcag-2.5.4",  name: "Motion Actuation",          level: "A",   wcag: "2.1", how: "static",    detects: "deviceorientation/devicemotion handlers driving functionality with no equivalent control" },
+  { rule: "wcag-2.5.7",  name: "Dragging Movements",        level: "AA",  wcag: "2.2", how: "static",    detects: "draggable elements / drag-event handlers with no single-pointer alternative" },
+  { rule: "wcag-2.5.8",  name: "Target Size (Minimum)",     level: "AA",  wcag: "2.2", how: "rendered",  detects: "interactive targets under 24×24 CSS px (exempting inline-text links and UA-default controls)" },
+  // ── Understandable ─────────────────────────────────────────────────────
+  { rule: "wcag-3.1.1",  name: "Language of Page",          level: "A",   wcag: "2.0", how: "static",    detects: "<html> missing lang" },
+  { rule: "wcag-3.1.2",  name: "Language of Parts",         level: "AA",  wcag: "2.0", how: "static",    detects: "content in a different language than the page without a lang attribute" },
+  { rule: "wcag-3.2.1",  name: "On Focus",                  level: "A",   wcag: "2.0", how: "static",    detects: "autofocus and onfocus handlers that navigate/submit/click" },
+  { rule: "wcag-3.2.2",  name: "On Input",                  level: "A",   wcag: "2.0", how: "static",    detects: "onchange/oninput auto-submission and select jump-menus" },
+  { rule: "wcag-3.2.3",  name: "Consistent Navigation",     level: "AA",  wcag: "2.0", how: "crosspage", detects: "shared nav links appearing in different relative order across pages" },
+  { rule: "wcag-3.2.4",  name: "Consistent Identification", level: "AA",  wcag: "2.0", how: "crosspage", detects: "same link target carrying different accessible names on different pages" },
+  { rule: "wcag-3.2.5",  name: "Change on Request",         level: "AAA", wcag: "2.0", how: "rendered",  detects: "target=_blank links without rel=noopener (context changes users can't control)" },
+  { rule: "wcag-3.2.6",  name: "Consistent Help",           level: "A",   wcag: "2.2", how: "crosspage", detects: "help mechanisms missing on some pages or appearing in inconsistent order" },
+  { rule: "wcag-3.3.2",  name: "Labels or Instructions",    level: "A",   wcag: "2.0", how: "static",    detects: "inputs without label/aria-label/aria-labelledby (placeholders don't count)" },
+  { rule: "wcag-3.3.7",  name: "Redundant Entry",           level: "A",   wcag: "2.2", how: "static",    detects: "same information requested twice in one form (duplicate fields)" },
+  { rule: "wcag-3.3.8",  name: "Accessible Authentication (Minimum)", level: "AA", wcag: "2.2", how: "static", detects: "password fields blocking paste or missing autocomplete, forcing cognitive recall" },
+  // ── Robust ─────────────────────────────────────────────────────────────
+  { rule: "wcag-4.1.1",  name: "Parsing",                   level: "A",   wcag: "2.0", how: "rendered",  detects: "duplicate id attributes" },
+  { rule: "wcag-4.1.2",  name: "Name, Role, Value",         level: "A",   wcag: "2.0", how: "static",    detects: "icon-only controls with no accessible name, iframes w/o title, invalid aria-* names, aria-hidden on <body> or focusable content, nested interactive elements" },
+  { rule: "wcag-4.1.3",  name: "Status Messages",           level: "AA",  wcag: "2.1", how: "static",    detects: "status/alert regions without role=status/alert or aria-live" },
+];
+
+// Index for O(1) lookups (used by report tooling)
+export const RULE_INDEX = Object.fromEntries(RULES.map((r) => [r.rule, r]));

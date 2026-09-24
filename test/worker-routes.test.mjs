@@ -116,6 +116,20 @@ test('GET /badge/:id.svg renders a score-colored SVG badge', async () => {
   assert.ok(svgLow.includes('#e05d44'), 'score < 50 is red');
 });
 
+test('GET /rules returns the full coverage manifest', async () => {
+  const r = await get('/rules');
+  assert.equal(r.status, 200);
+  const body = await r.json();
+  assert.equal(body.count, 53);
+  assert.equal(body.rules.length, 53);
+  const ids = new Set(body.rules.map((x) => x.rule));
+  for (const id of ['wcag-1.1.1', 'wcag-2.1.2', 'wcag-2.5.8', 'wcag-3.3.8', 'wcag-4.1.3'])
+    assert.ok(ids.has(id), `missing ${id}`);
+  const trap = body.rules.find((x) => x.rule === 'wcag-2.1.2');
+  assert.equal(trap.name, 'No Keyboard Trap');
+  assert.equal(trap.level, 'A');
+});
+
 test('GET /report/:id.pdf proxies the platform PDF render', async () => {
   const env = mockEnv(
     { 'report:abc': JSON.stringify({ url: 'https://x', ts: 0, score: 88, rendered: false, issues: [] }) },

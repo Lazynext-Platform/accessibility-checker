@@ -4,6 +4,7 @@ import { scanWcag22 } from './src/rules/wcag22.js';
 import { section508Report } from './src/rules/section508.js';
 import { withRecommendations } from './src/recommendations.js';
 import { checkCrossPages } from './src/rules/crosspage.js';
+import { RULES } from './src/rules/manifest.js';
 import { crawlSite } from './src/crawl.js';
 import { monitorKey, buildMonitorRecord } from './src/monitor.js';
 import { checkFocusDepth } from './src/rules/focuscycle.js';
@@ -121,6 +122,7 @@ export default {
         checkout: 'GET /checkout', cancel: 'POST /cancel {"license": email}',
         confirm: 'GET /confirm?token=…', monitor: 'GET|POST|DELETE /monitor (Pro)',
         lead: 'POST /lead {"email"}', report: 'GET /report/:id',
+        badge: 'GET /badge/:id.svg', rules: 'GET /rules',
         site: 'https://checker.lazynext.com/',
       });
     }
@@ -151,6 +153,12 @@ export default {
       const r = await platform(env, '/leads', { method: 'POST', body: JSON.stringify({ email: b.email, source: 'accessibility-checker' }) });
       const d = await r.json().catch(() => ({}));
       return respond({ ok: r.ok, ...(r.ok ? {} : { detail: d }) }, r.ok ? 200 : 502);
+    }
+
+    // Rule coverage manifest — every WCAG criterion the scanner can emit, with
+    // name/level/version/detection path. Makes "X checks" claims verifiable.
+    if (request.method === 'GET' && url.pathname === '/rules') {
+      return respond({ count: RULES.length, rules: RULES });
     }
 
     // Public score badge — shields-style SVG for a stored report. Scanned sites
