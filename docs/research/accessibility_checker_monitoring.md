@@ -1,100 +1,72 @@
 # Accessibility Checker Monitoring
-The Accessibility Checker is a client-side application that scans small business websites for accessibility compliance issues and provides recommendations for improvement. To ensure the application is meeting its intended goals and providing value to its users, it's essential to set up monitoring and analytics.
+## Introduction
+To ensure the Accessibility Checker tool provides a seamless experience for small business owners and solo entrepreneurs, it's essential to set up monitoring for the D1 database performance. This document outlines the approach and implementation details for monitoring the database performance.
 
-## Tracking Monthly Recurring Revenue (MRR)
-To track MRR, we will use a combination of Google Analytics and a custom analytics solution. We will track the following events:
+## Why Monitor Database Performance?
+Monitoring database performance is crucial to identify potential bottlenecks, optimize queries, and ensure the overall health of the database. This is particularly important for the Accessibility Checker tool, which relies on the database to store and retrieve accessibility compliance data.
 
-* **Plan selection**: When a user selects a plan (e.g., monthly or yearly subscription)
-* **Payment success**: When a user completes a payment
-* **Payment failure**: When a user's payment fails
-* **Subscription cancellation**: When a user cancels their subscription
+## Monitoring Tools
+We will use a combination of tools to monitor the D1 database performance:
 
-We will use the `gtag` library to send events to Google Analytics. We will also store the events in a custom analytics database to calculate MRR.
+* **New Relic**: For monitoring database queries, transactions, and overall performance.
+* **Datadog**: For monitoring database metrics, such as connection pool usage, query latency, and error rates.
+* **GitHub Actions**: For automating monitoring tasks and alerting the team to potential issues.
 
-## Setting up Google Analytics
-To set up Google Analytics, we need to create a new property and get the tracking ID. We will then add the Google Analytics script to our `index.html` file.
+## Implementation
+To set up monitoring for the D1 database performance, we will follow these steps:
 
-```html
-<!-- index.html -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-TRACKING_ID"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag() {
-    window.dataLayer.push(arguments);
-  }
-  gtag('js', new Date());
-  gtag('config', 'G-TRACKING_ID');
-</script>
-```
+1. **Install New Relic Agent**: Install the New Relic agent on the database instance to collect performance metrics.
+2. **Configure Datadog Integration**: Configure the Datadog integration with the D1 database to collect metrics and logs.
+3. **Create GitHub Actions Workflow**: Create a GitHub Actions workflow to automate monitoring tasks, such as running database queries and checking for errors.
+4. **Set up Alerting**: Set up alerting rules in New Relic and Datadog to notify the team of potential issues, such as slow queries or high error rates.
 
-## Tracking Events
-We will use the `gtag` function to track events. For example, when a user selects a plan, we will send the following event:
+## Monitoring Metrics
+We will monitor the following metrics to ensure the D1 database performance is optimal:
 
+* **Query Latency**: The time it takes for the database to respond to queries.
+* **Connection Pool Usage**: The number of connections in use by the database.
+* **Error Rates**: The number of errors occurring in the database.
+* **Transaction Rates**: The number of transactions being processed by the database.
+
+## Alerting Rules
+We will set up the following alerting rules to notify the team of potential issues:
+
+* **Slow Query Alert**: Triggered when a query takes longer than 500ms to respond.
+* **High Error Rate Alert**: Triggered when the error rate exceeds 1% of total transactions.
+* **Connection Pool Exhaustion Alert**: Triggered when the connection pool usage exceeds 80%.
+
+## Example Use Case
+To demonstrate the monitoring setup, let's consider an example use case:
+
+* A small business owner uses the Accessibility Checker tool to scan their website for accessibility compliance issues.
+* The tool queries the D1 database to retrieve accessibility data.
+* The database responds with the required data, and the tool displays the results to the user.
+* The monitoring tools collect performance metrics, such as query latency and connection pool usage.
+* If the query latency exceeds 500ms, the slow query alert is triggered, and the team is notified to investigate and optimize the query.
+
+## Code Example
+To illustrate the monitoring setup, here is an example code snippet that demonstrates how to use the `node:test` framework to test the database performance:
 ```javascript
-// src/scanner.js
-import { gtag } from '../utils/gtag';
+import { test } from 'node:test';
+import { Pool } from 'pg';
 
-// ...
-
-// When a user selects a plan
-gtag('event', 'plan_selection', {
-  'event_category': 'subscription',
-  'event_label': 'monthly',
-  'value': 9.99
+const pool = new Pool({
+  user: 'username',
+  host: 'localhost',
+  database: 'database',
+  password: 'password',
+  port: 5432,
 });
-```
 
-## Custom Analytics Database
-We will use a custom analytics database to store events and calculate MRR. We will use the `worker.js` file to send events to the database.
-
-```javascript
-// worker.js
-import { fetch } from 'node-fetch';
-
-// ...
-
-// When a user completes a payment
-fetch('/api/analytics', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    event: 'payment_success',
-    revenue: 9.99
-  })
+test('database performance', async (t) => {
+  const query = 'SELECT * FROM accessibility_data';
+  const startTime = Date.now();
+  const result = await pool.query(query);
+  const endTime = Date.now();
+  const latency = endTime - startTime;
+  t.ok(latency < 500, `query latency: ${latency}ms`);
 });
+
+pool.end();
 ```
-
-## Calculating MRR
-We will calculate MRR by summing up the revenue from all successful payments in the last 30 days.
-
-```javascript
-// src/monitor.js
-import { getAnalyticsData } from '../utils/analytics';
-
-// ...
-
-// Calculate MRR
-const mrr = getAnalyticsData('payment_success', 30).reduce((acc, curr) => acc + curr.revenue, 0);
-```
-
-## Displaying MRR
-We will display the MRR on the dashboard.
-
-```html
-<!-- index.html -->
-<div>
-  <h2>Monthly Recurring Revenue (MRR)</h2>
-  <p>$<span id="mrr"></span></p>
-</div>
-
-<script>
-  // ...
-
-  // Update MRR display
-  document.getElementById('mrr').innerText = mrr.toFixed(2);
-</script>
-```
-
-By setting up analytics for tracking MRR, we can gain insights into the revenue generated by the Accessibility Checker and make data-driven decisions to improve the application.
+This code snippet demonstrates how to use the `node:test` framework to test the database performance by measuring the query latency. If the latency exceeds 500ms, the test fails, and the team is notified to investigate and optimize the query.
