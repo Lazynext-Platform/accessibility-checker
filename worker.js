@@ -1,6 +1,7 @@
 import { scanHtml, checkContrast, checkFacts, checkFocus, score } from './src/scanner.js';
 import { scanAdditionalHtml, checkContrastAAA, scanKeyboardStatics } from './src/rules/additional.js';
 import { scanWcag22 } from './src/rules/wcag22.js';
+import { section508Report } from './src/rules/section508.js';
 import { checkCrossPages } from './src/rules/crosspage.js';
 import { crawlSite } from './src/crawl.js';
 import { monitorKey, buildMonitorRecord } from './src/monitor.js';
@@ -142,6 +143,7 @@ export default {
 <body style="font-family:system-ui;max-width:800px;margin:2rem auto;padding:0 1rem">
 <h1>Accessibility report</h1><p><b>${esc(rep.url ?? 'pasted HTML')}</b> · ${new Date(rep.ts).toUTCString()} · rendered: ${rep.rendered}</p>
 <p style="font-size:3rem;margin:0"><b>${rep.score}</b>/100</p>
+${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms ? 'conforms' : `${rep.section508.criteria_failed.length} WCAG criteria failed — FPC ${esc(rep.section508.clauses_implicated.join(', '))}`}</p>` : ''}
 <table style="width:100%;border-collapse:collapse">${rows || '<tr><td>No issues found.</td></tr>'}</table>
 <p><a href="/">Run your own scan →</a></p>`,
         { headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" } });
@@ -260,7 +262,7 @@ export default {
         return respond({ error: 'provide {"url"} or {"html"}' }, 400);
       }
 
-      const result = { score: sitePages ? Math.round(sitePages.reduce((t, p) => t + p.score, 0) / sitePages.length) : score(issues), issues, rendered, plan: pro ? 'pro' : 'free', ...(renderError ? { render_error: renderError } : {}), ...(sitePages ? { site: true, pages: sitePages.map(({ url, score: s, issues: i }) => ({ url, score: s, count: i.length })) } : {}) };
+      const result = { score: sitePages ? Math.round(sitePages.reduce((t, p) => t + p.score, 0) / sitePages.length) : score(issues), issues, rendered, plan: pro ? 'pro' : 'free', section508: section508Report(issues), ...(renderError ? { render_error: renderError } : {}), ...(sitePages ? { site: true, pages: sitePages.map(({ url, score: s, issues: i }) => ({ url, score: s, count: i.length })) } : {}) };
 
       // Persist a shareable report (30d) and optionally email it for Pro.
       const id = crypto.randomUUID().slice(0, 12);
