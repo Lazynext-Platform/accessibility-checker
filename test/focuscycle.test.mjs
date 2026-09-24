@@ -60,3 +60,32 @@ test('escape probe: dialog that responds to Escape is fine', () => {
   const issues = checkFocusDepth(trace, 3, { inDialog: true, responds: true });
   assert.deepEqual(issues.filter((i) => /Escape/.test(i.message)), []);
 });
+
+test('undersized pointer targets flag wcag-2.5.8 with measurements', () => {
+  const trace = ['0:a:nav', '1:button'];
+  const issues = checkFocusDepth(trace, 2, null, {
+    undersized: [{ d: '3:button#icon', w: 16, h: 16 }, { d: '7:a#x', w: 12, h: 12 }],
+  });
+  const t = issues.find((i) => i.rule === 'wcag-2.5.8');
+  assert.ok(t, 'undersized targets should flag');
+  assert.match(t.message, /2 interactive target/);
+  assert.match(t.message, /16×16px/);
+});
+
+test('no undersized targets → no 2.5.8 finding', () => {
+  const issues = checkFocusDepth(['0:a', '1:b'], 2, null, { undersized: [] });
+  assert.deepEqual(issues.filter((i) => i.rule === 'wcag-2.5.8'), []);
+});
+
+test('focus obscured by author content flags wcag-2.4.11', () => {
+  const trace = ['0:a:nav', '5:a:hidden-link', '6:a:footer'];
+  const issues = checkFocusDepth(trace, 3, null, { obscured: ['5:a:hidden-link'] });
+  const o = issues.find((i) => i.rule === 'wcag-2.4.11');
+  assert.ok(o, 'obscured focus should flag');
+  assert.match(o.message, /hidden-link/);
+});
+
+test('rendered arg omitted entirely → no geometry findings, rest unchanged', () => {
+  const trace = ['0:a', '1:b', '2:c'];
+  assert.deepEqual(checkFocusDepth(trace, 3, null), []);
+});

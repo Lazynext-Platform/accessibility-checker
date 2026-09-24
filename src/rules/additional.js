@@ -91,6 +91,47 @@ export function scanAdditionalHtml(html) {
     issues.push({ rule: "wcag-2.4.7", message: "focusable element has inline outline:none — focus indicator may be invisible" });
   }
 
+  // WCAG 2.2.1 — timed refresh/redirect the user can't control.
+  if (/<meta\b[^>]*http-equiv\s*=\s*["']?refresh/i.test(src)) {
+    issues.push({ rule: "wcag-2.2.1", message: "<meta http-equiv=refresh> reloads or redirects on a timer without user control" });
+  }
+
+  // WCAG 1.4.2 / 2.2.2 — audio that auto-plays, or moving content with no
+  // pause/stop control. Muted video has no audio track to control, so it is
+  // skipped (a hero-video pattern, not a violation in practice).
+  for (const m of src.matchAll(/<audio\b[^>]*\bautoplay\b[^>]*>/gi)) {
+    issues.push({ rule: "wcag-1.4.2", message: `autoplaying <audio> needs a pause/stop control: ${m[0].slice(0, 70)}` });
+    break;
+  }
+  for (const m of src.matchAll(/<video\b([^>]*)\bautoplay\b([^>]*)>/gi)) {
+    if (/\bmuted\b/i.test(m[1] + m[2])) continue;
+    issues.push({ rule: "wcag-1.4.2", message: `autoplaying <video> (not muted) needs a pause/stop control: ${m[0].slice(0, 70)}` });
+    break;
+  }
+  if (/<marquee\b/i.test(src)) {
+    issues.push({ rule: "wcag-2.2.2", message: "<marquee> scrolls without a way to pause or stop it" });
+  }
+
+  // WCAG 1.3.5 — inputs collecting the user's personal data need an
+  // autocomplete token so browsers and AT can fill them programmatically.
+  // (Password fields are covered separately by wcag-3.3.8.)
+  const PERSONAL = /name|e-?mail|phone|\btel\b|addr|street|\bcity\b|\bzip\b|postal|country|\borg\b|company|cc-|card|\bbirth|dob|\bage\b|gender|user|login/i;
+  for (const m of src.matchAll(/<input\b[^>]*>/gi)) {
+    const tag = m[0];
+    const type = (tag.match(/\btype\s*=\s*["']([^"']+)["']/i)?.[1] ?? "text").toLowerCase();
+    if (["hidden", "submit", "button", "checkbox", "radio", "file", "image", "reset", "password", "search", "range", "number", "date", "time", "color"].includes(type)) continue;
+    if (/\bautocomplete\s*=/i.test(tag)) continue;
+    // Match the field's own identifier (name/id value), not the raw tag —
+    // "name=" as an attribute name would otherwise match the PERSONAL regex.
+    const fieldId = tag.match(/\b(?:name|id)\s*=\s*["']([^"']*)["']/i)?.[1] ?? "";
+    if (type === "email" || type === "tel" || PERSONAL.test(fieldId)) {
+      issues.push({
+        rule: "wcag-1.3.5",
+        message: `input collecting personal data lacks autocomplete: ${tag.slice(0, 80)}`,
+      });
+    }
+  }
+
   return issues;
 }
 

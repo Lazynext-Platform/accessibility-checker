@@ -43,7 +43,7 @@
         <button id="go">Scan</button>
     </div>
     <div class="row">
-        <input id="license" type="email" placeholder="Pro license (your purchase email) — optional" aria-label="Pro license email" style="flex:.6">
+        <input id="license" type="email" placeholder="Pro license (your purchase email) — optional" aria-label="Pro license email" autocomplete="email" style="flex:.6">
         <a id="pro" href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout" style="align-self:center">Start 14-day free trial →</a>
         <a id="cancel" href="#" style="align-self:center;font-size:.8rem;color:#4b5563">cancel</a>
         <label style="align-self:center;font-size:.8rem;color:#4b5563;display:flex;gap:.3rem;align-items:center;white-space:nowrap"><input id="emailReport" type="checkbox" style="flex:none">email me the report</label>
@@ -57,7 +57,7 @@
     <hr style="border:none;border-top:1px solid #e5e7eb;margin:1.5rem 0">
     <p style="font-size:.9rem"><b>Get accessibility tips + product updates</b></p>
     <div class="row">
-        <input id="lead" type="email" placeholder="you@company.com" aria-label="Email for updates">
+        <input id="lead" type="email" placeholder="you@company.com" aria-label="Email for updates" autocomplete="email">
         <button id="join">Join</button>
     </div>
     <div id="leadStatus" role="status"></div>
@@ -94,7 +94,7 @@
                 const d = await r.json();
                 if (r.status === 402) {
                     statusEl.innerHTML = `Free limit reached — <a href="${API}/checkout">start a free 14-day Pro trial</a> for unlimited scans, or drop your email and we'll send you a discount:`;
-                    out.innerHTML = `<div class="row"><input id="limitEmail" type="email" placeholder="you@company.com" aria-label="Email for discount"><button id="limitJoin">Notify me</button></div>`;
+                    out.innerHTML = `<div class="row"><input id="limitEmail" type="email" placeholder="you@company.com" aria-label="Email for discount" autocomplete="email"><button id="limitJoin">Notify me</button></div>`;
                     document.getElementById("limitJoin").onclick = async () => {
                         const em = document.getElementById("limitEmail").value.trim();
                         const lr = await fetch(`${API}/lead`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: em }) });

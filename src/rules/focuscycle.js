@@ -7,8 +7,10 @@
 //            focus is on the page itself)
 // focusable: total count of visible focusable elements on the page
 // escape:    { inDialog, responds } from the Escape probe, or null
+// rendered:  { undersized: [{d,w,h}], obscured: [trace-entry strings] } —
+//            geometry facts captured during the render pass
 
-export function checkFocusDepth(trace, focusable, escape) {
+export function checkFocusDepth(trace, focusable, escape, rendered = {}) {
   const issues = [];
   if (!Array.isArray(trace) || trace.length === 0) return issues;
 
@@ -47,6 +49,27 @@ export function checkFocusDepth(trace, focusable, escape) {
     issues.push({
       rule: 'wcag-2.1.2',
       message: 'focus is inside a dialog and Escape does not close or move it — keyboard users cannot exit',
+    });
+  }
+
+  // WCAG 2.5.8 (2.2 AA) — pointer targets under 24x24 CSS px. The render
+  // census already exempts inline links and UA-default checkbox/radio sizes.
+  const under = rendered.undersized ?? [];
+  if (under.length > 0) {
+    const examples = under.slice(0, 3).map((t) => `${t.d} ${t.w}×${t.h}px`).join(', ');
+    issues.push({
+      rule: 'wcag-2.5.8',
+      message: `${under.length} interactive target(s) smaller than 24×24 CSS px: ${examples}`,
+    });
+  }
+
+  // WCAG 2.4.11 (2.2 AA) — a focused element covered by author content
+  // (sticky header, overlay) is hidden from the keyboard user.
+  const obsc = [...new Set(rendered.obscured ?? [])];
+  if (obsc.length > 0) {
+    issues.push({
+      rule: 'wcag-2.4.11',
+      message: `Tab focus landed on element(s) hidden behind other content: ${obsc.slice(0, 3).join(', ')}`,
     });
   }
 

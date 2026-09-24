@@ -98,3 +98,44 @@ test("tabindex 0 and -1 are fine", () => {
   const out = scanKeyboardStatics(`<div tabindex="0"></div><div tabindex="-1"></div>`);
   assert.equal(rules(out).includes("wcag-2.4.3"), false);
 });
+
+// --- timing/media/input-purpose statics ------------------------------------
+
+test("meta http-equiv=refresh flags wcag-2.2.1", () => {
+  const out = scanAdditionalHtml('<head><meta http-equiv="refresh" content="30"></head>');
+  assert.ok(rules(out).includes("wcag-2.2.1"));
+});
+
+test("no meta refresh → clean", () => {
+  const out = scanAdditionalHtml('<head><meta name="viewport" content="width=device-width"></head>');
+  assert.equal(rules(out).includes("wcag-2.2.1"), false);
+});
+
+test("autoplaying audio flags wcag-1.4.2", () => {
+  const out = scanAdditionalHtml('<audio src="a.mp3" autoplay controls></audio>');
+  assert.ok(rules(out).includes("wcag-1.4.2"));
+});
+
+test("unmuted autoplaying video flags; muted is clean", () => {
+  assert.ok(rules(scanAdditionalHtml('<video src="v.mp4" autoplay></video>')).includes("wcag-1.4.2"));
+  assert.equal(rules(scanAdditionalHtml('<video src="v.mp4" autoplay muted></video>')).includes("wcag-1.4.2"), false);
+  assert.equal(rules(scanAdditionalHtml('<video src="v.mp4" controls></video>')).includes("wcag-1.4.2"), false);
+});
+
+test("marquee flags wcag-2.2.2", () => {
+  const out = scanAdditionalHtml('<marquee>news</marquee>');
+  assert.ok(rules(out).includes("wcag-2.2.2"));
+});
+
+test("personal-data input without autocomplete flags wcag-1.3.5", () => {
+  const out = scanAdditionalHtml('<input type="email" name="email">');
+  assert.ok(rules(out).includes("wcag-1.3.5"));
+  const out2 = scanAdditionalHtml('<input type="text" name="first_name">');
+  assert.ok(rules(out2).includes("wcag-1.3.5"));
+});
+
+test("autocomplete token satisfies wcag-1.3.5; non-personal inputs skipped", () => {
+  assert.equal(rules(scanAdditionalHtml('<input type="email" name="email" autocomplete="email">')).includes("wcag-1.3.5"), false);
+  assert.equal(rules(scanAdditionalHtml('<input type="search" name="q">')).includes("wcag-1.3.5"), false);
+  assert.equal(rules(scanAdditionalHtml('<input type="text" name="coupon">')).includes("wcag-1.3.5"), false);
+});

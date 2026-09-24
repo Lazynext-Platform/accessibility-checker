@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>Target-size + focus-obscured fixture</title>
+<style>
+  body { font-family: system-ui; margin: 0; padding-top: 0; }
+  /* sticky banner sits over the nav link — Tab focuses it, but it's hidden */
+  .banner { position: fixed; top: 0; left: 0; right: 0; height: 90px;
+            background: #fff; border-bottom: 1px solid #ddd; z-index: 99;
+            padding: 20px; }
+  nav { margin-top: 0; padding: 30px 20px; }
+  main { padding: 40px 20px; }
+  .icon { width: 16px; height: 16px; padding: 0; font-size: 9px;
+          line-height: 1; }
+</style>
+</head><body>
+<div class="banner">We use cookies. This banner never goes away.</div>
+<nav>
+  <a href="/home" id="covered">Home (under the banner)</a>
+</nav>
+<main>
+  <p><a href="/about">About link inside a paragraph — inline exception</a></p>
+  <button class="icon">★</button>
+  <button class="icon">✓</button>
+  <a href="/docs">Docs</a>
+</main>
+</body></html>
