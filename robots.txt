@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://lazynext-platform.github.io/accessibility-checker/sitemap.xml

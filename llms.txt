@@ -1,0 +1,9 @@
+# Accessibility Checker
+
+> Free WCAG 2.1 + 2.2 accessibility scanner. Scan a page or a whole site;
+> Pro adds rendered scans, daily monitoring with score-drop alerts, and
+> emailed reports. 14-day free trial.
+
+- Site: https://lazynext-platform.github.io/accessibility-checker/
+- API: https://accessibility-checker.dry-hall-6a50.workers.dev
+- Built by: https://lazynext.com
