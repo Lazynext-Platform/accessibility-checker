@@ -1,0 +1,1 @@
+node --test test/scanner.test.mjs
