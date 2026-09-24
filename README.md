@@ -16,7 +16,9 @@ curl -X POST https://accessibility-checker.dry-hall-6a50.workers.dev/scan \
 #    "report": ".../report/<id>"}
 ```
 
-Endpoints: `POST /scan` (html or url), `GET /checkout` (trial → paid),
+Endpoints: `POST /scan` (html or url; `{"url": ..., "site": true}` crawls
+same-origin pages — 3 free / 10 Pro — and returns per-page scores),
+`GET /checkout` (trial → paid),
 `POST /cancel` (self-service cancellation by purchase email),
 `POST /lead` (email capture), `GET /report/:id` (shareable report),
 `GET /health`.

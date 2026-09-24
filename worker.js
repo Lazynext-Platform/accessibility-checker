@@ -1,6 +1,7 @@
 import { scanHtml, checkContrast, checkFacts, checkFocus, score } from './src/scanner.js';
 import { scanAdditionalHtml, checkContrastAAA } from './src/rules/additional.js';
 import { scanWcag22 } from './src/rules/wcag22.js';
+import { crawlSite } from './src/crawl.js';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -125,8 +126,26 @@ export default {
       let issues = [];
       let rendered = false;
       let renderError = null;
+      let sitePages = null;
 
-      if (body.url && /^https?:\/\//i.test(body.url)) {
+      if (body.url && /^https?:\/\//i.test(body.url) && body.site === true) {
+        // Site-wide scan: BFS same-origin pages, apply the HTML ruleset to
+        // each, aggregate with per-page attribution. Free: 3 pages, Pro: 10.
+        const maxPages = pro ? 10 : 3;
+        try {
+          const crawl = await crawlSite(body.url, { maxPages, delayMs: 150 });
+          sitePages = crawl.pages.map((p) => {
+            const pageIssues = scanHtml(p.html)
+              .concat(scanAdditionalHtml(p.html))
+              .concat(scanWcag22(p.html));
+            return { url: p.url, score: score(pageIssues), issues: pageIssues };
+          });
+          issues = sitePages.flatMap((p) => p.issues.map((i) => ({ ...i, url: p.url })));
+          if (!sitePages.length) return respond({ error: 'no pages could be crawled', skipped: crawl.skipped }, 502);
+        } catch (e) {
+          return respond({ error: 'site crawl failed', detail: String(e?.message ?? e) }, 502);
+        }
+      } else if (body.url && /^https?:\/\//i.test(body.url)) {
         try {
           const r = await platform(env, '/render', { method: 'POST', body: JSON.stringify({ url: body.url }) });
           if (!r.ok) throw new Error(`render ${r.status}`);
@@ -150,7 +169,7 @@ export default {
         return respond({ error: 'provide {"url"} or {"html"}' }, 400);
       }
 
-      const result = { score: score(issues), issues, rendered, plan: pro ? 'pro' : 'free', ...(renderError ? { render_error: renderError } : {}) };
+      const result = { score: score(issues), issues, rendered, plan: pro ? 'pro' : 'free', ...(renderError ? { render_error: renderError } : {}), ...(sitePages ? { site: true, pages: sitePages.map(({ url, score: s, issues: i }) => ({ url, score: s, count: i.length })) } : {}) };
 
       // Persist a shareable report (30d) and optionally email it for Pro.
       const id = crypto.randomUUID().slice(0, 12);
