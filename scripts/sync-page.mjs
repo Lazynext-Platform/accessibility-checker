@@ -18,6 +18,7 @@ const files = {
   '/manifest.json': 'application/manifest+json',
   '/targets.html': 'text/html; charset=utf-8',
   '/targets2.html': 'text/html; charset=utf-8',
+  '/trap.html': 'text/html; charset=utf-8',
 };
 const binaryFiles = { '/og.png': 'image/png' };
 const entries = Object.entries(files).map(([route, type]) => {
