@@ -1,62 +1,72 @@
 # Launch Plan for Accessibility Checker
 
 ## Introduction
-We are excited to announce the launch of Accessibility Checker, an AI-powered tool that scans small business websites for accessibility compliance issues and provides recommendations for improvement. Our goal is to make it easy and affordable for small businesses to ensure their websites are accessible to everyone.
 
-## Show HN Post
-Title: Show HN: Accessibility Checker - AI-powered accessibility compliance for small business websites
-Text:
-Hey HN,
-We're excited to introduce Accessibility Checker, a tool that helps small businesses ensure their websites are accessible to everyone. Our AI-powered scanner checks for accessibility compliance issues and provides actionable recommendations for improvement.
-Try it out at [link to index.html]
-Features:
-- AI-powered accessibility scanner
-- Actionable recommendations for improvement
-- Easy to use and affordable
-Discuss: What are your thoughts on accessibility in web development? How do you ensure your websites are accessible?
+As we prepare to launch the Accessibility Checker, a crucial step is to set up and configure Google Analytics to track key metrics and conversions. This will enable us to measure the effectiveness of our marketing efforts, understand user behavior, and make data-driven decisions to improve the product.
 
-## r/webdev Post
-Title: Introducing Accessibility Checker - Make your website accessible with our AI-powered tool
-Text:
-Hey fellow web devs,
-We've created a tool to help small businesses ensure their websites are accessible to everyone. Accessibility Checker uses AI to scan websites for accessibility compliance issues and provides recommendations for improvement.
-Try it out at [link to index.html]
-Features:
-- AI-powered accessibility scanner
-- Actionable recommendations for improvement
-- Easy to use and affordable
-Comments: What are your favorite accessibility tools? How do you handle accessibility in your web development workflow?
+## Setting up Google Analytics
 
-## Product Hunt Listing
-Title: Accessibility Checker - AI-powered accessibility compliance for small business websites
-Tagline: Make your website accessible to everyone with our easy-to-use AI-powered tool
-Description:
-Accessibility Checker is an AI-powered tool that scans small business websites for accessibility compliance issues and provides actionable recommendations for improvement. Our goal is to make it easy and affordable for small businesses to ensure their websites are accessible to everyone.
-Features:
-- AI-powered accessibility scanner
-- Actionable recommendations for improvement
-- Easy to use and affordable
-Call to Action: Try Accessibility Checker today and make your website accessible to everyone! [link to index.html]
-Screenshot: [screenshot of index.html]
+1. Create a new Google Analytics account by visiting the [Google Analytics website](https://analytics.google.com/) and following the sign-up process.
+2. Set up a new property for the Accessibility Checker website by clicking on "Create" and selecting "Website".
+3. Enter the website name, URL, and industry category.
+4. Click on "Get Tracking ID" to obtain the tracking code.
 
-## Marketing Strategy
-Our marketing strategy will focus on the following channels:
-- Social media: Twitter, LinkedIn, Facebook
-- Online communities: Reddit (r/webdev), Hacker News
-- Content marketing: Blog posts, guest posts, tutorials
-- Paid advertising: Google Ads, Facebook Ads
-- Partnerships: Collaborate with web development agencies, accessibility organizations
+## Configuring Google Analytics
 
-## Launch Timeline
-- Week 1: Finalize launch copy, create social media content, schedule posts
-- Week 2: Launch Show HN post, r/webdev post, Product Hunt listing
-- Week 3-4: Analyze results, adjust marketing strategy as needed
-- Week 5-6: Continue content marketing, paid advertising, partnerships
+1. **Tracking Code**: Add the Google Analytics tracking code to the `index.html` file, preferably in the `<head>` section.
+```html
+<!-- Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=YOUR_TRACKING_ID"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'YOUR_TRACKING_ID');
+</script>
+<!-- End Google Analytics -->
+```
+Replace `YOUR_TRACKING_ID` with the actual tracking ID obtained in step 4.
 
-## Metrics for Success
-- Number of website scans
-- Number of recommendations implemented
-- User engagement (social media, comments, emails)
-- Conversion rate (free trial to paid plan)
+2. **Goals and Conversions**: Set up goals and conversions to track key metrics, such as:
+	* **Scan Initiation**: When a user initiates a scan, track it as a conversion.
+	* **Scan Completion**: When a user completes a scan, track it as a conversion.
+	* **Report Download**: When a user downloads a report, track it as a conversion.
+3. **Events**: Set up events to track user interactions, such as:
+	* **Button Clicks**: Track button clicks, such as "Scan Now" or "Download Report".
+	* **Form Submissions**: Track form submissions, such as when a user enters their website URL.
+4. **Dimensions and Metrics**: Set up custom dimensions and metrics to track additional data, such as:
+	* **Website URL**: Track the website URL being scanned.
+	* **Scan Results**: Track the scan results, such as the number of errors or warnings.
 
-By following this launch plan, we aim to make Accessibility Checker the go-to tool for small businesses to ensure their websites are accessible to everyone.
+## Integrating with Existing Code
+
+To integrate Google Analytics with the existing code, we can use the `gtag` function to track events and conversions. For example, in the `src/scanner.js` file, we can add the following code to track scan initiation and completion:
+```javascript
+// src/scanner.js
+import { gtag } from '../marketing/gtag';
+
+// ...
+
+// Track scan initiation
+gtag('event', 'scan_initiation', {
+  'event_category': 'scanner',
+  'event_label': 'scan_started',
+});
+
+// ...
+
+// Track scan completion
+gtag('event', 'scan_completion', {
+  'event_category': 'scanner',
+  'event_label': 'scan_completed',
+});
+```
+Similarly, we can integrate Google Analytics with the `src/crawl.js` file to track crawl events.
+
+## Testing and Verification
+
+To test and verify the Google Analytics setup, we can use the [Google Analytics Debugger](https://chrome.google.com/webstore/detail/google-analytics-debugger/jnkmfdileelhofjcijamephohjechhna) Chrome extension. This extension allows us to inspect the Google Analytics tracking code and verify that events and conversions are being tracked correctly.
+
+## Conclusion
+
+By setting up and configuring Google Analytics, we can track key metrics and conversions, and gain valuable insights into user behavior. This will enable us to make data-driven decisions to improve the Accessibility Checker and provide a better user experience.
