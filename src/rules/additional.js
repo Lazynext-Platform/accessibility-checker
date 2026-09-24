@@ -4,8 +4,9 @@
  * no DOM access. Wired in worker.js next to scanHtml/checkContrast.
  *
  * Deliberately not implemented here:
- *   - 3.2.3 consistent-navigation — needs a multi-page crawl, not a
- *     single-page scan.
+ *   - 3.2.3 consistent-navigation / 3.2.4 consistent-identification —
+ *     live in src/rules/crosspage.js (need multi-page data, wired into
+ *     the site-scan path only).
  *   - 3.3.2 labels-or-instructions — already covered by scanHtml's
  *     input/label association check.
  *   - 1.4.4 resize-text — scanHtml already flags user-scalable=no; this
