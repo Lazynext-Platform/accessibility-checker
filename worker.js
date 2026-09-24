@@ -2,6 +2,7 @@ import { scanHtml, checkContrast, checkFacts, checkFocus, score } from './src/sc
 import { scanAdditionalHtml, checkContrastAAA, scanKeyboardStatics } from './src/rules/additional.js';
 import { scanWcag22 } from './src/rules/wcag22.js';
 import { section508Report } from './src/rules/section508.js';
+import { withRecommendations } from './src/recommendations.js';
 import { checkCrossPages } from './src/rules/crosspage.js';
 import { crawlSite } from './src/crawl.js';
 import { monitorKey, buildMonitorRecord } from './src/monitor.js';
@@ -138,7 +139,7 @@ export default {
       const raw = await kvGet(env, `report:${id}`);
       if (!raw) return respond({ error: 'report not found or expired' }, 404);
       const rep = JSON.parse(raw);
-      const rows = rep.issues.map((i) => `<tr><td style="font-family:monospace">${esc(i.rule)}</td><td>${esc(i.message)}</td></tr>`).join('');
+      const rows = rep.issues.map((i) => `<tr><td style="font-family:monospace">${esc(i.rule)}</td><td>${esc(i.message)}${i.fix ? `<br><span style="color:#555;font-size:0.9em">Fix: ${esc(i.fix)}</span>` : ''}</td></tr>`).join('');
       return new Response(`<!doctype html><meta charset="utf-8"><title>Accessibility report — ${esc(rep.url ?? 'paste')}</title>
 <body style="font-family:system-ui;max-width:800px;margin:2rem auto;padding:0 1rem">
 <h1>Accessibility report</h1><p><b>${esc(rep.url ?? 'pasted HTML')}</b> · ${new Date(rep.ts).toUTCString()} · rendered: ${rep.rendered}</p>
@@ -262,6 +263,7 @@ ${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms
         return respond({ error: 'provide {"url"} or {"html"}' }, 400);
       }
 
+      issues = withRecommendations(issues);
       const result = { score: sitePages ? Math.round(sitePages.reduce((t, p) => t + p.score, 0) / sitePages.length) : score(issues), issues, rendered, plan: pro ? 'pro' : 'free', section508: section508Report(issues), ...(renderError ? { render_error: renderError } : {}), ...(sitePages ? { site: true, pages: sitePages.map(({ url, score: s, issues: i }) => ({ url, score: s, count: i.length })) } : {}) };
 
       // Persist a shareable report (30d) and optionally email it for Pro.
