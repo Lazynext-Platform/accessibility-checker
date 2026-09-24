@@ -21,7 +21,9 @@ same-origin pages — 3 free / 10 Pro — and returns per-page scores),
 `GET /checkout` (trial → paid),
 `POST /cancel` (self-service cancellation by purchase email),
 `POST /lead` (email capture), `GET /report/:id` (shareable report),
-`GET /health`.
+`POST /monitor` / `GET /monitor?license=` / `DELETE /monitor` (Pro daily
+monitoring — platform rescans each registered URL and emails a Brevo
+alert when a page's score drops ≥ 10 points), `GET /health`.
 
 ## What it checks
 
