@@ -1,72 +1,56 @@
-# Accessibility Checker Monitoring
-## Introduction
-To ensure the Accessibility Checker tool provides a seamless experience for small business owners and solo entrepreneurs, it's essential to set up monitoring for the D1 database performance. This document outlines the approach and implementation details for monitoring the database performance.
+# Introduction to Monitoring
+The Accessibility Checker is an AI-powered tool designed to scan small business websites for accessibility compliance issues and provide recommendations for improvement. As the product grows, it's essential to set up and track key performance indicators (KPIs) to measure its success and identify areas for improvement.
 
-## Why Monitor Database Performance?
-Monitoring database performance is crucial to identify potential bottlenecks, optimize queries, and ensure the overall health of the database. This is particularly important for the Accessibility Checker tool, which relies on the database to store and retrieve accessibility compliance data.
+## Setting up KPIs
+To set up KPIs for the Accessibility Checker, we'll focus on the following categories:
 
-## Monitoring Tools
-We will use a combination of tools to monitor the D1 database performance:
+1. **User Acquisition**: Track the number of new users, user growth rate, and user retention.
+2. **User Engagement**: Monitor the number of scans performed, average scan duration, and user interaction with the tool.
+3. **Conversion Rates**: Measure the percentage of users who implement recommended accessibility improvements.
+4. **Customer Satisfaction**: Collect feedback through surveys, reviews, and support requests to gauge user satisfaction.
+5. **Technical Performance**: Track the tool's performance, including scan speed, accuracy, and error rates.
 
-* **New Relic**: For monitoring database queries, transactions, and overall performance.
-* **Datadog**: For monitoring database metrics, such as connection pool usage, query latency, and error rates.
-* **GitHub Actions**: For automating monitoring tasks and alerting the team to potential issues.
+## Tools for Monitoring
+To track these KPIs, we'll utilize the following tools:
+
+1. **Google Analytics**: For user acquisition, engagement, and conversion rate tracking.
+2. **Mixpanel**: For user behavior analysis and funnel tracking.
+3. **SurveyMonkey**: For collecting user feedback and satisfaction surveys.
+4. **Sentry**: For error tracking and technical performance monitoring.
+5. **New Relic**: For application performance monitoring.
 
 ## Implementation
-To set up monitoring for the D1 database performance, we will follow these steps:
+To implement these tools, we'll follow these steps:
 
-1. **Install New Relic Agent**: Install the New Relic agent on the database instance to collect performance metrics.
-2. **Configure Datadog Integration**: Configure the Datadog integration with the D1 database to collect metrics and logs.
-3. **Create GitHub Actions Workflow**: Create a GitHub Actions workflow to automate monitoring tasks, such as running database queries and checking for errors.
-4. **Set up Alerting**: Set up alerting rules in New Relic and Datadog to notify the team of potential issues, such as slow queries or high error rates.
+1. **Google Analytics**:
+	* Create a new property for the Accessibility Checker.
+	* Set up goals for scan completion, recommendation implementation, and user retention.
+	* Track events for user interactions, such as button clicks and form submissions.
+2. **Mixpanel**:
+	* Create a new project for the Accessibility Checker.
+	* Set up funnels for user onboarding, scan completion, and recommendation implementation.
+	* Track user behavior, including page views, clicks, and scrolls.
+3. **SurveyMonkey**:
+	* Create a new survey for collecting user feedback and satisfaction.
+	* Embed the survey in the Accessibility Checker tool.
+	* Set up notifications for new survey responses.
+4. **Sentry**:
+	* Create a new project for the Accessibility Checker.
+	* Set up error tracking for the tool, including JavaScript errors and API errors.
+	* Configure notifications for new errors.
+5. **New Relic**:
+	* Create a new application for the Accessibility Checker.
+	* Set up performance monitoring, including page load times, API response times, and error rates.
+	* Configure alerts for performance issues.
 
-## Monitoring Metrics
-We will monitor the following metrics to ensure the D1 database performance is optimal:
+## Dashboarding
+To visualize the KPIs, we'll create a dashboard using a tool like **Grafana** or **Tableau**. The dashboard will display the following metrics:
 
-* **Query Latency**: The time it takes for the database to respond to queries.
-* **Connection Pool Usage**: The number of connections in use by the database.
-* **Error Rates**: The number of errors occurring in the database.
-* **Transaction Rates**: The number of transactions being processed by the database.
+1. **User Acquisition**: New users, user growth rate, and user retention.
+2. **User Engagement**: Scans performed, average scan duration, and user interaction.
+3. **Conversion Rates**: Percentage of users who implement recommended accessibility improvements.
+4. **Customer Satisfaction**: User satisfaction ratings, feedback, and support requests.
+5. **Technical Performance**: Scan speed, accuracy, error rates, and application performance metrics.
 
-## Alerting Rules
-We will set up the following alerting rules to notify the team of potential issues:
-
-* **Slow Query Alert**: Triggered when a query takes longer than 500ms to respond.
-* **High Error Rate Alert**: Triggered when the error rate exceeds 1% of total transactions.
-* **Connection Pool Exhaustion Alert**: Triggered when the connection pool usage exceeds 80%.
-
-## Example Use Case
-To demonstrate the monitoring setup, let's consider an example use case:
-
-* A small business owner uses the Accessibility Checker tool to scan their website for accessibility compliance issues.
-* The tool queries the D1 database to retrieve accessibility data.
-* The database responds with the required data, and the tool displays the results to the user.
-* The monitoring tools collect performance metrics, such as query latency and connection pool usage.
-* If the query latency exceeds 500ms, the slow query alert is triggered, and the team is notified to investigate and optimize the query.
-
-## Code Example
-To illustrate the monitoring setup, here is an example code snippet that demonstrates how to use the `node:test` framework to test the database performance:
-```javascript
-import { test } from 'node:test';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  user: 'username',
-  host: 'localhost',
-  database: 'database',
-  password: 'password',
-  port: 5432,
-});
-
-test('database performance', async (t) => {
-  const query = 'SELECT * FROM accessibility_data';
-  const startTime = Date.now();
-  const result = await pool.query(query);
-  const endTime = Date.now();
-  const latency = endTime - startTime;
-  t.ok(latency < 500, `query latency: ${latency}ms`);
-});
-
-pool.end();
-```
-This code snippet demonstrates how to use the `node:test` framework to test the database performance by measuring the query latency. If the latency exceeds 500ms, the test fails, and the team is notified to investigate and optimize the query.
+## Conclusion
+By setting up and tracking these KPIs, we'll be able to measure the success of the Accessibility Checker and identify areas for improvement. The dashboard will provide a centralized view of the product's performance, allowing us to make data-driven decisions to enhance the user experience and drive growth.
