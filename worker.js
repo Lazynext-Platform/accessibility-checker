@@ -1,6 +1,7 @@
 import { scanHtml, checkContrast, checkFacts, checkFocus, score } from './src/scanner.js';
 import { scanAdditionalHtml, checkContrastAAA } from './src/rules/additional.js';
 import { scanWcag22 } from './src/rules/wcag22.js';
+import { checkCrossPages } from './src/rules/crosspage.js';
 import { crawlSite } from './src/crawl.js';
 import { monitorKey, buildMonitorRecord } from './src/monitor.js';
 
@@ -196,7 +197,8 @@ export default {
               .concat(scanWcag22(p.html));
             return { url: p.url, score: score(pageIssues), issues: pageIssues };
           });
-          issues = sitePages.flatMap((p) => p.issues.map((i) => ({ ...i, url: p.url })));
+          issues = sitePages.flatMap((p) => p.issues.map((i) => ({ ...i, url: p.url })))
+            .concat(checkCrossPages(crawl.pages));
           if (!sitePages.length) return respond({ error: 'no pages could be crawled', skipped: crawl.skipped }, 502);
         } catch (e) {
           return respond({ error: 'site crawl failed', detail: String(e?.message ?? e) }, 502);

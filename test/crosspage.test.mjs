@@ -1,0 +1,72 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { checkCrossPages } from '../src/rules/crosspage.js';
+
+const nav = (links) => `<nav>${links.map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</nav>`;
+
+test('consistent nav across pages → no issues', () => {
+  const n = nav([['/a', 'A'], ['/b', 'B']]);
+  const issues = checkCrossPages([
+    { url: '/1', html: `${n}<p>x</p>` },
+    { url: '/2', html: `${n}<p>y</p>` },
+  ]);
+  assert.equal(issues.length, 0);
+});
+
+test('different nav order → wcag-3.2.3 on the deviant page', () => {
+  const n1 = nav([['/a', 'A'], ['/b', 'B']]);
+  const n2 = nav([['/b', 'B'], ['/a', 'A']]);
+  const issues = checkCrossPages([
+    { url: '/1', html: n1 }, { url: '/2', html: n1 }, { url: '/3', html: n2 },
+  ]);
+  const hits = issues.filter((i) => i.rule === 'wcag-3.2.3');
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].url, '/3');
+});
+
+test('same href with different labels → wcag-3.2.4', () => {
+  const issues = checkCrossPages([
+    { url: '/1', html: '<a href="/contact">Contact us</a>' },
+    { url: '/2', html: '<a href="/contact">Get in touch</a>' },
+  ]);
+  const hits = issues.filter((i) => i.rule === 'wcag-3.2.4');
+  assert.equal(hits.length, 1);
+  assert.match(hits[0].message, /contact/);
+});
+
+test('same href same label → clean', () => {
+  const issues = checkCrossPages([
+    { url: '/1', html: '<a href="/contact">Contact</a>' },
+    { url: '/2', html: '<a href="/contact">Contact</a>' },
+  ]);
+  assert.equal(issues.filter((i) => i.rule === 'wcag-3.2.4').length, 0);
+});
+
+test('single page → no cross-page issues', () => {
+  assert.equal(checkCrossPages([{ url: '/1', html: '<a href="/x">X</a>' }]).length, 0);
+});
+
+test('pages without navs → no 3.2.3, still checks 3.2.4', () => {
+  const issues = checkCrossPages([
+    { url: '/1', html: '<a href="/x">X</a>' },
+    { url: '/2', html: '<a href="/x">Y</a>' },
+  ]);
+  assert.equal(issues.filter((i) => i.rule === 'wcag-3.2.3').length, 0);
+  assert.equal(issues.filter((i) => i.rule === 'wcag-3.2.4').length, 1);
+});
+
+test('role=navigation works without <nav>', () => {
+  const navHtml = (order) => `<div role="navigation">${order.map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</div>`;
+  const issues = checkCrossPages([
+    { url: '/1', html: navHtml([['/a', 'A'], ['/b', 'B']]) },
+    { url: '/2', html: navHtml([['/a', 'A'], ['/b', 'B']]) },
+    { url: '/3', html: navHtml([['/b', 'B'], ['/a', 'A']]) },
+  ]);
+  assert.equal(issues.filter((i) => i.rule === 'wcag-3.2.3').length, 1);
+});
+
+test('empty/garbage input → no crash, no issues', () => {
+  assert.deepEqual(checkCrossPages([]), []);
+  assert.deepEqual(checkCrossPages(null), []);
+  assert.deepEqual(checkCrossPages([{ url: '/1' }]), []);
+});
