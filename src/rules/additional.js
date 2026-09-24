@@ -316,6 +316,341 @@ export function scanAdditionalHtml(html) {
     }
   }
 
+  // ------------------------------------------------------------------
+  // Static mirrors of rendered-facts checks + structural violations that
+  // need no DOM. These give pasted HTML, fetched pages, and crawled pages
+  // the same coverage rendered scans get via checkFacts.
+  // ------------------------------------------------------------------
+
+  // WCAG 4.1.1 — duplicate id values break aria-labelledby/label-for lookups.
+  {
+    const ids = [...src.matchAll(/\bid\s*=\s*["']([^"']+)["']/gi)].map((m) => m[1]);
+    const seen = new Set(), dupes = new Set();
+    for (const id of ids) (seen.has(id) ? dupes : seen).add(id);
+    if (dupes.size) {
+      issues.push({
+        rule: "wcag-4.1.1",
+        message: `duplicate id value(s) — ids must be unique for label/aria references to resolve: ${[...dupes].slice(0, 3).join(", ")}`,
+      });
+    }
+  }
+
+  // WCAG 4.1.2 — id references that resolve to nothing. aria-labelledby,
+  // aria-describedby, and label for= must each point at a real element.
+  {
+    const idSet = new Set([...src.matchAll(/\bid\s*=\s*["']([^"']+)["']/gi)].map((m) => m[1]));
+    const missing = new Set();
+    for (const m of src.matchAll(/\b(?:aria-labelledby|aria-describedby|for)\s*=\s*["']([^"']+)["']/gi)) {
+      for (const ref of m[1].trim().split(/\s+/)) {
+        if (ref && !idSet.has(ref)) missing.add(ref);
+      }
+    }
+    if (missing.size) {
+      issues.push({
+        rule: "wcag-4.1.2",
+        message: `label/aria reference(s) point at ids that don't exist on this page: ${[...missing].slice(0, 3).join(", ")}`,
+      });
+    }
+  }
+
+  // WCAG 4.1.2 — <iframe> needs a title so AT can announce its purpose.
+  for (const m of src.matchAll(/<iframe\b([^>]*)>/gi)) {
+    if (!/\btitle\s*=\s*["'][^"']+["']/i.test(m[1]) && !/\baria-label\s*=\s*["'][^"']+["']/i.test(m[1])) {
+      issues.push({ rule: "wcag-4.1.2", message: `<iframe> has no title — assistive tech cannot announce its purpose: ${m[0].slice(0, 70)}` });
+    }
+  }
+
+  // WCAG 4.1.2 — role values that aren't valid ARIA roles expose a broken
+  // semantic to AT (typos and invented roles announce nothing useful).
+  {
+    const ROLES = new Set("alert alertdialog application article banner button cell checkbox columnheader combobox complementary contentinfo definition dialog directory document feed figure form grid gridcell group heading img link list listbox listitem log main marquee math menu menubar menuitem menuitemcheckbox menuitemradio navigation none note option presentation progressbar radio radiogroup region row rowgroup rowheader scrollbar search searchbox separator slider spinbutton status switch tab table tablist tabpanel term textbox timer toolbar tooltip tree treegrid treeitem".split(" "));
+    const bad = new Set();
+    for (const m of src.matchAll(/\brole\s*=\s*["']([^"']+)["']/gi)) {
+      for (const r of m[1].trim().toLowerCase().split(/\s+/)) {
+        if (r && !ROLES.has(r) && r !== "presentation") bad.add(r);
+      }
+    }
+    if (bad.size) {
+      issues.push({
+        rule: "wcag-4.1.2",
+        message: `invalid ARIA role value(s) — assistive tech ignores roles it doesn't know: ${[...bad].slice(0, 3).join(", ")}`,
+      });
+    }
+  }
+
+  // WCAG 4.1.2 — interactive elements nested inside each other produce
+  // unpredictable activation for keyboards and AT.
+  for (const m of src.matchAll(/<(a|button)\b[^>]*>([\s\S]*?)<\/\1>/gi)) {
+    if (/<(?:a|button|input|select|textarea)\b/i.test(m[2])) {
+      issues.push({
+        rule: "wcag-4.1.2",
+        message: `<${m[1].toLowerCase()}> contains a nested interactive element — controls must not contain other controls: ${m[0].slice(0, 80)}`,
+      });
+      break;
+    }
+  }
+
+  // WCAG 4.1.2 / 1.3.1 — an element hidden from AT that is itself focusable
+  // (or sets a tabindex) is reachable by keyboard but invisible to screen
+  // readers — the two channels desynchronize.
+  for (const m of src.matchAll(/<(\w+)\b([^>]*\baria-hidden\s*=\s*["']true["'][^>]*)>/gi)) {
+    const tag = m[1].toLowerCase(), attrs = m[2];
+    if (/\btabindex\s*=\s*["']?-?\d+|\bhref\s*=/i.test(attrs) || ["a", "button", "input", "select", "textarea"].includes(tag)) {
+      issues.push({
+        rule: "wcag-4.1.2",
+        message: `<${tag}> is aria-hidden but still keyboard-focusable — hidden-from-AT content must not take focus: ${m[0].slice(0, 70)}`,
+      });
+      break;
+    }
+  }
+
+  // WCAG 1.3.1 — list/table structure must be real, not visual-only.
+  {
+    // <li> outside <ul>/<ol>: strip every valid list block; leftovers violate.
+    const noLists = src.replace(/<(?:ul|ol)\b[^>]*>[\s\S]*?<\/(?:ul|ol)>/gi, "");
+    if (/<li\b/i.test(noLists)) {
+      issues.push({ rule: "wcag-1.3.1", message: "<li> found outside a <ul>/<ol> — list items need a real list parent" });
+    }
+    const noDls = src.replace(/<dl\b[^>]*>[\s\S]*?<\/dl>/gi, "");
+    if (/<d[dt]\b/i.test(noDls)) {
+      issues.push({ rule: "wcag-1.3.1", message: "<dt>/<dd> found outside a <dl> — definition terms need a definition-list parent" });
+    }
+    // <fieldset> without a <legend> has no group label (technique H71).
+    for (const m of src.matchAll(/<fieldset\b[^>]*>([\s\S]*?)<\/fieldset>/gi)) {
+      if (!/<legend\b[^>]*>[\s\S]*?<\/legend>/i.test(m[1])) {
+        issues.push({ rule: "wcag-1.3.1", message: "<fieldset> has no <legend> — grouped controls need a group label" });
+        break;
+      }
+    }
+    // <optgroup> without label announces options with no group name.
+    for (const m of src.matchAll(/<optgroup\b([^>]*)>/gi)) {
+      if (!/\blabel\s*=\s*["'][^"']+["']/i.test(m[1])) {
+        issues.push({ rule: "wcag-1.3.1", message: `<optgroup> has no label — option groups need a name: ${m[0].slice(0, 70)}` });
+      }
+    }
+    // A <table> with no <th> can't be a properly-marked data table; if it's
+    // for layout it should be marked role=presentation instead.
+    for (const m of src.matchAll(/<table\b([^>]*)>([\s\S]*?)<\/table>/gi)) {
+      if (/\brole\s*=\s*["'](?:presentation|none)["']/i.test(m[1])) continue;
+      if (!/<th\b/i.test(m[2])) {
+        issues.push({
+          rule: "wcag-1.3.1",
+          message: "<table> has no header cells (<th>) — data tables need headers; layout tables need role=\"presentation\"",
+        });
+        break;
+      }
+    }
+    // Deprecated presentational markup — styling belongs in CSS, not markup.
+    if (/<(?:font|center|big|tt|strike|acronym|applet)\b|\b(?:align|bgcolor|cellpadding|cellspacing|valign|hspace)\s*=/i.test(src)) {
+      issues.push({
+        rule: "wcag-1.3.1",
+        message: "deprecated presentational markup (<font>/<center>/align=/bgcolor=…) — use CSS for presentation",
+      });
+    }
+  }
+
+  // WCAG 1.1.1 — non-text content needs a text alternative.
+  {
+    for (const m of src.matchAll(/<input\b[^>]*\btype\s*=\s*["']image["'][^>]*>/gi)) {
+      if (!/\balt\s*=\s*["'][^"']+["']/i.test(m[0])) {
+        issues.push({ rule: "wcag-1.1.1", message: `<input type="image"> has no alt — image buttons need a text alternative: ${m[0].slice(0, 70)}` });
+      }
+    }
+    for (const m of src.matchAll(/<area\b([^>]*)>/gi)) {
+      if (!/\balt\s*=\s*["'][^"']+["']/i.test(m[1])) {
+        issues.push({ rule: "wcag-1.1.1", message: `<area> in an image map has no alt — map regions need text alternatives: ${m[0].slice(0, 70)}` });
+      }
+    }
+    for (const m of src.matchAll(/<(object|embed|canvas)\b([^>]*)>([\s\S]*?)<\/\1>|<(object|embed)\b([^>]*)\/?>/gi)) {
+      const tag = (m[1] ?? m[4]).toLowerCase(), attrs = m[2] ?? m[5] ?? "", inner = m[3] ?? "";
+      if (/\b(?:title|aria-label|alt)\s*=\s*["'][^"']+["']/i.test(attrs)) continue;
+      if (tag !== "embed" && inner.replace(/<[^>]+>/g, "").trim()) continue; // fallback text present
+      if (tag === "embed") {
+        issues.push({ rule: "wcag-1.1.1", message: `<embed> has no title/fallback — non-text content needs an alternative: ${m[0].slice(0, 70)}` });
+      } else {
+        issues.push({ rule: "wcag-1.1.1", message: `<${tag}> has no title or fallback content — non-text content needs an alternative: ${m[0].slice(0, 70)}` });
+      }
+      break;
+    }
+    // <svg role="img"> declares itself meaningful — then it needs a name.
+    for (const m of src.matchAll(/<svg\b([^>]*)>([\s\S]*?)<\/svg>/gi)) {
+      if (!/\brole\s*=\s*["']img["']/i.test(m[1])) continue;
+      if (/<title[\s>]/i.test(m[2]) || /\baria-label(?:ledby)?\s*=\s*["'][^"']+["']/i.test(m[1])) continue;
+      issues.push({ rule: "wcag-1.1.1", message: '<svg role="img"> has no <title>/aria-label — a meaningful image needs an accessible name' });
+      break;
+    }
+  }
+
+  // WCAG 1.2.1 / 1.2.5 — prerecorded media needs captions and, for video,
+  // audio description. Burned-in captions/description satisfy these, so the
+  // messages say "verify" rather than "missing".
+  for (const m of src.matchAll(/<video\b([^>]*)>([\s\S]*?)<\/video>/gi)) {
+    if (/<track\b[^>]*\bkind\s*=\s*["'](?:captions|subtitles)["']/i.test(m[2])) continue;
+    issues.push({
+      rule: "wcag-1.2.1",
+      message: "<video> has no <track kind=captions> — verify captions aren't burned in; prerecorded video needs synchronized captions",
+    });
+    break;
+  }
+  for (const m of src.matchAll(/<audio\b([^>]*)>([\s\S]*?)<\/audio>/gi)) {
+    if (/<track\b[^>]*\bkind\s*=\s*["'](?:captions|subtitles)["']/i.test(m[2])) continue;
+    if (/(?:transcript|aria-label)\s*=/i.test(m[1])) continue;
+    issues.push({
+      rule: "wcag-1.2.1",
+      message: "<audio> has no <track> or transcript link — prerecorded audio needs a text alternative",
+    });
+    break;
+  }
+
+  // WCAG 3.2.1 — autofocus moves focus on load without a user request,
+  // disorienting screen-reader and keyboard users (same criterion as the
+  // rendered-facts check; this covers static scans).
+  if (/\bautofocus\b/i.test(src)) {
+    issues.push({ rule: "wcag-3.2.1", message: "autofocus moves focus without user request — let users choose where to start" });
+  }
+
+  // WCAG 2.1.1 — keyboard access. Three zero/low-FP mechanisms:
+  {
+    // role="button/link/checkbox/switch/tab" on a non-interactive tag with no
+    // tabindex — it looks like a control but can't receive keyboard focus.
+    for (const m of src.matchAll(/<(\w+)\b([^>]*\brole\s*=\s*["'](?:button|link|checkbox|switch|tab|menuitem|option|radio)["'][^>]*)>/gi)) {
+      const tag = m[1].toLowerCase();
+      if (["a", "button", "input", "select", "textarea", "summary"].includes(tag)) continue;
+      if (!/\btabindex\s*=/i.test(m[2])) {
+        issues.push({
+          rule: "wcag-2.1.1",
+          message: `<${tag} role="…"> has no tabindex — keyboard users can't reach this control: ${m[0].slice(0, 70)}`,
+        });
+        break;
+      }
+    }
+    // onclick on a non-interactive element with neither role nor tabindex —
+    // a mouse-only control.
+    for (const m of src.matchAll(/<(div|span|p|li|td|tr|img|section|article|header|footer|label)\b([^>]*\bonclick\s*=[^>]*)>/gi)) {
+      if (!/\brole\s*=|\btabindex\s*=/i.test(m[2])) {
+        issues.push({
+          rule: "wcag-2.1.1",
+          message: `<${m[1].toLowerCase()}> has onclick but no role/tabindex — a mouse-only control keyboard users can't operate: ${m[0].slice(0, 70)}`,
+        });
+        break;
+      }
+    }
+    // tabindex="-1" on a natively interactive element removes it from the
+    // tab order entirely.
+    for (const m of src.matchAll(/<(a|button|input|select|textarea)\b([^>]*\btabindex\s*=\s*["']?-1[^>]*)>/gi)) {
+      if (m[1].toLowerCase() === "a" && !/\bhref\b/i.test(m[2])) continue; // <a> without href isn't focusable anyway
+      if (m[1].toLowerCase() === "input" && /\btype\s*=\s*["']hidden["']/i.test(m[2])) continue;
+      issues.push({
+        rule: "wcag-2.1.1",
+        message: `<${m[1].toLowerCase()}> has tabindex="-1" — the control is removed from the keyboard tab order: ${m[0].slice(0, 70)}`,
+      });
+      break;
+    }
+    // Scrollable regions need tabindex="0" or keyboard users can't scroll
+    // them — the common <pre>/code-block failure (WCAG technique F73-ish).
+    const scrollWarn = (snippet) => {
+      issues.push({
+        rule: "wcag-2.1.1",
+        message: `scrollable region (overflow:auto/scroll) has no tabindex — keyboard users can't scroll it: ${snippet.slice(0, 60)}`,
+      });
+    };
+    let scrollFlag = false;
+    for (const m of src.matchAll(/<(\w+)\b([^>]*\bstyle\s*=\s*["'][^"']*overflow(?:-[xy])?\s*:\s*(?:auto|scroll)[^"']*["'][^>]*)>/gi)) {
+      if (["html", "body"].includes(m[1].toLowerCase())) continue;
+      if (!/\btabindex\s*=/i.test(m[2])) { scrollWarn(m[0]); scrollFlag = true; break; }
+    }
+    if (!scrollFlag && css) {
+      const scrollClasses = new Set();
+      for (const m of css.matchAll(/\.([\w-]+)[^{}]*\{[^}]*overflow(?:-[xy])?\s*:\s*(?:auto|scroll)/gi)) scrollClasses.add(m[1]);
+      for (const cls of scrollClasses) {
+        const elRe = new RegExp(`<(\\w+)\\b([^>]*\\bclass\\s*=\\s*["'][^"']*\\b${cls.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b[^"']*["'][^>]*)>`, "i");
+        const el = src.match(elRe);
+        if (el && !/\btabindex\s*=/i.test(el[2])) { scrollWarn(el[0]); break; }
+      }
+    }
+  }
+
+  // WCAG 2.4.4 — link mechanics that break purpose/keyboard expectations.
+  {
+    for (const m of src.matchAll(/<a\b[^>]*\bhref\s*=\s*["']javascript:/gi)) {
+      issues.push({
+        rule: "wcag-2.4.4",
+        message: `href="javascript:" pseudo-protocol — use a real URL or a <button>: ${m[0].slice(0, 70)}`,
+      });
+      break;
+    }
+    // <a> with no href, no role, no tabindex — a dead/click-only anchor that
+    // isn't focusable and announces as plain text.
+    for (const m of src.matchAll(/<a\b([^>]*)>/gi)) {
+      if (/\bhref\s*=/i.test(m[1])) continue;
+      if (/\b(?:role|tabindex|id|name)\s*=/i.test(m[1])) continue; // name anchors / js-focus targets
+      issues.push({
+        rule: "wcag-2.4.4",
+        message: `<a> with no href/role/tabindex is not a keyboard-reachable link: ${m[0].slice(0, 70)}`,
+      });
+      break;
+    }
+    // <a href="#frag"> where the fragment id doesn't exist — the jump goes
+    // nowhere (target may load dynamically, so this stays advisory).
+    const idSet2 = new Set([...src.matchAll(/\bid\s*=\s*["']([^"']+)["']/gi)].map((m) => m[1]));
+    for (const m of src.matchAll(/<a\b[^>]*\bhref\s*=\s*["']#([\w-]+)["']/gi)) {
+      if (!idSet2.has(m[1])) {
+        issues.push({
+          rule: "wcag-2.4.4",
+          message: `link targets "#${m[1]}" but no element has that id — verify the target exists`,
+        });
+        break;
+      }
+    }
+  }
+
+  // WCAG 2.3.1 — flashing content. <blink> and text-decoration:blink are
+  // unambiguous violations; CSS keyframe names only flag blink/flash verbs.
+  if (/<blink\b/i.test(src) || /text-decoration\s*:\s*[^;}]*blink/i.test(css) || /<[a-z][^>]*\bstyle\s*=\s*["'][^"']*text-decoration\s*:\s*[^;"']*blink/i.test(src)) {
+    issues.push({ rule: "wcag-2.3.1", message: "blinking text (<blink>/text-decoration:blink) — flashing content can trigger seizures" });
+  }
+
+  // WCAG 1.3.3 — instructions that rely on color/shape/position alone.
+  // Advisory: only a human can confirm whether a second cue exists.
+  {
+    const text = src.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/g, " ");
+    const sensory =
+      /\b(?:click|press|select|choose|use|see|tap)\s+the\s+(?:green|red|blue|yellow|orange|purple|left|right|top|bottom|upper|lower|above|below|round|square|circular|big|small|large)\b/i.test(text) ||
+      /\bon the\s+(?:left|right|top|bottom)\b/i.test(text);
+    if (sensory) {
+      issues.push({
+        rule: "wcag-1.3.3",
+        message: "instructions appear to rely on color/shape/position alone — verify a second cue exists (advisory)",
+      });
+    }
+  }
+
+  // WCAG 3.3.2 — a <label> with text but no for= and no wrapped control
+  // labels nothing — the intended association silently doesn't happen.
+  for (const m of src.matchAll(/<label\b([^>]*)>([\s\S]*?)<\/label>/gi)) {
+    if (/\bfor\s*=/i.test(m[1])) continue;
+    if (/<(?:input|select|textarea|meter|progress|button)\b/i.test(m[2])) continue;
+    if (!m[2].replace(/<[^>]+>/g, "").trim()) continue; // already flagged as empty
+    issues.push({
+      rule: "wcag-3.3.2",
+      message: `<label> has no for= and wraps no control — it labels nothing: ${m[0].slice(0, 70)}`,
+    });
+    break;
+  }
+
+  // WCAG 2.4.10 (AAA) — long text with no section headings is hard to
+  // navigate for everyone. Advisory: fires only on genuinely long documents.
+  {
+    const words = src.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/g, " ").trim().split(/\s+/).length;
+    const hasSectionHeadings = /<h[2-6]\b/i.test(src);
+    if (words > 800 && !hasSectionHeadings) {
+      issues.push({
+        rule: "wcag-2.4.10",
+        message: "long content has no section headings — headings aid navigation and comprehension (AAA advisory)",
+      });
+    }
+  }
+
   return issues;
 }
 

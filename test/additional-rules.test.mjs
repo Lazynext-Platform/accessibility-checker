@@ -279,3 +279,120 @@ test("non-underlined link below 3:1 vs body text flags wcag-1.4.1", () => {
   ];
   assert.deepEqual(checkUseOfColor(distinct), []);
 });
+
+test("duplicate ids flag wcag-4.1.1; unique ids pass", () => {
+  assert.ok(rules(scanAdditionalHtml('<p id="a"></p><p id="a"></p>')).includes("wcag-4.1.1"));
+  assert.ok(!rules(scanAdditionalHtml('<p id="a"></p><p id="b"></p>')).includes("wcag-4.1.1"));
+});
+
+test("dangling label/aria references flag wcag-4.1.2; resolving refs pass", () => {
+  assert.ok(rules(scanAdditionalHtml('<label for="ghost">Name</label><input id="real">')).includes("wcag-4.1.2"));
+  assert.ok(rules(scanAdditionalHtml('<p aria-labelledby="ghost">x</p>')).includes("wcag-4.1.2"));
+  assert.ok(!rules(scanAdditionalHtml('<label for="real">Name</label><input id="real">')).includes("wcag-4.1.2"));
+});
+
+test("iframe without title flags wcag-4.1.2; titled passes", () => {
+  assert.ok(rules(scanAdditionalHtml('<iframe src="x"></iframe>')).includes("wcag-4.1.2"));
+  assert.ok(!rules(scanAdditionalHtml('<iframe src="x" title="Map"></iframe>')).includes("wcag-4.1.2"));
+});
+
+test("invalid ARIA role flags wcag-4.1.2; valid roles pass", () => {
+  assert.ok(rules(scanAdditionalHtml('<div role="buttonn">x</div>')).includes("wcag-4.1.2"));
+  assert.ok(!rules(scanAdditionalHtml('<div role="button" tabindex="0">x</div>')).includes("wcag-4.1.2"));
+});
+
+test("nested interactive elements flag wcag-4.1.2", () => {
+  assert.ok(rules(scanAdditionalHtml('<a href="/x"><button>b</button></a>')).includes("wcag-4.1.2"));
+  assert.ok(rules(scanAdditionalHtml('<button><a href="/x">l</a></button>')).includes("wcag-4.1.2"));
+  assert.ok(!rules(scanAdditionalHtml('<a href="/x"><span>ok</span></a>')).includes("wcag-4.1.2"));
+});
+
+test("aria-hidden focusable flags wcag-4.1.2; hidden non-interactive passes", () => {
+  assert.ok(rules(scanAdditionalHtml('<a href="/x" aria-hidden="true">x</a>')).includes("wcag-4.1.2"));
+  assert.ok(rules(scanAdditionalHtml('<button aria-hidden="true">b</button>')).includes("wcag-4.1.2"));
+  assert.ok(!rules(scanAdditionalHtml('<div aria-hidden="true">decor</div>')).includes("wcag-4.1.2"));
+});
+
+test("stray list items and definition terms flag wcag-1.3.1; proper parents pass", () => {
+  assert.ok(rules(scanAdditionalHtml('<li>stray</li>')).includes("wcag-1.3.1"));
+  assert.ok(rules(scanAdditionalHtml('<dd>stray</dd>')).includes("wcag-1.3.1"));
+  assert.ok(!rules(scanAdditionalHtml('<ul><li>ok</li></ul><dl><dt>t</dt><dd>d</dd></dl>')).includes("wcag-1.3.1"));
+});
+
+test("fieldset without legend, optgroup without label, table without th flag wcag-1.3.1", () => {
+  assert.ok(rules(scanAdditionalHtml('<fieldset><input></fieldset>')).includes("wcag-1.3.1"));
+  assert.ok(rules(scanAdditionalHtml('<select><optgroup><option>o</option></optgroup></select>')).includes("wcag-1.3.1"));
+  assert.ok(rules(scanAdditionalHtml('<table><tr><td>x</td></tr></table>')).includes("wcag-1.3.1"));
+  assert.ok(!rules(scanAdditionalHtml('<fieldset><legend>L</legend><input></fieldset><table><tr><th>h</th></tr></table>')).includes("wcag-1.3.1"));
+});
+
+test("deprecated presentational markup flags wcag-1.3.1", () => {
+  assert.ok(rules(scanAdditionalHtml('<font color="red">x</font>')).includes("wcag-1.3.1"));
+  assert.ok(rules(scanAdditionalHtml('<table cellpadding="4"><tr><td>x</td></tr></table>')).includes("wcag-1.3.1"));
+});
+
+test("non-text alternatives flag wcag-1.1.1; alternatives pass", () => {
+  assert.ok(rules(scanAdditionalHtml('<input type="image">')).includes("wcag-1.1.1"));
+  assert.ok(rules(scanAdditionalHtml('<area href="/x">')).includes("wcag-1.1.1"));
+  assert.ok(rules(scanAdditionalHtml('<canvas></canvas>')).includes("wcag-1.1.1"));
+  assert.ok(rules(scanAdditionalHtml('<svg role="img"></svg>')).includes("wcag-1.1.1"));
+  assert.ok(!rules(scanAdditionalHtml('<input type="image" alt="Search"><canvas>fallback text</canvas><svg role="img"><title>Chart</title></svg>')).includes("wcag-1.1.1"));
+});
+
+test("media without captions flags wcag-1.2.1; captioned passes", () => {
+  assert.ok(rules(scanAdditionalHtml('<video><source src="v.mp4"></video>')).includes("wcag-1.2.1"));
+  assert.ok(rules(scanAdditionalHtml('<audio><source src="a.mp3"></audio>')).includes("wcag-1.2.1"));
+  assert.ok(!rules(scanAdditionalHtml('<video><track kind="captions"></video>')).includes("wcag-1.2.1"));
+});
+
+test("autofocus flags wcag-3.2.1", () => {
+  assert.ok(rules(scanAdditionalHtml('<input autofocus>')).includes("wcag-3.2.1"));
+  assert.ok(!rules(scanAdditionalHtml('<input>')).includes("wcag-3.2.1"));
+});
+
+test("keyboard-access gaps flag wcag-2.1.1", () => {
+  assert.ok(rules(scanAdditionalHtml('<div role="button">x</div>')).includes("wcag-2.1.1"));
+  assert.ok(rules(scanAdditionalHtml('<div onclick="go()">x</div>')).includes("wcag-2.1.1"));
+  assert.ok(rules(scanAdditionalHtml('<a href="/x" tabindex="-1">t</a>')).includes("wcag-2.1.1"));
+  assert.ok(rules(scanAdditionalHtml('<div style="overflow:auto"><pre>code</pre></div>')).includes("wcag-2.1.1"));
+  // positive cases
+  assert.ok(!rules(scanAdditionalHtml('<div role="button" tabindex="0">x</div>')).includes("wcag-2.1.1"));
+  assert.ok(!rules(scanAdditionalHtml('<div tabindex="0" style="overflow:auto"><pre>code</pre></div>')).includes("wcag-2.1.1"));
+  assert.ok(!rules(scanAdditionalHtml('<input type="hidden" tabindex="-1">')).includes("wcag-2.1.1"));
+});
+
+test("link-mechanics issues flag wcag-2.4.4", () => {
+  assert.ok(rules(scanAdditionalHtml('<a href="javascript:void(0)">j</a>')).includes("wcag-2.4.4"));
+  assert.ok(rules(scanAdditionalHtml('<a>dead</a>')).includes("wcag-2.4.4"));
+  assert.ok(rules(scanAdditionalHtml('<a href="#ghost">g</a>')).includes("wcag-2.4.4"));
+  assert.ok(!rules(scanAdditionalHtml('<a href="#real">g</a><p id="real">t</p>')).includes("wcag-2.4.4"));
+  assert.ok(!rules(scanAdditionalHtml('<a name="anchor">t</a>')).includes("wcag-2.4.4"));
+});
+
+test("blinking content flags wcag-2.3.1", () => {
+  assert.ok(rules(scanAdditionalHtml('<blink>!</blink>')).includes("wcag-2.3.1"));
+  assert.ok(rules(scanAdditionalHtml('<style>.x{text-decoration:blink}</style><p class="x">y</p>')).includes("wcag-2.3.1"));
+  assert.ok(rules(scanAdditionalHtml('<p style="text-decoration:blink">x</p>')).includes("wcag-2.3.1"));
+  assert.ok(!rules(scanAdditionalHtml('<p>steady</p>')).includes("wcag-2.3.1"));
+});
+
+test("sensory-only instructions flag wcag-1.3.3 (advisory)", () => {
+  assert.ok(rules(scanAdditionalHtml('<p>Click the green button to continue</p>')).includes("wcag-1.3.3"));
+  assert.ok(rules(scanAdditionalHtml('<p>See the menu on the left</p>')).includes("wcag-1.3.3"));
+  assert.ok(!rules(scanAdditionalHtml('<p>Click Submit to continue</p>')).includes("wcag-1.3.3"));
+});
+
+test("unassociated label flags wcag-3.3.2; associated passes", () => {
+  assert.ok(rules(scanAdditionalHtml('<label>Orphan</label>')).includes("wcag-3.3.2"));
+  assert.ok(!rules(scanAdditionalHtml('<label for="x">Name</label><input id="x">')).includes("wcag-3.3.2"));
+  assert.ok(!rules(scanAdditionalHtml('<label>Name <input></label>')).includes("wcag-3.3.2"));
+});
+
+test("long content without section headings flags wcag-2.4.10 (AAA advisory)", () => {
+  const long = `<p>${"word ".repeat(900)}</p>`;
+  assert.ok(rules(scanAdditionalHtml(long)).includes("wcag-2.4.10"));
+  const withHeadings = `<h2>Section</h2><p>${"word ".repeat(900)}</p>`;
+  assert.ok(!rules(scanAdditionalHtml(withHeadings)).includes("wcag-2.4.10"));
+  const short = "<p>short</p>";
+  assert.ok(!rules(scanAdditionalHtml(short)).includes("wcag-2.4.10"));
+});
