@@ -1,4 +1,7 @@
 # Deeper W3C Coverage for Accessibility Checker
+
+> **Editorial note (verified against shipped code):** this is an aspirational research doc, not current state. "Current Coverage" understates reality — ARIA checks, rendered/dynamic scans (Browser Rendering), media caption checks (1.2.1), and 50+ rule IDs are already live. Two proposals are not viable: there is no "W3C Accessibility Guidelines API", and axe-core integration contradicts the self-contained scanner architecture — treat "integrate axe-core" style tasks as out of scope.
+
 ## Introduction
 The Accessibility Checker is an AI-powered tool designed to scan small business websites for accessibility compliance issues and provide recommendations for improvement. As accessibility regulations become more stringent, it is essential to ensure that our tool provides comprehensive coverage of the Web Content Accessibility Guidelines (WCAG) 2.1, published by the World Wide Web Consortium (W3C). This document outlines our approach to achieving deeper W3C coverage for the Accessibility Checker.
 

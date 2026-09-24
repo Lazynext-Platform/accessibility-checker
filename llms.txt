@@ -5,5 +5,5 @@
 > emailed reports. 14-day free trial.
 
 - Site: https://checker.lazynext.com/
-- API: https://accessibility-checker.dry-hall-6a50.workers.dev
+- API: https://checker.lazynext.com (same-origin — POST /scan, GET /report/:id, POST /lead, GET /checkout, POST /cancel, GET|POST|DELETE /monitor)
 - Built by: https://lazynext.com
