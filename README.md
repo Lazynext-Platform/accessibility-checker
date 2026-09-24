@@ -43,7 +43,18 @@ alert when a page's score drops ≥ 10 points), `GET /health`.
   (1.4.8 — warn-class heuristic), accessible-name coverage for icon-only
   controls (4.1.2), motion actuation (2.5.4), orientation lock (1.3.4),
   hover/focus content without Escape dismissal (1.4.13 — warn-class), and
-  down-event navigation (2.5.2)
+  down-event navigation (2.5.2). Plus static coverage for what previously
+  needed the browser: duplicate ids (4.1.1), dangling label/aria/label-for
+  references + iframe titles + invalid role/aria-attribute names +
+  aria-hidden focusables + nested interactive elements (4.1.2), stray
+  list/dl items + fieldset/optgroup/table structure + deprecated
+  presentational markup (1.3.1), image inputs/areas/canvas/svg without
+  alternatives (1.1.1), media without caption tracks (1.2.1), autofocus
+  (3.2.1), role/tabindex/scrollable keyboard gaps (2.1.1),
+  javascript:/dead/dangling-fragment links (2.4.4), blink content
+  (2.3.1), sensory-only instructions (1.3.3 — warn-class), unassociated
+  labels (3.3.2), missing section headings on long content (2.4.10 —
+  AAA advisory), and unnamed duplicate landmarks (1.3.1)
 - **Rendered layout checks**: target size 24×24px (2.5.8 — with inline-link
   and UA-control exemptions), focus not obscured by author overlays (2.4.11),
   visible focus indicator (2.4.13), non-text contrast of control boundaries
