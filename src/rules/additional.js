@@ -247,6 +247,75 @@ export function scanAdditionalHtml(html) {
     }
   }
 
+  // WCAG 4.1.2 (A) — Name, Role, Value: a control with no accessible name is
+  // announced as "button" or "link" with nothing after it. An icon-only
+  // control needs aria-label/aria-labelledby/title — an inner <img alt> or
+  // <svg><title> also counts as a name source.
+  for (const m of src.matchAll(/<(a|button)\b([^>]*)>([\s\S]*?)<\/\1>/gi)) {
+    const attrs = m[2], inner = m[3];
+    if (m[1].toLowerCase() === "a" && !/\bhref\s*=/i.test(attrs)) continue;
+    if (/\baria-label(?:ledby)?\s*=\s*["'][^"']+["']/i.test(attrs)) continue;
+    if (/\btitle\s*=\s*["'][^"']+["']/i.test(attrs)) continue;
+    if (/<img\b[^>]*\balt\s*=\s*["'][^"']+["']/i.test(inner)) continue;
+    if (/<svg\b[\s\S]*<title[\s>]/i.test(inner)) continue;
+    const text = inner.replace(/<[^>]+>/g, "").replace(/&nbsp;/gi, " ").trim();
+    if (text) continue;
+    issues.push({
+      rule: "wcag-4.1.2",
+      message: `<${m[1].toLowerCase()}> has no accessible name — icon-only controls need aria-label/aria-labelledby/title: ${m[0].slice(0, 70)}`,
+    });
+  }
+
+  // WCAG 2.5.4 (A) — Motion Actuation: functionality triggered by shaking or
+  // tilting the device must have a control-based alternative. The listeners
+  // are the literal mechanism; nothing else produces them.
+  if (/\bondevice(?:motion|orientation)\s*=|addEventListener\s*\(\s*["']device(?:motion|orientation)["']/i.test(src)) {
+    issues.push({
+      rule: "wcag-2.5.4",
+      message: "device motion/orientation listener detected — provide a button/control alternative for shake-or-tilt actions",
+    });
+  }
+
+  // WCAG 1.3.4 (AA) — Orientation: content must not lock to one orientation.
+  // screen.orientation.lock() is the literal mechanism (orientation media
+  // queries alone are legitimate responsive design, so they are not flagged).
+  if (/\borientation\s*\.\s*lock\s*\(|lockOrientation\s*\(/i.test(src)) {
+    issues.push({
+      rule: "wcag-1.3.4",
+      message: "screen orientation lock detected — content must work in both portrait and landscape unless essential",
+    });
+  }
+
+  // WCAG 1.4.13 (AA) — Content on Hover or Focus: content revealed by hover/
+  // focus must be dismissible without moving the pointer (Escape), hoverable,
+  // and persistent. Flagged when a handler unhides content and no Escape
+  // handling exists anywhere on the page — warn-class heuristic.
+  {
+    const reveals = /\bon(?:mouseover|mouseenter|focus)\s*=\s*(["'])[\s\S]*?\1/i.test(src) &&
+      /\b(?:display|visibility|opacity|hidden|classList|style\.)/i.test(src);
+    const escapable = /Escape|keyCode\s*[=!]=+\s*27|key\s*===?\s*["']Escape/i.test(src);
+    if (reveals && !escapable) {
+      issues.push({
+        rule: "wcag-1.4.13",
+        message: "content revealed on hover/focus with no Escape dismissal — hover content must be dismissible without moving the pointer",
+      });
+    }
+  }
+
+  // WCAG 2.5.2 (A) — Pointer Cancellation: actions must fire on the up event,
+  // not the down event, so users can slide off to cancel. Flagged only when a
+  // down-event handler performs an irreversible action (navigate/submit/click)
+  // — passive handlers for visual feedback are not the violation.
+  for (const m of src.matchAll(/\bon(?:mouse|pointer|touch)down\s*=\s*(["'])([\s\S]*?)\1/gi)) {
+    if (/(?:window\.)?location\s*(?:\.|=\s*)|\.submit\s*\(|\.click\s*\(|window\.open\s*\(/i.test(m[2])) {
+      issues.push({
+        rule: "wcag-2.5.2",
+        message: `down-event handler navigates/submits — actions should fire on the up event so they can be cancelled: ${m[0].slice(0, 80)}`,
+      });
+      break;
+    }
+  }
+
   return issues;
 }
 
@@ -268,6 +337,51 @@ export function checkContrastAAA(styles) {
       issues.push({
         rule: "wcag-1.4.6",
         message: `contrast ${ratio.toFixed(2)}:1 passes AA but below enhanced ${aaaMin}:1 on <${el.tag}> "${String(el.text).slice(0, 40)}"`,
+      });
+    }
+  }
+  return issues;
+}
+
+// WCAG 1.4.1 (A) — Use of Color: links inside body text must be
+// distinguishable by more than color alone. A link is fine if it is
+// underlined (default UA styling counts) or otherwise visually marked;
+// a non-underlined link needs ≥3:1 contrast against the surrounding
+// text color (WCAG technique G183 / failure F73). Requires the render
+// pass's per-element styles incl. textDecorationLine (`td`).
+export function checkUseOfColor(styles) {
+  const issues = [];
+  const list = Array.isArray(styles) ? styles : [];
+  // Dominant non-link text color = the "surrounding text" the link must
+  // contrast with.
+  const counts = new Map();
+  for (const el of list) {
+    if (el.tag === "a") continue;
+    const c = parseColor(el.color);
+    if (!c || c.a === 0) continue;
+    const key = `${c.r},${c.g},${c.b}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const bodyKey = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  if (!bodyKey) return issues;
+  const [br, bg2, bb] = bodyKey.split(",").map(Number);
+  const bodyLum = luminance({ r: br, g: bg2, b: bb });
+  for (const el of list) {
+    if (el.tag !== "a") continue;
+    // Only prose-context links are in scope — nav/menu links are
+    // identifiable by structure, not color (F73's actual failure mode).
+    // Styles data without the flag (older renders) is skipped outright:
+    // under-reporting beats flagging every nav menu on the internet.
+    if (el.inProse !== true) continue;
+    const td = String(el.td ?? "");
+    if (td.includes("underline") || td.includes("line-through")) continue;
+    const c = parseColor(el.color);
+    if (!c || c.a === 0) continue;
+    const ratio = (Math.max(luminance(c), bodyLum) + 0.05) / (Math.min(luminance(c), bodyLum) + 0.05);
+    if (ratio < 3) {
+      issues.push({
+        rule: "wcag-1.4.1",
+        message: `link "${String(el.text).slice(0, 40)}" is not underlined and its color is only ${ratio.toFixed(2)}:1 vs surrounding text — color alone must not carry meaning`,
       });
     }
   }

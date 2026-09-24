@@ -10,6 +10,8 @@
   .clip{height:46px;overflow:hidden;width:280px}
   /* 2.4.13: focused element loses its only indicator, no replacement */
   .noind:focus{outline:none}
+  /* 1.4.1: prose link with no underline and same color as body text */
+  .barelink{text-decoration:none;color:#141414}
 </style>
 </head>
 <body>
@@ -18,6 +20,7 @@
 <label>Email <input class="faint" type="email" name="e"></label>
 <div class="clip"><p style="margin:0">Fixture text sized to exactly two lines</p></div>
 <a href="/ok" class="noind">focus me</a>
+<p>Body text with a <a class="barelink" href="/x">color-only link</a> inside it.</p>
 </main>
 </body>
 </html>

@@ -1,5 +1,5 @@
 import { scanHtml, checkContrast, checkFacts, checkFocus, score } from './src/scanner.js';
-import { scanAdditionalHtml, checkContrastAAA, scanKeyboardStatics } from './src/rules/additional.js';
+import { scanAdditionalHtml, checkContrastAAA, checkUseOfColor, scanKeyboardStatics } from './src/rules/additional.js';
 import { scanWcag22 } from './src/rules/wcag22.js';
 import { section508Report } from './src/rules/section508.js';
 import { withRecommendations } from './src/recommendations.js';
@@ -249,6 +249,7 @@ ${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms
             .concat(scanWcag22(page.html))
             .concat(checkContrast(page.styles))
             .concat(checkContrastAAA(page.styles))
+            .concat(checkUseOfColor(page.styles))
             .concat(checkFacts(page.facts))
             .concat(checkFocus(page.focus))
             .concat(checkFocusDepth(page.focus, page.focusable, page.escape, { undersized: page.undersized, obscured: page.obscured, noFocusInd: page.noFocusInd, nontextContrast: page.nontextContrast, spacingClip: page.spacingClip }))

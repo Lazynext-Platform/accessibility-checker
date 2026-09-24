@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { scanAdditionalHtml, checkContrastAAA } from "../src/rules/additional.js";
+import { scanAdditionalHtml, checkContrastAAA, checkUseOfColor } from "../src/rules/additional.js";
 
 const rules = (issues) => issues.map((i) => i.rule);
 
@@ -208,4 +208,74 @@ test("justified text without hyphenation flags wcag-1.4.8", () => {
   assert.ok(!rules(ok).includes("wcag-1.4.8"));
   const inline = scanAdditionalHtml('<p style="text-align:justify">x</p>');
   assert.ok(rules(inline).includes("wcag-1.4.8"));
+});
+
+test("icon-only button/link without a name flags wcag-4.1.2", () => {
+  const bad = scanAdditionalHtml('<button><svg viewBox="0 0 8 8"><path d="M0 0h8v8z"/></svg></button>');
+  assert.ok(rules(bad).includes("wcag-4.1.2"));
+  const named = scanAdditionalHtml('<button aria-label="Close"><svg></svg></button>');
+  assert.ok(!rules(named).includes("wcag-4.1.2"));
+  const imgAlt = scanAdditionalHtml('<a href="/x"><img src="i.png" alt="Home"></a>');
+  assert.ok(!rules(imgAlt).includes("wcag-4.1.2"));
+  const svgTitle = scanAdditionalHtml('<button><svg><title>Menu</title></svg></button>');
+  assert.ok(!rules(svgTitle).includes("wcag-4.1.2"));
+  const text = scanAdditionalHtml('<a href="/x">Docs</a>');
+  assert.ok(!rules(text).includes("wcag-4.1.2"));
+  const noHref = scanAdditionalHtml('<a name="anchor"></a>');
+  assert.ok(!rules(noHref).includes("wcag-4.1.2"));
+});
+
+test("device motion listeners flag wcag-2.5.4", () => {
+  const bad = scanAdditionalHtml('<script>window.addEventListener("devicemotion", shake);</script>');
+  assert.ok(rules(bad).includes("wcag-2.5.4"));
+  const ok = scanAdditionalHtml('<script>window.addEventListener("resize", reflow);</script>');
+  assert.ok(!rules(ok).includes("wcag-2.5.4"));
+});
+
+test("orientation lock flags wcag-1.3.4", () => {
+  const bad = scanAdditionalHtml('<script>screen.orientation.lock("portrait");</script>');
+  assert.ok(rules(bad).includes("wcag-1.3.4"));
+  const mq = scanAdditionalHtml('<style>@media (orientation:landscape){.x{display:block}}</style>');
+  assert.ok(!rules(mq).includes("wcag-1.3.4"));
+});
+
+test("hover-revealed content without Escape flags wcag-1.4.13", () => {
+  const bad = scanAdditionalHtml('<div onmouseover="this.querySelector(\'.tip\').style.display=\'block\'">x</div>');
+  assert.ok(rules(bad).includes("wcag-1.4.13"));
+  const ok = scanAdditionalHtml('<div onmouseover="this.classList.add(\'x\')" onkeydown="if(event.key===\'Escape\')hide()">x</div>');
+  assert.ok(!rules(ok).includes("wcag-1.4.13"));
+  const none = scanAdditionalHtml('<p>plain content</p>');
+  assert.ok(!rules(none).includes("wcag-1.4.13"));
+});
+
+test("down-event navigation flags wcag-2.5.2; visual-only handlers pass", () => {
+  const bad = scanAdditionalHtml('<button onmousedown="location.href=\'/buy\'">Buy</button>');
+  assert.ok(rules(bad).includes("wcag-2.5.2"));
+  const ok = scanAdditionalHtml('<button onmousedown="this.style.background=\'red\'">Press</button>');
+  assert.ok(!rules(ok).includes("wcag-2.5.2"));
+});
+
+test("non-underlined link below 3:1 vs body text flags wcag-1.4.1", () => {
+  const styles = [
+    { tag: "p", text: "body text", color: "rgb(20,20,20)", bg: "rgb(255,255,255)", size: 16, weight: "400", td: "none" },
+    { tag: "a", text: "learn more", color: "rgb(30,30,30)", bg: "rgb(255,255,255)", size: 16, weight: "400", td: "none", inProse: true },
+  ];
+  const f = checkUseOfColor(styles).find((i) => i.rule === "wcag-1.4.1");
+  assert.ok(f, "color-only prose link should flag");
+  // Nav/structural links are out of scope — no inProse flag means skip.
+  const navLink = [
+    { tag: "p", text: "body", color: "rgb(20,20,20)", bg: "rgb(255,255,255)", size: 16, weight: "400", td: "none" },
+    { tag: "a", text: "menu item", color: "rgb(30,30,30)", bg: "rgb(255,255,255)", size: 16, weight: "400", td: "none" },
+  ];
+  assert.deepEqual(checkUseOfColor(navLink), []);
+  const underlined = [
+    { tag: "p", text: "body", color: "rgb(20,20,20)", bg: "rgb(255,255,255)", size: 16, weight: "400", td: "none" },
+    { tag: "a", text: "docs", color: "rgb(30,30,30)", bg: "rgb(255,255,255)", size: 16, weight: "400", td: "underline", inProse: true },
+  ];
+  assert.deepEqual(checkUseOfColor(underlined), []);
+  const distinct = [
+    { tag: "p", text: "body", color: "rgb(15,15,15)", bg: "rgb(255,255,255)", size: 16, weight: "400", td: "none" },
+    { tag: "a", text: "docs", color: "rgb(160,160,160)", bg: "rgb(255,255,255)", size: 16, weight: "400", td: "none", inProse: true },
+  ];
+  assert.deepEqual(checkUseOfColor(distinct), []);
 });
