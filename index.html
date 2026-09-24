@@ -31,6 +31,8 @@
         <a id="pro" href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout" style="align-self:center">Start 14-day free trial →</a>
         <a id="cancel" href="#" style="align-self:center;font-size:.8rem;color:#6b7280">cancel</a>
         <label style="align-self:center;font-size:.8rem;color:#6b7280;display:flex;gap:.3rem;align-items:center;white-space:nowrap"><input id="emailReport" type="checkbox" style="flex:none">email me the report</label>
+        <label style="align-self:center;font-size:.8rem;color:#6b7280;display:flex;gap:.3rem;align-items:center;white-space:nowrap"><input id="siteScan" type="checkbox" style="flex:none">whole site</label>
+        <a id="monitor" href="#" style="align-self:center;font-size:.8rem;color:#6b7280">monitor daily</a>
     </div>
     <div id="status"></div>
     <div id="out"></div>
@@ -66,7 +68,9 @@
             go.disabled = true; statusEl.textContent = "Rendering page and scanning…"; out.innerHTML = "";
             try {
                 const license = document.getElementById("license").value.trim();
-                const r = await fetch(API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, ...(license ? { license } : {}), email_report: document.getElementById("emailReport").checked }) });
+                const site = document.getElementById("siteScan").checked;
+                statusEl.textContent = site ? "Crawling and scanning pages…" : "Rendering page and scanning…";
+                const r = await fetch(API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, ...(license ? { license } : {}), email_report: document.getElementById("emailReport").checked, ...(site ? { site: true } : {}) }) });
                 const d = await r.json();
                 if (r.status === 402) {
                     statusEl.innerHTML = `Free limit reached — <a href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout">start a free 14-day Pro trial</a> for unlimited scans, or drop your email and we'll send you a discount:`;
@@ -79,10 +83,11 @@
                     return;
                 }
                 if (!r.ok) throw new Error(d.error || r.statusText);
-                statusEl.innerHTML = `Score: <span id="score">${d.score}</span>/100` + (d.rendered ? " · rendered" : " · static") + (d.report ? ` · <a href="${d.report}" target="_blank">share report</a>` : "");
-                out.innerHTML = d.issues.length
-                    ? d.issues.map(i => `<div class="issue"><div class="rule">${i.rule ?? "issue"}</div>${i.message}</div>`).join("")
-                    : '<p class="ok">No issues found — nice work.</p>';
+                statusEl.innerHTML = `Score: <span id="score">${d.score}</span>/100` + (d.site ? ` · ${d.pages.length} pages` : d.rendered ? " · rendered" : " · static") + (d.report ? ` · <a href="${d.report}" target="_blank">share report</a>` : "");
+                out.innerHTML = (d.site ? d.pages.map(p => `<div class="issue" style="border-left-color:#4f46e5"><div class="rule">${p.url}</div>score ${p.score}/100 · ${p.count} issue${p.count === 1 ? "" : "s"}</div>`).join("") : "")
+                    + (d.issues.length
+                        ? d.issues.map(i => `<div class="issue"><div class="rule">${i.rule ?? "issue"}${i.url ? " · " + i.url : ""}</div>${i.message}</div>`).join("")
+                        : '<p class="ok">No issues found — nice work.</p>');
             } catch (e) {
                 statusEl.textContent = "Scan failed: " + e.message;
             } finally {
@@ -100,6 +105,20 @@
             });
             const d = await r.json().catch(() => ({}));
             statusEl.textContent = r.ok ? "Subscription cancelled — you're on the free plan now." : `Couldn't cancel: ${d.error ?? r.status}`;
+        });
+        document.getElementById("monitor").addEventListener("click", async (e) => {
+            e.preventDefault();
+            const email = document.getElementById("license").value.trim();
+            const url = urlEl.value.trim();
+            if (!email.includes("@")) { statusEl.textContent = "Monitoring is a Pro feature — enter your purchase email in the license field first."; return; }
+            if (!/^https?:\/\//i.test(url)) { statusEl.textContent = "Enter the URL to monitor in the scan field."; return; }
+            const r = await fetch("https://accessibility-checker.dry-hall-6a50.workers.dev/monitor", {
+                method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ license: email, url })
+            });
+            const d = await r.json().catch(() => ({}));
+            statusEl.textContent = r.ok
+                ? `Monitoring ${url} — we rescan it daily and email you if the score drops.`
+                : (r.status === 402 ? "Monitoring needs a Pro license — start the free trial above." : `Couldn't set up monitoring: ${d.error ?? r.status}`);
         });
     </script>
 </body>
