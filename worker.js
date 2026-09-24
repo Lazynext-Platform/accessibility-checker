@@ -170,7 +170,7 @@ export default {
         return respond({ error: 'provide {"url"} or {"html"}' }, 400);
       }
 
-      const result = { score: score(issues), issues, rendered, plan: pro ? 'pro' : 'free', ...(renderError ? { render_error: renderError } : {}), ...(sitePages ? { site: true, pages: sitePages.map(({ url, score: s, issues: i }) => ({ url, score: s, count: i.length })) } : {}) };
+      const result = { score: sitePages ? Math.round(sitePages.reduce((t, p) => t + p.score, 0) / sitePages.length) : score(issues), issues, rendered, plan: pro ? 'pro' : 'free', ...(renderError ? { render_error: renderError } : {}), ...(sitePages ? { site: true, pages: sitePages.map(({ url, score: s, issues: i }) => ({ url, score: s, count: i.length })) } : {}) };
 
       // Persist a shareable report (30d) and optionally email it for Pro.
       const id = crypto.randomUUID().slice(0, 12);
