@@ -32,7 +32,7 @@ export function checkFocusDepth(trace, focusable, escape) {
   if (cycle && Number.isInteger(focusable) && cycle.size < focusable) {
     issues.push({
       rule: 'wcag-2.1.2',
-      message: `possible keyboard trap — focus cycles among ${cycle.size} element(s) and never reaches ${focusable - cycle.size} other focusable element(s)`,
+      message: `possible keyboard trap — focus is stuck cycling among ${cycle.size} element(s); ${focusable - cycle.size} other focusable element(s) lie outside the loop`,
     });
   } else if (cycle && !Number.isInteger(focusable)) {
     issues.push({
