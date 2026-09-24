@@ -66,7 +66,10 @@ export function scanHtml(html) {
 }
 
 export function score(issues) {
-  return Math.max(0, 100 - issues.length * 10);
+  // Exponential decay: keeps resolution across the whole range so a site with
+  // 30 findings still differentiates from one with 10 (and score-drop alerts
+  // stay meaningful). 0 issues = 100; 5 ≈ 72; 10 ≈ 51; 15 ≈ 37; 30 ≈ 14.
+  return Math.max(0, Math.round(100 * Math.exp(-issues.length / 15)));
 }
 
 // --- rendered-DOM contrast checks (WCAG 1.4.3) -------------------------------
