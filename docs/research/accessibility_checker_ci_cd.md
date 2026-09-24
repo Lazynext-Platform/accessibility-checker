@@ -1,92 +1,102 @@
-# Introduction to Cloudflare Worker Configuration
-To handle increased traffic from marketing campaigns, we need to configure Cloudflare Worker to efficiently manage and distribute the incoming requests. This configuration will ensure that our Accessibility Checker tool remains responsive and provides a seamless experience for users.
+# Introduction to CI/CD Pipeline
+The Accessibility Checker product requires a robust Continuous Integration/Continuous Deployment (CI/CD) pipeline to ensure seamless and automated deployment. This pipeline will automate testing, building, and deployment of the product, ensuring that the client-side version of the product is always up-to-date and functional.
 
 ## Prerequisites
-Before configuring Cloudflare Worker, make sure you have the following:
-- A Cloudflare account
-- The Accessibility Checker tool deployed on a website
-- The `worker.js` file set up to handle requests
+- Node.js installed on the system
+- npm or yarn package manager
+- GitHub repository set up for the project
+- GitHub Actions for CI/CD pipeline automation
 
-## Step 1: Enable Cloudflare Worker
-To enable Cloudflare Worker, follow these steps:
-1. Log in to your Cloudflare account and select the domain for your Accessibility Checker tool.
-2. Navigate to the **Workers** tab and click on **Create a Worker**.
-3. Upload your `worker.js` file or create a new worker using the Cloudflare Worker editor.
+## Step 1: Configure GitHub Actions
+Create a new file in the `.github/workflows` directory, e.g., `deploy.yml`, and add the following configuration:
+```yml
+name: Deploy Accessibility Checker
 
-## Step 2: Configure Worker Settings
-To configure the worker settings, follow these steps:
-1. In the **Workers** tab, click on the three dots next to your worker and select **Edit**.
-2. In the worker editor, add the following code to handle increased traffic:
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install dependencies
+        run: npm install
+      - name: Run tests
+        run: npm test
+      - name: Build and deploy
+        run: |
+          npm run build
+          npm run deploy
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_REF: main
+```
+This configuration will trigger the pipeline on push events to the `main` branch, install dependencies, run tests, build the project, and deploy it.
+
+## Step 2: Implement Automated Testing
+Update the `test/additional-rules.test.mjs` file to include tests for the Accessibility Checker algorithm:
 ```javascript
-addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request))
-})
+import { test, expect } from '@jest/globals';
+import { scanWebsite } from '../src/scanner';
 
-async function handleRequest(request) {
-  // Handle requests to the Accessibility Checker tool
-  if (request.url.includes('/accessibility-checker')) {
-    // Use a cache to reduce the load on the origin server
-    const cache = await caches.open('accessibility-checker-cache')
-    const cachedResponse = await cache.match(request)
-    if (cachedResponse) {
-      return cachedResponse
+test('scan website for accessibility issues', async () => {
+  const url = 'https://example.com';
+  const issues = await scanWebsite(url);
+  expect(issues).toBeInstanceOf(Array);
+  expect(issues.length).toBeGreaterThan(0);
+});
+```
+Update the `test/crawl.test.mjs` file to include tests for the website crawling functionality:
+```javascript
+import { test, expect } from '@jest/globals';
+import { crawlWebsite } from '../src/crawl';
+
+test('crawl website for accessibility issues', async () => {
+  const url = 'https://example.com';
+  const pages = await crawlWebsite(url);
+  expect(pages).toBeInstanceOf(Array);
+  expect(pages.length).toBeGreaterThan(0);
+});
+```
+## Step 3: Implement Automated Deployment
+Create a new file `deploy.js` in the `src` directory and add the following code:
+```javascript
+import fs from 'fs';
+import path from 'path';
+
+const deploy = async () => {
+  const buildDir = path.join(__dirname, '../build');
+  const indexHtml = path.join(buildDir, 'index.html');
+
+  // Read the index.html file
+  const html = fs.readFileSync(indexHtml, 'utf8');
+
+  // Deploy the index.html file to the production environment
+  // For example, using GitHub Pages
+  const ghPages = require('gh-pages');
+  ghPages.publish(buildDir, (err) => {
+    if (err) {
+      console.error(err);
+    } else {
+      console.log('Deployment successful');
     }
+  });
+};
 
-    // If not cached, fetch the response from the origin server
-    const response = await fetch(request)
-    const cachedResponse = new Response(response.body, response.headers)
-    await cache.put(request, cachedResponse.clone())
-    return cachedResponse
-  }
-
-  // Handle other requests
-  return fetch(request)
+export default deploy;
+```
+Update the `package.json` file to include a script for deployment:
+```json
+"scripts": {
+  "deploy": "node src/deploy.js"
 }
 ```
-This code uses a cache to reduce the load on the origin server and improve response times.
+## Step 4: Test the CI/CD Pipeline
+Trigger the pipeline by pushing changes to the `main` branch. The pipeline will automate testing, building, and deployment of the Accessibility Checker product.
 
-## Step 3: Configure Rate Limiting
-To prevent abuse and ensure that the worker can handle the increased traffic, configure rate limiting:
-1. In the **Workers** tab, click on the three dots next to your worker and select **Edit**.
-2. In the worker editor, add the following code to configure rate limiting:
-```javascript
-const rateLimit = 100 // requests per minute
-const rateLimitWindow = 60 // seconds
-
-const requests = new Map()
-
-addEventListener('fetch', event => {
-  const request = event.request
-  const ip = request.headers.get('CF-Connecting-IP')
-  const now = Date.now() / 1000
-
-  if (requests.has(ip)) {
-    const requestCount = requests.get(ip)
-    const timestamp = requestCount.timestamp
-    const count = requestCount.count
-
-    if (now - timestamp < rateLimitWindow) {
-      if (count >= rateLimit) {
-        return new Response('Rate limit exceeded', { status: 429 })
-      }
-      requests.set(ip, { timestamp, count: count + 1 })
-    } else {
-      requests.set(ip, { timestamp: now, count: 1 })
-    }
-  } else {
-    requests.set(ip, { timestamp: now, count: 1 })
-  }
-
-  event.respondWith(handleRequest(event.request))
-})
-```
-This code limits the number of requests from a single IP address to 100 requests per minute.
-
-## Step 4: Test the Configuration
-To test the configuration, follow these steps:
-1. Deploy the updated worker to Cloudflare.
-2. Use a tool like `curl` or a web browser to send requests to the Accessibility Checker tool.
-3. Verify that the worker is handling requests correctly and that rate limiting is working as expected.
-
-## Conclusion
-By configuring Cloudflare Worker to handle increased traffic from marketing campaigns, we can ensure that our Accessibility Checker tool remains responsive and provides a seamless experience for users. The configuration includes enabling Cloudflare Worker, configuring worker settings, and configuring rate limiting to prevent abuse.
+## Step 5: Verify Deployment
+After the pipeline has completed, verify that the client-side version of the product has been deployed successfully by visiting the production URL in a web browser. The Accessibility Checker product should be functional and allow visitors to use the core feature in the browser.
