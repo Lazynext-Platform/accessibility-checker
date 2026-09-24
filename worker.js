@@ -86,8 +86,10 @@ export default {
     if (request.method === 'GET' && url.pathname === '/') {
       return respond({
         name: 'Accessibility Checker API',
-        usage: 'POST /scan {"url"|"html", "license"?: email, "email_report"?: bool}',
-        checkout: '/checkout', lead: '/lead', report: '/report/:id',
+        scan: 'POST /scan {"url"|"html", "site"?: bool, "license"?: email, "email_report"?: bool}',
+        checkout: 'GET /checkout', cancel: 'POST /cancel {"license": email}',
+        confirm: 'GET /confirm?token=…', monitor: 'GET|POST|DELETE /monitor (Pro)',
+        lead: 'POST /lead {"email"}', report: 'GET /report/:id',
         site: 'https://lazynext-platform.github.io/accessibility-checker/',
       });
     }
