@@ -1,34 +1,53 @@
-# Pro Sequence Marketing Strategy
-The Pro Sequence is a critical component of our marketing strategy, designed to convert free users into paying customers. With the introduction of a free trial for the Pro license, we aim to increase conversions and reduce friction in the checkout flow.
+# Introduction to Pro Sequence
+The pro sequence is a sales outreach strategy designed to target web development and accessibility companies, promoting the Accessibility Checker tool as a valuable solution for ensuring website compliance with accessibility regulations.
 
-## Free Trial Offer
-We will offer a 14-day free trial of the Pro license, allowing users to experience the full range of features and benefits without committing to a paid subscription. This trial period will be clearly communicated throughout the checkout flow, ensuring that users understand the terms and conditions.
+## Step 1: Initial Outreach (Day 1)
+Send a personalized email to key decision-makers at target companies, introducing the Accessibility Checker tool and highlighting its benefits:
+* Subject: Boost Your Website's Accessibility with Our AI-Powered Tool
+* Email Body:
+Dear [Recipient's Name],
+As a [Recipient's Title] at [Company Name], you understand the importance of website accessibility. Our Accessibility Checker tool is an AI-powered solution that scans websites for compliance issues and provides actionable recommendations for improvement.
+I'd love to schedule a call to discuss how our tool can help [Company Name] ensure accessibility and avoid potential legal issues.
+Best regards,
+[Your Name]
 
-## Checkout Flow Updates
-To incorporate the free trial offer, we will update the checkout flow as follows:
+## Step 2: Follow-up and Value Proposition (Day 7)
+Send a follow-up email to non-responders, reiterating the value proposition and highlighting a success story:
+* Subject: Success Story: How [Similar Company] Improved Accessibility with Our Tool
+* Email Body:
+Hi [Recipient's Name],
+I wanted to follow up on my previous email and share a success story from one of our clients, [Similar Company]. By using our Accessibility Checker tool, they were able to identify and fix critical accessibility issues, ensuring a better user experience for their visitors.
+Our tool can do the same for [Company Name]. Let's schedule a call to explore how we can help.
+Best regards,
+[Your Name]
 
-1. **Trial Period Notification**: A clear notification will be displayed on the pricing page, indicating that a 14-day free trial is available for the Pro license.
-2. **Trial Option**: A "Start Free Trial" button will be added to the pricing page, allowing users to initiate the trial period.
-3. **Trial Terms and Conditions**: A link to the terms and conditions of the free trial will be provided, outlining the 14-day limit, automatic conversion to a paid subscription, and cancellation policies.
-4. **Payment Method**: Users will be required to provide a payment method to start the free trial, with a clear indication that they will not be charged until the trial period ends.
-5. **Trial Expiration Notification**: Users will receive a notification 3 days before the trial period ends, reminding them of the upcoming expiration and providing instructions on how to cancel or continue their subscription.
+## Step 3: Social Proof and Credibility (Day 14)
+Send an email showcasing social proof, credibility, and thought leadership:
+* Subject: Expert Insights: The Importance of Website Accessibility in [Industry]
+* Email Body:
+Hi [Recipient's Name],
+As an expert in [industry], you know how crucial website accessibility is for [company type]. Our recent article on [devto_article.md](../marketing/devto_article.md) highlights the importance of accessibility in [industry].
+I'd love to discuss how our Accessibility Checker tool can help [Company Name] stay ahead of the curve and ensure compliance with accessibility regulations.
+Best regards,
+[Your Name]
 
-## Post-Trial Conversion
-After the 14-day trial period, users will be automatically converted to a paid Pro license subscription, unless they cancel before the trial ends. We will send a series of emails to users during and after the trial period, highlighting the benefits of the Pro license and encouraging them to continue their subscription.
+## Step 4: Personalized Demo and Trial (Day 21)
+Offer a personalized demo and trial of the Accessibility Checker tool:
+* Subject: Exclusive Demo: See How Our Tool Can Improve [Company Name]'s Website Accessibility
+* Email Body:
+Hi [Recipient's Name],
+I'd like to offer you an exclusive demo of our Accessibility Checker tool, tailored to [Company Name]'s specific needs. This will give you a firsthand look at how our tool can help identify and fix accessibility issues.
+Additionally, I'd like to provide a free trial of our tool, allowing you to experience its benefits firsthand.
+Let me know if you're interested, and we can schedule a call at your convenience.
+Best regards,
+[Your Name]
 
-## Email Sequence
-The following email sequence will be sent to users during and after the trial period:
-
-1. **Trial Started**: An email will be sent immediately after the user starts the free trial, welcoming them to the Pro license and providing an overview of the features and benefits.
-2. **Trial Mid-Point**: An email will be sent 7 days into the trial period, highlighting the user's progress and encouraging them to explore more features.
-3. **Trial Expiration**: An email will be sent 3 days before the trial period ends, reminding the user of the upcoming expiration and providing instructions on how to cancel or continue their subscription.
-4. **Post-Trial Follow-up**: An email will be sent 1 day after the trial period ends, thanking the user for trying the Pro license and encouraging them to continue their subscription or provide feedback on their experience.
-
-## Metrics and Monitoring
-We will closely monitor the following metrics to evaluate the effectiveness of the free trial offer:
-
-1. **Trial Conversion Rate**: The percentage of users who convert to a paid Pro license subscription after the trial period.
-2. **Trial Cancellation Rate**: The percentage of users who cancel their subscription during or after the trial period.
-3. **User Engagement**: The level of user engagement during the trial period, including feature adoption and overall satisfaction.
-
-By offering a free trial of the Pro license, we aim to increase conversions, reduce friction in the checkout flow, and provide a risk-free opportunity for users to experience the full range of features and benefits.
+## Step 5: Final Follow-up and Next Steps (Day 28)
+Send a final follow-up email, outlining next steps and encouraging a response:
+* Subject: Final Follow-up: Let's Discuss Next Steps for [Company Name]
+* Email Body:
+Hi [Recipient's Name],
+This is a final follow-up on our previous discussions regarding the Accessibility Checker tool. I believe our tool can bring significant value to [Company Name], and I'd love to discuss next steps.
+If you're interested in learning more or would like to schedule a call, please let me know. Otherwise, I wish [Company Name] continued success in [industry].
+Best regards,
+[Your Name]
