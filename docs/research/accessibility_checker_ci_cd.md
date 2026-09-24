@@ -1,102 +1,95 @@
-# Introduction to CI/CD Pipeline
-The Accessibility Checker product requires a robust Continuous Integration/Continuous Deployment (CI/CD) pipeline to ensure seamless and automated deployment. This pipeline will automate testing, building, and deployment of the product, ensuring that the client-side version of the product is always up-to-date and functional.
+# Accessibility Checker CI/CD
+The Accessibility Checker is an AI-powered tool that scans small business websites for accessibility compliance issues and provides recommendations for improvement. To ensure the tool is reliable, efficient, and scalable, a robust Continuous Integration/Continuous Deployment (CI/CD) pipeline is essential.
 
-## Prerequisites
-- Node.js installed on the system
-- npm or yarn package manager
-- GitHub repository set up for the project
-- GitHub Actions for CI/CD pipeline automation
+## Overview of CI/CD Pipeline
+The CI/CD pipeline for the Accessibility Checker is designed to automate testing, building, and deployment of the tool. The pipeline consists of the following stages:
 
-## Step 1: Configure GitHub Actions
-Create a new file in the `.github/workflows` directory, e.g., `deploy.yml`, and add the following configuration:
-```yml
-name: Deploy Accessibility Checker
+1. **Test**: Run automated tests to ensure the tool is functioning correctly.
+2. **Build**: Compile and bundle the code for production.
+3. **Deploy**: Deploy the built code to a Cloudflare Worker.
 
-on:
-  push:
-    branches:
-      - main
+## Test Stage
+The test stage uses Node.js test framework to run automated tests. The tests are defined in the `test` directory and cover various aspects of the tool, including crawling, monitoring, and scanning.
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Install dependencies
-        run: npm install
-      - name: Run tests
-        run: npm test
-      - name: Build and deploy
-        run: |
-          npm run build
-          npm run deploy
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          GH_REF: main
-```
-This configuration will trigger the pipeline on push events to the `main` branch, install dependencies, run tests, build the project, and deploy it.
-
-## Step 2: Implement Automated Testing
-Update the `test/additional-rules.test.mjs` file to include tests for the Accessibility Checker algorithm:
 ```javascript
-import { test, expect } from '@jest/globals';
-import { scanWebsite } from '../src/scanner';
+// test/crawl.test.mjs
+import { crawl } from '../src/crawl.js';
 
-test('scan website for accessibility issues', async () => {
-  const url = 'https://example.com';
-  const issues = await scanWebsite(url);
-  expect(issues).toBeInstanceOf(Array);
-  expect(issues.length).toBeGreaterThan(0);
+test('crawl website', async () => {
+  const website = 'https://example.com';
+  const result = await crawl(website);
+  expect(result).toHaveProperty('status', 'success');
 });
 ```
-Update the `test/crawl.test.mjs` file to include tests for the website crawling functionality:
+
+## Build Stage
+The build stage uses Webpack to compile and bundle the code for production. The configuration is defined in the `webpack.config.js` file.
+
 ```javascript
-import { test, expect } from '@jest/globals';
-import { crawlWebsite } from '../src/crawl';
+// webpack.config.js
+const path = require('path');
 
-test('crawl website for accessibility issues', async () => {
-  const url = 'https://example.com';
-  const pages = await crawlWebsite(url);
-  expect(pages).toBeInstanceOf(Array);
-  expect(pages.length).toBeGreaterThan(0);
-});
-```
-## Step 3: Implement Automated Deployment
-Create a new file `deploy.js` in the `src` directory and add the following code:
-```javascript
-import fs from 'fs';
-import path from 'path';
-
-const deploy = async () => {
-  const buildDir = path.join(__dirname, '../build');
-  const indexHtml = path.join(buildDir, 'index.html');
-
-  // Read the index.html file
-  const html = fs.readFileSync(indexHtml, 'utf8');
-
-  // Deploy the index.html file to the production environment
-  // For example, using GitHub Pages
-  const ghPages = require('gh-pages');
-  ghPages.publish(buildDir, (err) => {
-    if (err) {
-      console.error(err);
-    } else {
-      console.log('Deployment successful');
-    }
-  });
+module.exports = {
+  entry: './src/scanner.js',
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'scanner.js',
+  },
+  module: {
+    rules: [
+      {
+        test: /\.m?js$/,
+        exclude: /(node_modules|bower_components)/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['@babel/preset-env'],
+          },
+        },
+      },
+    ],
+  },
 };
-
-export default deploy;
 ```
-Update the `package.json` file to include a script for deployment:
-```json
-"scripts": {
-  "deploy": "node src/deploy.js"
+
+## Deploy Stage
+The deploy stage uses Cloudflare Workers to deploy the built code. The configuration is defined in the `worker.js` file.
+
+```javascript
+// worker.js
+addEventListener('fetch', (event) => {
+  event.respondWith(handleRequest(event.request));
+});
+
+async function handleRequest(request) {
+  const url = new URL(request.url);
+  const website = url.searchParams.get('website');
+  const result = await crawl(website);
+  return new Response(JSON.stringify(result), {
+    headers: { 'Content-Type': 'application/json' },
+  });
 }
 ```
-## Step 4: Test the CI/CD Pipeline
-Trigger the pipeline by pushing changes to the `main` branch. The pipeline will automate testing, building, and deployment of the Accessibility Checker product.
 
-## Step 5: Verify Deployment
-After the pipeline has completed, verify that the client-side version of the product has been deployed successfully by visiting the production URL in a web browser. The Accessibility Checker product should be functional and allow visitors to use the core feature in the browser.
+## Cloudflare Worker Configuration
+To optimize the Cloudflare Worker configuration for improved performance, the following settings are recommended:
+
+* **Cache**: Enable caching to reduce the number of requests made to the worker.
+* **Minify**: Minify the code to reduce the size of the worker.
+* **Compress**: Compress the code to reduce the size of the worker.
+* **Worker**: Set the worker to run on the edge, closest to the user.
+
+```javascript
+// cloudflare-worker.config.js
+module.exports = {
+  cache: true,
+  minify: true,
+  compress: true,
+  worker: {
+    edge: true,
+  },
+};
+```
+
+## Conclusion
+The Accessibility Checker CI/CD pipeline is designed to automate testing, building, and deployment of the tool. By optimizing the Cloudflare Worker configuration, the tool can be deployed efficiently and scalably, ensuring a seamless user experience.
