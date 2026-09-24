@@ -57,7 +57,7 @@ runs:
           ${FAIL_ON:+--fail-on "$FAIL_ON"} --api "$API") || status=$?
         echo "$out"
         score=$(echo "$out" | sed -n 's/^Accessibility score: \([0-9]*\).*/\1/p' | head -1)
-        count=$(echo "$out" | grep -c '  wcag-')
+        count=$(echo "$out" | grep -c '  wcag-' || true)
         echo "score=${score:-0}" >> "$GITHUB_OUTPUT"
         echo "issues=${count:-0}" >> "$GITHUB_OUTPUT"
         exit ${status:-0}
