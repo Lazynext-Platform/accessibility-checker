@@ -116,3 +116,34 @@ test('empty/garbage input → no crash, no issues', () => {
   assert.deepEqual(checkCrossPages(null), []);
   assert.deepEqual(checkCrossPages([{ url: '/1' }]), []);
 });
+
+test('help mechanism missing on one page → wcag-3.2.6', () => {
+  const help = '<a href="/contact">Contact us</a>';
+  const issues = checkCrossPages([
+    { url: '/1', html: `${nav([['/a','A']])}${help}` },
+    { url: '/2', html: `${nav([['/a','A']])}${help}` },
+    { url: '/3', html: `${nav([['/a','A']])}<p>no help here</p>` },
+  ]);
+  const hits = issues.filter((i) => i.rule === 'wcag-3.2.6');
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].url, '/3');
+});
+
+test('help links in different order → wcag-3.2.6', () => {
+  const h1 = '<a href="/contact">Contact</a><a href="mailto:x@y.com">Email</a>';
+  const h2 = '<a href="mailto:x@y.com">Email</a><a href="/contact">Contact</a>';
+  const issues = checkCrossPages([
+    { url: '/1', html: h1 }, { url: '/2', html: h1 }, { url: '/3', html: h2 },
+  ]);
+  const hits = issues.filter((i) => i.rule === 'wcag-3.2.6');
+  assert.ok(hits.some((i) => i.url === '/3'));
+});
+
+test('consistent help placement → no 3.2.6', () => {
+  const help = '<a href="/help">Help</a>';
+  const issues = checkCrossPages([
+    { url: '/1', html: `${nav([['/a','A']])}${help}` },
+    { url: '/2', html: `${nav([['/a','A']])}${help}` },
+  ]);
+  assert.ok(!issues.some((i) => i.rule === 'wcag-3.2.6'));
+});

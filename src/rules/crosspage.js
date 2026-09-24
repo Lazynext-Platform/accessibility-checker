@@ -7,6 +7,9 @@
  *     same relative order on every page they appear on
  *   - 3.2.4 consistent identification: same link target → same accessible
  *     name (aria-label wins over innerText) site-wide
+ *   - 3.2.6 consistent help (WCAG 2.2): help mechanisms (contact/support/
+ *     faq/mailto/tel links) must keep the same relative order — and not
+ *     vanish — across the pages that provide them
  */
 
 // Ordered hrefs inside the first <nav> (or role="navigation") block.
@@ -83,6 +86,51 @@ export function checkCrossPages(pages) {
         url: seen.values().next().value,
         message: `link to ${href.slice(0, 60)} is labelled inconsistently: ${variants}`,
       });
+    }
+  }
+
+  // WCAG 3.2.6 — help mechanisms must appear in the same relative order
+  // across pages. We approximate "help mechanism" as links whose href is a
+  // help/contact/support/faq path or a mailto:/tel: scheme.
+  const HELP_RE = /(?:\/|^|#)(?:help|support|contact|faq)(?:[\/._-]|$)|mailto:|tel:/i;
+  const helpSeqs = list.map((p) => ({
+    url: p.url,
+    seq: [...String(p.html).matchAll(/<a\b[^>]*href=["']([^"']+)["']/gi)]
+      .map((m) => m[1])
+      .filter((h) => HELP_RE.test(h)),
+  }));
+  const withHelp = helpSeqs.filter((p) => p.seq.length);
+  if (withHelp.length >= 2) {
+    // Presence gap: most pages offer help but this one doesn't.
+    if (withHelp.length > list.length / 2) {
+      for (const p of helpSeqs.filter((s) => !s.seq.length)) {
+        issues.push({
+          rule: "wcag-3.2.6",
+          url: p.url,
+          message: "help mechanism (contact/support link) appears on other pages but is missing here",
+        });
+      }
+    }
+    // Order gap: shared help links must keep relative order — same
+    // subsequence logic as 3.2.3.
+    const counts = new Map();
+    for (const s of withHelp) {
+      const k = s.seq.join("|");
+      counts.set(k, (counts.get(k) ?? 0) + 1);
+    }
+    const reference = [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0].split("|");
+    const refSet = new Set(reference);
+    for (const s of withHelp) {
+      const seqSet = new Set(s.seq);
+      const sharedInPage = s.seq.filter((h) => refSet.has(h));
+      const sharedInRef = reference.filter((h) => seqSet.has(h));
+      if (sharedInPage.join("|") !== sharedInRef.join("|")) {
+        issues.push({
+          rule: "wcag-3.2.6",
+          url: s.url,
+          message: `help links appear in a different relative order than on other pages: ${sharedInPage.slice(0, 3).join(", ")}`,
+        });
+      }
     }
   }
 

@@ -35,12 +35,25 @@ alert when a page's score drops ≥ 10 points), `GET /health`.
 - **Additional rules** (`src/rules/additional.js`): heading content (2.4.6),
   label-in-name (2.5.3), viewport max-scale (1.4.4), text spacing overrides
   (1.4.10), language-of-parts (3.1.2), status messages (4.1.3), focus
-  visibility (2.4.7)
+  visibility (2.4.7 — inline + stylesheet outline suppression), timed
+  refresh (2.2.1), autoplay/moving content (1.4.2/2.2.2), autocomplete
+  tokens (1.3.5), onfocus context change (3.2.1), onchange auto-submit
+  (3.2.2)
+- **Rendered layout checks**: target size 24×24px (2.5.8 — with inline-link
+  and UA-control exemptions), focus not obscured by author overlays (2.4.11)
+- **Keyboard**: real Tab presses in the browser — keyboard-inaccessible
+  pages (2.1.1), focus traps (2.1.2), focus-order gaps and cycles (2.4.3),
+  dialog Escape handling; statics catch Tab-swallowing handlers and
+  undismissable dialogs on pasted HTML too
+- **Cross-page** (`src/rules/crosspage.js`, site scans): consistent
+  navigation (3.2.3), consistent identification (3.2.4), consistent help
+  mechanisms (3.2.6)
+- **WCAG 2.2 + Section 508**: `src/rules/wcag22.js` adds 2.2-era checks
+  (accessible auth 3.3.8, redundant entry 3.3.7, dragging 2.5.7, …);
+  `src/rules/section508.js` maps findings to 36 CFR 1194 clauses
 - **DOM facts**: iframe titles, duplicate ids, aria-hidden focusables,
   autofocus, `target=_blank` without noopener, media captions, table headers,
   skip links
-- **Keyboard trace**: real Tab presses in the browser — detects
-  keyboard-inaccessible pages (2.1.1) and focus traps (2.1.2)
 
 ## Pricing
 
@@ -53,14 +66,17 @@ alert when a page's score drops ≥ 10 points), `GET /health`.
 ## Architecture
 
 - `src/scanner.js` — dependency-free WCAG engine (the same module the API runs)
-- `src/rules/additional.js` — 8 more WCAG checks, wired into all scan paths
+- `src/rules/` — additional (per-page statics), crosspage (site-scan checks),
+  focuscycle, wcag22, section508 — all wired into the scan pipeline
+- `src/crawl.js` + `src/monitor.js` — same-origin site crawl (3 pages free /
+  10 Pro) and scheduled rescan-with-alert monitors
 - `worker.js` — Cloudflare Worker: scan API, rate limits, license checks,
   shareable reports, lead capture, trial checkout, self-service cancel,
-  emailed Pro reports
+  emailed Pro reports, MCP/A2A/widget/PWA surfaces
 - `accessibility_checker.py` — standalone Python engine
-- `index.html` — the Pages site (scan UI, trial CTA, cancel, email-report opt-in,
-  402 lead funnel)
-- `test/scanner.test.mjs` + `test/additional-rules.test.mjs` — `node --test`
-  suite, runs in CI on every push
+- `index.html` — the Pages site (scan UI, site scans, monitors, trial CTA,
+  cancel, email-report opt-in, 402 lead funnel)
+- `sdk/js` + `sdk/go` — API clients; `scripts/` — sync-page bundle + CLI
+- `test/` — `node --test` suite (109 tests), runs in CI on every push
 
 Built and operated autonomously by Lazynext agents.

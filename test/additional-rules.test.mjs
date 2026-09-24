@@ -139,3 +139,29 @@ test("autocomplete token satisfies wcag-1.3.5; non-personal inputs skipped", () 
   assert.equal(rules(scanAdditionalHtml('<input type="search" name="q">')).includes("wcag-1.3.5"), false);
   assert.equal(rules(scanAdditionalHtml('<input type="text" name="coupon">')).includes("wcag-1.3.5"), false);
 });
+
+test("onfocus navigation flagged under 3.2.1", () => {
+  const bad = scanAdditionalHtml('<a href="/x" onfocus="window.location.href=\'/y\'">x</a>');
+  assert.ok(rules(bad).includes("wcag-3.2.1"));
+  const ok = scanAdditionalHtml('<a href="/x" onfocus="this.classList.add(\'hi\')">x</a>');
+  assert.ok(!rules(ok).includes("wcag-3.2.1"));
+});
+
+test("onchange auto-submit flagged under 3.2.2", () => {
+  const bad = scanAdditionalHtml('<select onchange="this.form.submit()"><option>a</option></select>');
+  assert.ok(rules(bad).includes("wcag-3.2.2"));
+  const jump = scanAdditionalHtml('<select onchange="location=this.value"><option>a</option></select>');
+  assert.ok(rules(jump).includes("wcag-3.2.2"));
+  const ok = scanAdditionalHtml('<input onchange="console.log(this.value)">');
+  assert.ok(!rules(ok).includes("wcag-3.2.2"));
+});
+
+test("stylesheet outline suppression flagged under 2.4.7", () => {
+  const bad = scanAdditionalHtml('<style>a:focus{outline:none}</style><a href="/x">x</a>');
+  assert.ok(rules(bad).includes("wcag-2.4.7"));
+  const global = scanAdditionalHtml('<style>button{outline:0}</style><button>x</button>');
+  assert.ok(rules(global).includes("wcag-2.4.7"));
+  // suppression WITH a replacement indicator is compliant
+  const ok = scanAdditionalHtml('<style>a:focus{outline:none;box-shadow:0 0 0 3px #00f}</style><a href="/x">x</a>');
+  assert.ok(!rules(ok).includes("wcag-2.4.7"));
+});

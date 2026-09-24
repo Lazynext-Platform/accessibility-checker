@@ -90,6 +90,48 @@ export function scanAdditionalHtml(html) {
   if (outlineNone.test(src)) {
     issues.push({ rule: "wcag-2.4.7", message: "focusable element has inline outline:none — focus indicator may be invisible" });
   }
+  // Stylesheet-level suppression is the common real-world failure: a <style>
+  // block kills the focus outline globally with no :focus/:focus-visible
+  // alternative providing a replacement indicator (outline/box-shadow/border).
+  const css = [...src.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]).join("\n");
+  if (css) {
+    const suppresses =
+      /:focus(?:-visible|-within)?\s*[^{}]*\{[^}]*\boutline\s*:\s*(?:none|0)\b/i.test(css) ||
+      /(?:^|[};]\s*)(?:\*|a|button|input|select|textarea)\s*\{[^}]*\boutline\s*:\s*(?:none|0)\b/i.test(css);
+    const alternative =
+      /:focus(?:-visible|-within)?\s*[^{}]*\{[^}]*\b(?:outline\s*:\s*(?!none\b|0\b)|box-shadow|border)/i.test(css);
+    if (suppresses && !alternative) {
+      issues.push({
+        rule: "wcag-2.4.7",
+        message: "stylesheet suppresses the focus outline with no :focus/:focus-visible replacement indicator",
+      });
+    }
+  }
+
+  // WCAG 3.2.1 — focusing a control must not trigger a context change
+  // (navigation, form submit, window.open). The onfocus handler attribute
+  // is the literal mechanism.
+  for (const m of src.matchAll(/\bonfocus\s*=\s*(["'])([\s\S]*?)\1/gi)) {
+    if (/(?:window\.)?location\s*(?:\.|=\s*)|\.submit\s*\(|\.click\s*\(|window\.open\s*\(/i.test(m[2])) {
+      issues.push({
+        rule: "wcag-3.2.1",
+        message: `onfocus handler navigates or submits — receiving focus must not change context: ${m[0].slice(0, 80)}`,
+      });
+      break;
+    }
+  }
+
+  // WCAG 3.2.2 — changing a control's value must not auto-submit or
+  // navigate (the classic <select> jump-menu violation).
+  for (const m of src.matchAll(/\bon(?:change|input|select)\s*=\s*(["'])([\s\S]*?)\1/gi)) {
+    if (/\.submit\s*\(|(?:window\.)?location\s*(?:\.|=\s*)|window\.open\s*\(/i.test(m[2])) {
+      issues.push({
+        rule: "wcag-3.2.2",
+        message: `onchange/oninput handler submits or navigates on value change — users must be able to review input: ${m[0].slice(0, 80)}`,
+      });
+      break;
+    }
+  }
 
   // WCAG 2.2.1 — timed refresh/redirect the user can't control.
   if (/<meta\b[^>]*http-equiv\s*=\s*["']?refresh/i.test(src)) {
