@@ -417,3 +417,18 @@ test("duplicate unnamed landmarks flag wcag-1.3.1; named or nested pass", () => 
   // article-nested <header> tags aren't banners — no flag
   assert.ok(!rules(scanAdditionalHtml('<article><header>h1</header></article><article><header>h2</header></article>')).includes("wcag-1.3.1"));
 });
+
+test("multipoint ongesture* handlers flag wcag-2.5.1", () => {
+  assert.ok(rules(scanAdditionalHtml('<div ongesturestart="pinchZoom()">x</div>')).includes("wcag-2.5.1"));
+  assert.ok(rules(scanAdditionalHtml('<img src="a.png" ongesturechange="rot()">')).includes("wcag-2.5.1"));
+  assert.ok(!rules(scanAdditionalHtml('<div>x</div>')).includes("wcag-2.5.1"));
+});
+
+test("pointerdown+pointermove on one element flags wcag-2.5.1; each alone passes", () => {
+  assert.ok(rules(scanAdditionalHtml('<div onpointerdown="s()" onpointermove="m()">drag</div>')).includes("wcag-2.5.1"));
+  // pointerdown alone is a legitimate click-equivalent; pointermove alone is hover-tracking
+  assert.ok(!rules(scanAdditionalHtml('<div onpointerdown="select()">x</div>')).includes("wcag-2.5.1"));
+  assert.ok(!rules(scanAdditionalHtml('<div onpointermove="hover()">x</div>')).includes("wcag-2.5.1"));
+  // split across elements — not a path gesture on either
+  assert.ok(!rules(scanAdditionalHtml('<div onpointerdown="a()"></div><div onpointermove="b()"></div>')).includes("wcag-2.5.1"));
+});

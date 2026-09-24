@@ -316,6 +316,27 @@ export function scanAdditionalHtml(html) {
     }
   }
 
+  // WCAG 2.5.1 (A) — Pointer Gestures: functionality using path-based or
+  // multipoint gestures needs a single-pointer alternative. Detectable
+  // statically: iOS ongesture* handlers are the literal multipoint mechanism,
+  // and pointerdown+pointermove on the same element is the literal path-
+  // tracking mechanism. Warn-class — whether an alternative exists can't be
+  // verified without executing the gesture.
+  for (const m of src.matchAll(/<(\w+)\b([^>]*)>/gi)) {
+    const attrs = m[2];
+    if (/\bongesture(?:start|change|end)\s*=/i.test(attrs)) {
+      issues.push({
+        rule: "wcag-2.5.1",
+        message: `<${m[1].toLowerCase()}> handles multipoint gestures (ongesture*) — provide a single-pointer alternative`,
+      });
+    } else if (/\bonpointerdown\s*=/i.test(attrs) && /\bonpointermove\s*=/i.test(attrs)) {
+      issues.push({
+        rule: "wcag-2.5.1",
+        message: `<${m[1].toLowerCase()}> tracks a pointer path (pointerdown+pointermove) — provide a single-tap/click alternative`,
+      });
+    }
+  }
+
   // ------------------------------------------------------------------
   // Static mirrors of rendered-facts checks + structural violations that
   // need no DOM. These give pasted HTML, fetched pages, and crawled pages
