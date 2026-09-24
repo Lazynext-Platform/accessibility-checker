@@ -1,24 +1,19 @@
-# Introduction to CI/CD for Accessibility Checker
-The Accessibility Checker is an AI-powered tool designed to scan small business websites for accessibility compliance issues and provide recommendations for improvement. As the product evolves, implementing a robust Continuous Integration/Continuous Deployment (CI/CD) pipeline is crucial for maintaining high-quality standards, reducing manual deployment efforts, and ensuring 100% uptime.
+# Introduction to Continuous Integration and Continuous Deployment (CI/CD)
+The Accessibility Checker tool requires a robust and automated deployment process to ensure timely updates and a seamless user experience. This document outlines the implementation of a Continuous Integration and Continuous Deployment (CI/CD) pipeline using GitHub Actions.
 
-## Current Deployment Process
-Currently, the deployment process involves manual steps that can lead to human error, downtime, and increased deploy_count. The goal is to automate this process to achieve zero manual deployments (deploy_count = 0) and maintain 100% uptime_pct.
+## Prerequisites
+- GitHub repository with the Accessibility Checker codebase
+- GitHub Actions workflow file (.yml) in the .github/workflows directory
+- Node.js and npm installed on the development machine
 
-## Proposed CI/CD Pipeline
-To achieve automated deployment, we will leverage GitHub Actions for CI/CD. The pipeline will be triggered on push events to the main branch, ensuring that any code changes are automatically tested, built, and deployed.
+## CI/CD Pipeline Overview
+The CI/CD pipeline will consist of the following stages:
+1. **Build**: Install dependencies, build, and bundle the Accessibility Checker code
+2. **Test**: Run unit tests and integration tests to ensure the code is functional and stable
+3. **Deploy**: Deploy the built and tested code to the production environment
 
-### Step 1: Testing
-Utilize the existing test suite (e.g., test/additional-rules.test.mjs, test/crawl.test.mjs) to ensure that all components function as expected. This step will be automated using GitHub Actions, running node:test for JavaScript tests.
-
-### Step 2: Building
-Since the Accessibility Checker is designed to be a client-side application, the build process involves generating the necessary files for deployment. This includes bundling JavaScript files using a tool like Webpack or Rollup.
-
-### Step 3: Deployment
-Deploy the built application to a hosting platform. Given the requirement for a client-side application, static site hosting services like GitHub Pages, Vercel, or Netlify are ideal. These services provide automated deployment options that can be integrated with GitHub Actions.
-
-## Implementation Details
-### GitHub Actions Workflow
-Create a new workflow file in `.github/workflows/deploy.yml` with the following content:
+## GitHub Actions Workflow File
+Create a new file in the .github/workflows directory, e.g., `deploy.yml`, with the following contents:
 ```yml
 name: Deploy Accessibility Checker
 
@@ -37,34 +32,34 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run tests
-        run: node:test
-
-      - name: Build application
+      - name: Build and bundle
         run: npm run build
 
-      - name: Deploy to GitHub Pages
+      - name: Run tests
+        run: npm run test
+
+      - name: Deploy to production
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
 ```
-This workflow checks out the code, installs dependencies, runs tests, builds the application, and deploys it to GitHub Pages.
+This workflow file defines a pipeline that:
+- Triggers on push events to the main branch
+- Checks out the code
+- Installs dependencies using npm
+- Builds and bundles the code using the `build` script
+- Runs tests using the `test` script
+- Deploys the built and bundled code to the production environment using the `peaceiris/actions-gh-pages` action
 
-### Automated Deployment Script
-To further automate the deployment process and integrate it with the existing repository structure, create a script in the `scripts` directory of the `package.json` file:
-```json
-"scripts": {
-  "deploy": "npm run build && gh-pages -d dist"
-}
-```
-This script builds the application and deploys it to GitHub Pages using the `gh-pages` package.
+## Configuration and Secrets
+To use the `peaceiris/actions-gh-pages` action, you need to configure the `GITHUB_TOKEN` secret in your repository settings. Go to your repository settings > Actions > Secrets, and add a new secret named `GITHUB_TOKEN` with the value of your GitHub token.
 
-## Maintaining 100% Uptime
-To ensure 100% uptime, implement the following strategies:
-- **Blue-Green Deployment**: Use a blue-green deployment strategy where the new version of the application is deployed alongside the existing version. Once the new version is verified to be working correctly, traffic is routed to it.
-- **Rollback Mechanism**: Implement a rollback mechanism that allows for quick reversion to a previous version of the application in case issues are encountered with the new deployment.
-- **Monitoring**: Set up monitoring tools to quickly identify and respond to any issues that may arise, ensuring minimal downtime.
+## Deployment
+The deployment process will create a `dist` directory containing the built and bundled Accessibility Checker code. This directory will be published to the `gh-pages` branch, which will serve as the production environment.
+
+## Verification
+To verify the deployment, navigate to your repository settings > GitHub Pages, and ensure that the `gh-pages` branch is selected as the source. Then, visit the deployed site at `https://<your-username>.github.io/<your-repo-name>` to test the Accessibility Checker tool.
 
 ## Conclusion
-By implementing an automated CI/CD pipeline using GitHub Actions and integrating it with the existing development workflow, the Accessibility Checker can achieve zero manual deployments and maintain 100% uptime. This approach not only reduces the deploy_count to 0 but also ensures that the deployed site (index.html) remains a working client-side version of the product, enhancing the overall user experience and compliance with accessibility regulations.
+The CI/CD pipeline using GitHub Actions ensures a scalable and automated deployment process for the Accessibility Checker tool. With this pipeline in place, the development team can focus on delivering new features and updates, while the pipeline handles the build, test, and deployment processes.
