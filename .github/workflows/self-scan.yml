@@ -1,0 +1,25 @@
+name: self-scan
+
+# Dogfoods action.yml: the repo's own CI scans the live product with the
+# action consumers install. Doubles as a production canary — a failed run
+# means the site or the API regressed, not just the code.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * *" # daily canary
+  workflow_dispatch:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Accessibility gate
+        uses: ./
+        with:
+          url: https://checker.lazynext.com
+          fail-under: 80
