@@ -107,12 +107,12 @@
             e.preventDefault();
             const email = document.getElementById("license").value.trim();
             if (!email.includes("@")) { statusEl.textContent = "Enter your purchase email in the license field first."; return; }
-            if (!confirm(`Cancel the Pro subscription for ${email}? Access ends immediately.`)) return;
+            if (!confirm(`Cancel the Pro subscription for ${email}? We'll email a confirmation link.`)) return;
             const r = await fetch("https://accessibility-checker.dry-hall-6a50.workers.dev/cancel", {
                 method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ license: email })
             });
             const d = await r.json().catch(() => ({}));
-            statusEl.textContent = r.ok ? "Subscription cancelled — you're on the free plan now." : `Couldn't cancel: ${d.error ?? r.status}`;
+            statusEl.textContent = r.ok ? `Confirmation email sent to ${email} — click the link in it to finish cancelling.` : `Couldn't cancel: ${d.error ?? r.status}`;
         });
         document.getElementById("monitor").addEventListener("click", async (e) => {
             e.preventDefault();
@@ -125,7 +125,7 @@
             });
             const d = await r.json().catch(() => ({}));
             statusEl.textContent = r.ok
-                ? `Monitoring ${url} — we rescan it daily and email you if the score drops.`
+                ? `Confirmation email sent to ${email} — click the link in it to start monitoring ${url}.`
                 : (r.status === 402 ? "Monitoring needs a Pro license — start the free trial above." : `Couldn't set up monitoring: ${d.error ?? r.status}`);
         });
         document.getElementById("myMonitors").addEventListener("click", async (e) => {
@@ -145,8 +145,7 @@
                 const r2 = await fetch("https://accessibility-checker.dry-hall-6a50.workers.dev/monitor", {
                     method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ license: email, url })
                 });
-                statusEl.textContent = r2.ok ? `Stopped monitoring ${url}.` : "Couldn't remove that monitor — try again.";
-                if (r2.ok) a.closest(".card").remove();
+                statusEl.textContent = r2.ok ? `Confirmation email sent — click the link in it to stop monitoring ${url}.` : "Couldn't remove that monitor — try again.";
             }));
         });
     </script>

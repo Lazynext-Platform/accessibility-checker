@@ -44,6 +44,35 @@ async function isPro(env, license) {
   return v === 'pro';
 }
 
+// License = buyer email, which is guessable, so mutating license actions
+// (cancel / monitor add/remove) require mailbox proof: POST creates a
+// pending:<token> record and emails a confirmation link; GET /confirm
+// executes it once (the token is deleted on use). 15-minute expiry.
+const CONFIRM_BASE = 'https://accessibility-checker.dry-hall-6a50.workers.dev/confirm?token=';
+
+async function requestConfirm(env, email, action, extra = {}) {
+  const token = crypto.randomUUID();
+  await kvPut(env, `pending:${token}`, JSON.stringify({ action, email: String(email).toLowerCase(), ...extra }), 900);
+  const link = CONFIRM_BASE + token;
+  const label = { cancel: `cancel the Pro subscription for ${email}`, monitor_add: `start daily monitoring for ${extra.url}`, monitor_del: `stop monitoring ${extra.url}` }[action];
+  await platform(env, '/email/send', {
+    method: 'POST',
+    body: JSON.stringify({
+      to: email,
+      subject: `Confirm: ${label}`,
+      html: `<p>Someone (hopefully you) asked to ${esc(label)}.</p><p><a href="${link}">${link}</a></p><p>This link expires in 15 minutes. If this wasn't you, ignore this email.</p>`,
+    }),
+  });
+}
+
+function confirmPage(title, inner) {
+  return new Response(`<!doctype html><meta charset="utf-8"><title>${title}</title>
+<body style="font-family:system-ui;max-width:640px;margin:4rem auto;padding:0 1rem">
+<h1>${title}</h1>${inner}
+<p><a href="https://lazynext-platform.github.io/accessibility-checker/">Back to Accessibility Checker</a></p>`,
+    { headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" } });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -84,7 +113,7 @@ export default {
 <p style="font-size:3rem;margin:0"><b>${rep.score}</b>/100</p>
 <table style="width:100%;border-collapse:collapse">${rows || '<tr><td>No issues found.</td></tr>'}</table>
 <p><a href="https://lazynext-platform.github.io/accessibility-checker/">Run your own scan →</a></p>`,
-        { headers: { 'content-type': 'text/html' } });
+        { headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" } });
     }
 
     // Redirect to a real Dodo checkout for the Pro plan via the platform.
@@ -98,17 +127,39 @@ export default {
       return Response.redirect(d.checkout_url, 302);
     }
 
-    // Self-service cancellation — the license key IS the purchase email. We
-    // verify it's currently Pro, then the platform resolves and cancels the
-    // active Dodo subscription; the webhook downgrades license:<email>.
+    // Self-service cancellation — step 1 of 2. The license is the purchase
+    // email (not a secret), so the actual cancel happens only after the
+    // customer clicks the confirmation link we email them (/confirm).
     if (request.method === 'POST' && url.pathname === '/cancel') {
       const b = await request.json().catch(() => ({}));
       if (!b.license?.includes('@')) return respond({ error: 'purchase email required' }, 400);
       if (!(await isPro(env, b.license))) return respond({ error: 'no active Pro license for that email' }, 404);
-      const r = await platform(env, '/api/v1/billing/cancel', { method: 'POST', body: JSON.stringify({ email: b.license }) });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) return respond({ error: 'cancel failed', detail: d }, 502);
-      return respond({ ok: true, status: d.status, subscription_id: d.subscription_id });
+      await requestConfirm(env, b.license, 'cancel');
+      return respond({ ok: true, confirm: 'email' });
+    }
+
+    // Executes a pending license action once the emailed link is clicked.
+    if (request.method === 'GET' && url.pathname === '/confirm') {
+      const token = url.searchParams.get('token') ?? '';
+      const raw = /^[a-f0-9-]{36}$/i.test(token) ? await kvGet(env, `pending:${token}`) : null;
+      const pend = raw ? JSON.parse(raw) : null;
+      if (!pend) return confirmPage('Link expired', '<p>This confirmation link is invalid or has expired.</p>');
+      await platform(env, '/kv/delete', { method: 'POST', body: JSON.stringify({ key: `pending:${token}` }) });
+
+      if (pend.action === 'cancel') {
+        const r = await platform(env, '/api/v1/billing/cancel', { method: 'POST', body: JSON.stringify({ email: pend.email }) });
+        if (!r.ok) return confirmPage('Cancellation failed', '<p>Something went wrong on our side — please try again or reply to your receipt email.</p>');
+        return confirmPage('Subscription cancelled', `<p>The Pro subscription for <b>${esc(pend.email)}</b> has been cancelled. Your license stays active until the end of the current billing period.</p>`);
+      }
+      if (pend.action === 'monitor_add') {
+        await kvPut(env, monitorKey(pend.email, pend.url), JSON.stringify(buildMonitorRecord({ email: pend.email, url: pend.url })), 0);
+        return confirmPage('Monitoring on', `<p><b>${esc(pend.url)}</b> will be rescanned daily — we email <b>${esc(pend.email)}</b> if the score drops.</p>`);
+      }
+      if (pend.action === 'monitor_del') {
+        await platform(env, '/kv/delete', { method: 'POST', body: JSON.stringify({ key: monitorKey(pend.email, pend.url) }) });
+        return confirmPage('Monitoring stopped', `<p><b>${esc(pend.url)}</b> is no longer being monitored.</p>`);
+      }
+      return confirmPage('Link expired', '<p>This confirmation link is invalid or has expired.</p>');
     }
 
     if (request.method === 'POST' && url.pathname === '/scan') {
@@ -169,6 +220,7 @@ export default {
           issues = scanHtml(page).concat(scanAdditionalHtml(page)).concat(scanWcag22(page));
         }
       } else if (typeof body.html === 'string' && body.html.trim()) {
+        if (body.html.length > 512_000) return respond({ error: 'html too large (512KB max)' }, 413);
         issues = scanHtml(body.html).concat(scanAdditionalHtml(body.html)).concat(scanWcag22(body.html));
       } else {
         return respond({ error: 'provide {"url"} or {"html"}' }, 400);
@@ -196,20 +248,22 @@ export default {
 
     // Pro site monitoring — register/unregister URLs for the platform's
     // daily rescan sweep; Brevo alerts when a page's score drops >= 10.
+    // Both mutations are email-confirmed like /cancel — the license is an
+    // email address, so registering under someone's email would otherwise
+    // let strangers send them alerts or manage their list.
     if (url.pathname === '/monitor' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       if (!(await isPro(env, b.license))) return respond({ error: 'pro license required', upgrade: '/checkout' }, 402);
       if (!b.url || !/^https?:\/\//i.test(b.url)) return respond({ error: 'provide {"url"}' }, 400);
-      const rec = buildMonitorRecord({ email: b.license, url: b.url });
-      await kvPut(env, monitorKey(b.license, b.url), JSON.stringify(rec), 0);
-      return respond({ ok: true, monitor: rec });
+      await requestConfirm(env, b.license, 'monitor_add', { url: b.url });
+      return respond({ ok: true, confirm: 'email' });
     }
     if (url.pathname === '/monitor' && request.method === 'DELETE') {
       const b = await request.json().catch(() => ({}));
       if (!(await isPro(env, b.license))) return respond({ error: 'pro license required' }, 402);
       if (!b.url) return respond({ error: 'provide {"url"}' }, 400);
-      await platform(env, '/kv/delete', { method: 'POST', body: JSON.stringify({ key: monitorKey(b.license, b.url) }) });
-      return respond({ ok: true });
+      await requestConfirm(env, b.license, 'monitor_del', { url: b.url });
+      return respond({ ok: true, confirm: 'email' });
     }
     if (url.pathname === '/monitor' && request.method === 'GET') {
       const license = url.searchParams.get('license');
