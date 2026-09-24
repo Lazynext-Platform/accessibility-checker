@@ -11,6 +11,10 @@ const CORS = {
 };
 const FREE_LIMIT = 3; // rendered scans per IP per day
 
+// Escape user- and scanned-page-controlled text before it lands in report HTML
+// or email bodies — report URLs are shareable, so raw interpolation is stored XSS.
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
 function respond(data, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', ...CORS } });
 }
@@ -73,10 +77,10 @@ export default {
       const raw = await kvGet(env, `report:${id}`);
       if (!raw) return respond({ error: 'report not found or expired' }, 404);
       const rep = JSON.parse(raw);
-      const rows = rep.issues.map((i) => `<tr><td style="font-family:monospace">${i.rule}</td><td>${i.message}</td></tr>`).join('');
-      return new Response(`<!doctype html><meta charset="utf-8"><title>Accessibility report — ${rep.url ?? 'paste'}</title>
+      const rows = rep.issues.map((i) => `<tr><td style="font-family:monospace">${esc(i.rule)}</td><td>${esc(i.message)}</td></tr>`).join('');
+      return new Response(`<!doctype html><meta charset="utf-8"><title>Accessibility report — ${esc(rep.url ?? 'paste')}</title>
 <body style="font-family:system-ui;max-width:800px;margin:2rem auto;padding:0 1rem">
-<h1>Accessibility report</h1><p><b>${rep.url ?? 'pasted HTML'}</b> · ${new Date(rep.ts).toUTCString()} · rendered: ${rep.rendered}</p>
+<h1>Accessibility report</h1><p><b>${esc(rep.url ?? 'pasted HTML')}</b> · ${new Date(rep.ts).toUTCString()} · rendered: ${rep.rendered}</p>
 <p style="font-size:3rem;margin:0"><b>${rep.score}</b>/100</p>
 <table style="width:100%;border-collapse:collapse">${rows || '<tr><td>No issues found.</td></tr>'}</table>
 <p><a href="https://lazynext-platform.github.io/accessibility-checker/">Run your own scan →</a></p>`,
@@ -181,7 +185,7 @@ export default {
           method: 'POST',
           body: JSON.stringify({
             to: body.license,
-            subject: `Accessibility report: ${body.url ?? 'pasted HTML'} — score ${result.score}/100`,
+            subject: `Accessibility report: ${String(body.url ?? 'pasted HTML').slice(0, 120)} — score ${result.score}/100`,
             html: `<p>Score: <b>${result.score}/100</b> (${result.issues.length} issues, rendered: ${rendered})</p><p>Full report: <a href="${result.report}">${result.report}</a></p>`,
           }),
         });
