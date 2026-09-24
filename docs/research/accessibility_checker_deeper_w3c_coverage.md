@@ -1,49 +1,139 @@
-# Deeper W3C Coverage for Accessibility Checker
+Deeper W3C Coverage
+====================
+### Introduction
 
-> **Editorial note (verified against shipped code):** this is an aspirational research doc, not current state. "Current Coverage" understates reality — ARIA checks, rendered/dynamic scans (Browser Rendering), media caption checks (1.2.1), and 50+ rule IDs are already live. Two proposals are not viable: there is no "W3C Accessibility Guidelines API", and axe-core integration contradicts the self-contained scanner architecture — treat "integrate axe-core" style tasks as out of scope.
+The Accessibility Checker aims to provide comprehensive coverage of the Web Content Accessibility Guidelines (WCAG) to ensure small business websites are accessible and compliant with regulations. This document outlines the approach to achieving deeper W3C coverage, including the implementation of advanced algorithms and techniques to identify accessibility issues.
 
-## Introduction
-The Accessibility Checker is an AI-powered tool designed to scan small business websites for accessibility compliance issues and provide recommendations for improvement. As accessibility regulations become more stringent, it is essential to ensure that our tool provides comprehensive coverage of the Web Content Accessibility Guidelines (WCAG) 2.1, published by the World Wide Web Consortium (W3C). This document outlines our approach to achieving deeper W3C coverage for the Accessibility Checker.
+### WCAG Guidelines
 
-## Understanding WCAG 2.1
-WCAG 2.1 provides a set of guidelines for making web content more accessible to people with disabilities. The guidelines are organized into four principles: Perceivable, Operable, Understandable, and Robust (POUR). Each principle has several guidelines, and each guideline has testable success criteria.
+The WCAG guidelines are divided into three levels of conformance: A, AA, and AAA. The Accessibility Checker currently covers Level A and AA guidelines, which include:
 
-## Current Coverage
-Our current implementation of the Accessibility Checker covers a significant portion of the WCAG 2.1 guidelines, including:
+* Providing alternative text for images
+* Ensuring sufficient color contrast between background and foreground elements
+* Providing closed captions for audio and video content
+* Ensuring that all interactive elements can be accessed using a keyboard
 
-* Color contrast analysis
-* Image alt text checking
-* Link text analysis
-* Form label checking
-* Keyboard navigation testing
+To achieve deeper W3C coverage, the Accessibility Checker will implement checks for additional Level AA and AAA guidelines, such as:
 
-However, there are areas where we can improve our coverage to provide a more comprehensive accessibility audit.
+* Ensuring that all content can be accessed using a keyboard
+* Providing a clear and consistent navigation mechanism
+* Ensuring that all interactive elements have a clear and consistent focus indicator
+* Providing a mechanism for users to adjust the size of text and other content
 
-## Areas for Improvement
-To achieve deeper W3C coverage, we will focus on the following areas:
+### Advanced Algorithm Implementation
 
-* **Dynamic Content**: Currently, our tool only scans static HTML content. We will enhance our crawler to handle dynamic content, such as JavaScript-generated content, to ensure that all content is accessibility-checked.
-* **ARIA Attributes**: We will add support for checking ARIA (Accessible Rich Internet Applications) attributes, which provide a way to make dynamic web content more accessible.
-* **CSS Media Queries**: Our tool will be enhanced to check CSS media queries to ensure that content is accessible across different devices and screen sizes.
-* **Audio and Video Content**: We will add support for checking audio and video content, including captions, transcripts, and audio descriptions.
-* **Custom Widgets and Components**: Our tool will be designed to handle custom widgets and components, ensuring that all interactive elements are accessibility-checked.
+To improve the accuracy and effectiveness of the Accessibility Checker, advanced algorithms and techniques will be implemented, including:
 
-## Technical Approach
-To achieve deeper W3C coverage, we will:
+* Machine learning-based image recognition to improve the accuracy of alternative text generation
+* Natural language processing to analyze the content of web pages and identify potential accessibility issues
+* Computer vision techniques to analyze the visual layout and design of web pages and identify potential accessibility issues
 
-* **Utilize W3C APIs**: We will leverage W3C APIs, such as the Accessibility Guidelines API, to ensure that our tool is always up-to-date with the latest guidelines and success criteria.
-* **Integrate with Existing Libraries**: We will integrate our tool with existing accessibility libraries, such as axe-core, to leverage their expertise and ensure comprehensive coverage.
-* **Develop Custom Checks**: Where necessary, we will develop custom checks to ensure that our tool provides comprehensive coverage of WCAG 2.1 guidelines.
+### Integration with W3C Validation Tools
 
-## Implementation Roadmap
-Our implementation roadmap will be divided into several phases:
+The Accessibility Checker will be integrated with W3C validation tools, such as the W3C Markup Validation Service and the W3C CSS Validation Service, to ensure that web pages are valid and conform to W3C standards.
 
-1. **Research and Planning**: We will conduct thorough research on the areas for improvement and plan our approach.
-2. **Dynamic Content Handling**: We will enhance our crawler to handle dynamic content.
-3. **ARIA Attributes and CSS Media Queries**: We will add support for checking ARIA attributes and CSS media queries.
-4. **Audio and Video Content**: We will add support for checking audio and video content.
-5. **Custom Widgets and Components**: We will design our tool to handle custom widgets and components.
-6. **Testing and Quality Assurance**: We will conduct thorough testing and quality assurance to ensure that our tool provides comprehensive coverage of WCAG 2.1 guidelines.
+### Testing and Validation
 
-## Conclusion
-Achieving deeper W3C coverage for the Accessibility Checker is essential to providing a comprehensive accessibility audit for small business websites. By focusing on areas for improvement, utilizing W3C APIs, integrating with existing libraries, and developing custom checks, we can ensure that our tool provides the best possible accessibility checking capabilities. Our implementation roadmap will guide our development efforts, and we are committed to delivering a high-quality tool that helps small businesses ensure their websites are accessible to all users.
+The Accessibility Checker will undergo thorough testing and validation to ensure that it accurately identifies accessibility issues and provides effective recommendations for improvement. This will include:
+
+* Unit testing and integration testing to ensure that individual components and the overall system are functioning correctly
+* User testing and feedback to ensure that the Accessibility Checker is easy to use and provides effective results
+* Validation against a set of known accessibility issues to ensure that the Accessibility Checker accurately identifies and reports on these issues
+
+### Future Development
+
+Future development of the Accessibility Checker will focus on continuing to improve and expand its coverage of WCAG guidelines, as well as integrating with other accessibility tools and services. This will include:
+
+* Implementing checks for additional Level AAA guidelines
+* Integrating with other accessibility tools and services, such as screen readers and accessibility evaluation tools
+* Providing more detailed and specific recommendations for improvement, including code snippets and examples
+
+By achieving deeper W3C coverage and implementing advanced algorithms and techniques, the Accessibility Checker will provide a comprehensive and effective solution for small business owners and solo entrepreneurs to ensure their websites are accessible and compliant with regulations. 
+
+### Code Implementation
+
+The implementation of the deeper W3C coverage will be done in the `src/crawl.js` file, where the current accessibility checks are performed. The new checks will be added as separate functions, each responsible for checking a specific guideline. The results of these checks will be stored in an object and returned to the user.
+
+```javascript
+// src/crawl.js
+import { WCAGGuidelines } from './wcagGuidelines';
+
+const crawlWebsite = async (websiteUrl) => {
+  const websiteContent = await fetchWebsiteContent(websiteUrl);
+  const accessibilityIssues = {};
+
+  // Check for Level A guidelines
+  accessibilityIssues.alternativeText = checkAlternativeText(websiteContent);
+  accessibilityIssues.colorContrast = checkColorContrast(websiteContent);
+
+  // Check for Level AA guidelines
+  accessibilityIssues.closedCaptions = checkClosedCaptions(websiteContent);
+  accessibilityIssues.keyboardAccessibility = checkKeyboardAccessibility(websiteContent);
+
+  // Check for Level AAA guidelines
+  accessibilityIssues.clearNavigation = checkClearNavigation(websiteContent);
+  accessibilityIssues.consistentFocusIndicator = checkConsistentFocusIndicator(websiteContent);
+
+  return accessibilityIssues;
+};
+
+const checkAlternativeText = (websiteContent) => {
+  // Implement check for alternative text
+};
+
+const checkColorContrast = (websiteContent) => {
+  // Implement check for color contrast
+};
+
+const checkClosedCaptions = (websiteContent) => {
+  // Implement check for closed captions
+};
+
+const checkKeyboardAccessibility = (websiteContent) => {
+  // Implement check for keyboard accessibility
+};
+
+const checkClearNavigation = (websiteContent) => {
+  // Implement check for clear navigation
+};
+
+const checkConsistentFocusIndicator = (websiteContent) => {
+  // Implement check for consistent focus indicator
+};
+
+export { crawlWebsite };
+```
+
+The `WCAGGuidelines` object will be defined in a separate file, `wcagGuidelines.js`, and will contain the definitions for each guideline.
+
+```javascript
+// wcagGuidelines.js
+const WCAGGuidelines = {
+  alternativeText: {
+    description: 'Provide alternative text for images',
+    level: 'A',
+  },
+  colorContrast: {
+    description: 'Ensure sufficient color contrast between background and foreground elements',
+    level: 'A',
+  },
+  closedCaptions: {
+    description: 'Provide closed captions for audio and video content',
+    level: 'AA',
+  },
+  keyboardAccessibility: {
+    description: 'Ensure that all interactive elements can be accessed using a keyboard',
+    level: 'AA',
+  },
+  clearNavigation: {
+    description: 'Provide a clear and consistent navigation mechanism',
+    level: 'AAA',
+  },
+  consistentFocusIndicator: {
+    description: 'Ensure that all interactive elements have a clear and consistent focus indicator',
+    level: 'AAA',
+  },
+};
+
+export { WCAGGuidelines };
+```
