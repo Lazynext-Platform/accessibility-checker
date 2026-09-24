@@ -15,11 +15,17 @@ const files = {
   '/llms.txt': 'text/plain; charset=utf-8',
   '/favicon.svg': 'image/svg+xml',
   '/.well-known/security.txt': 'text/plain; charset=utf-8',
+  '/manifest.json': 'application/manifest+json',
 };
+const binaryFiles = { '/og.png': 'image/png' };
 const entries = Object.entries(files).map(([route, type]) => {
   const body = readFileSync(new URL(route.slice(1), root), 'utf8');
   return `  ${JSON.stringify(route)}: { type: ${JSON.stringify(type)}, body: ${JSON.stringify(body)} },`;
 });
+for (const [route, type] of Object.entries(binaryFiles)) {
+  const body = readFileSync(new URL(route.slice(1), root)).toString('base64');
+  entries.push(`  ${JSON.stringify(route)}: { type: ${JSON.stringify(type)}, b64: true, body: ${JSON.stringify(body)} },`);
+}
 writeFileSync(new URL('src/static.js', root),
   `// GENERATED from the repo's static files — regenerate after edits: node scripts/sync-page.mjs\nexport const STATIC_FILES = {\n${entries.join('\n')}\n};\n`);
 

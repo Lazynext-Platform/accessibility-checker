@@ -105,7 +105,11 @@ export default {
     // and security tools must find robots/sitemap/llms/security.txt here too.
     if (request.method === 'GET') {
       const sf = STATIC_FILES[url.pathname];
-      if (sf) return new Response(sf.body, { headers: { 'content-type': sf.type } });
+      if (sf) {
+        // Binary entries embed as base64 (b64:true) — decode to bytes.
+        const body = sf.b64 ? Uint8Array.from(atob(sf.body), c => c.charCodeAt(0)) : sf.body;
+        return new Response(body, { headers: { 'content-type': sf.type } });
+      }
     }
 
     // Lead capture → platform /leads → Brevo contact + D1 event.

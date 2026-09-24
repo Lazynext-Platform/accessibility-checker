@@ -5,6 +5,7 @@ import { PAGE_HTML } from '../src/page.js';
 import { STATIC_FILES } from '../src/static.js';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
+const readB64 = (p) => readFileSync(new URL(`../${p}`, import.meta.url)).toString('base64');
 const indexHtml = read('index.html');
 
 // The worker serves PAGE_HTML + STATIC_FILES on checker.lazynext.com and to
@@ -17,7 +18,7 @@ test('src/page.js is in sync with index.html', () => {
 
 test('src/static.js is in sync with the repo static files', () => {
   for (const [route, sf] of Object.entries(STATIC_FILES)) {
-    assert.equal(sf.body, read(route.slice(1)), `${route} drifted`);
+    assert.equal(sf.body, sf.b64 ? readB64(route.slice(1)) : read(route.slice(1)), `${route} drifted`);
   }
 });
 
