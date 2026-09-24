@@ -1,89 +1,92 @@
-# Accessibility Checker CI/CD
-## Introduction
-The Accessibility Checker is an AI-powered tool that scans small business websites for accessibility compliance issues and provides recommendations for improvement. As the tool evolves, it's essential to implement a robust Continuous Integration/Continuous Deployment (CI/CD) pipeline to ensure timely and automated deployment of updates, including new scanner rules, to production.
+# Introduction to Cloudflare Worker Configuration
+To handle increased traffic from marketing campaigns, we need to configure Cloudflare Worker to efficiently manage and distribute the incoming requests. This configuration will ensure that our Accessibility Checker tool remains responsive and provides a seamless experience for users.
 
-## Current State
-The existing repository contains the following relevant files:
-- `src/rules/additional.js`: Additional scanner rules
-- `src/rules/wcag22.js`: WCAG 2.2 scanner rules
-- `test/additional-rules.test.mjs`: Tests for additional scanner rules
-- `test/wcag22.test.mjs`: Tests for WCAG 2.2 scanner rules
-- `.github/workflows/test.yml`: Existing GitHub Actions workflow for testing
+## Prerequisites
+Before configuring Cloudflare Worker, make sure you have the following:
+- A Cloudflare account
+- The Accessibility Checker tool deployed on a website
+- The `worker.js` file set up to handle requests
 
-## Proposed CI/CD Pipeline
-To automate the deployment of updated scanner rules, we will enhance the existing GitHub Actions workflow to include the following steps:
-1. **Build**: Compile and bundle the scanner rules using a tool like Webpack or Rollup.
-2. **Test**: Run the existing tests for scanner rules using Node:test.
-3. **Deploy**: Deploy the updated scanner rules to production.
+## Step 1: Enable Cloudflare Worker
+To enable Cloudflare Worker, follow these steps:
+1. Log in to your Cloudflare account and select the domain for your Accessibility Checker tool.
+2. Navigate to the **Workers** tab and click on **Create a Worker**.
+3. Upload your `worker.js` file or create a new worker using the Cloudflare Worker editor.
 
-## Implementation
-### Step 1: Update `test/additional-rules.test.mjs` and `test/wcag22.test.mjs`
-Use Node:test to write tests for the scanner rules. For example:
+## Step 2: Configure Worker Settings
+To configure the worker settings, follow these steps:
+1. In the **Workers** tab, click on the three dots next to your worker and select **Edit**.
+2. In the worker editor, add the following code to handle increased traffic:
 ```javascript
-// test/additional-rules.test.mjs
-import { test } from 'node:test';
-import { AdditionalRules } from '../../src/rules/additional.js';
+addEventListener('fetch', event => {
+  event.respondWith(handleRequest(event.request))
+})
 
-test('Additional rules should return an array of issues', async () => {
-  const rules = new AdditionalRules();
-  const issues = await rules.scan('https://example.com');
-  expect(issues).toBeInstanceOf(Array);
-});
-```
+async function handleRequest(request) {
+  // Handle requests to the Accessibility Checker tool
+  if (request.url.includes('/accessibility-checker')) {
+    // Use a cache to reduce the load on the origin server
+    const cache = await caches.open('accessibility-checker-cache')
+    const cachedResponse = await cache.match(request)
+    if (cachedResponse) {
+      return cachedResponse
+    }
 
-```javascript
-// test/wcag22.test.mjs
-import { test } from 'node:test';
-import { Wcag22Rules } from '../../src/rules/wcag22.js';
+    // If not cached, fetch the response from the origin server
+    const response = await fetch(request)
+    const cachedResponse = new Response(response.body, response.headers)
+    await cache.put(request, cachedResponse.clone())
+    return cachedResponse
+  }
 
-test('WCAG 2.2 rules should return an array of issues', async () => {
-  const rules = new Wcag22Rules();
-  const issues = await rules.scan('https://example.com');
-  expect(issues).toBeInstanceOf(Array);
-});
-```
-
-### Step 2: Update `.github/workflows/test.yml`
-Enhance the existing GitHub Actions workflow to include the build, test, and deploy steps:
-```yml
-name: Accessibility Checker CI/CD
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build scanner rules
-        run: npm run build
-
-      - name: Run tests
-        run: npm run test
-
-      - name: Deploy to production
-        uses: gh-pages/deploy@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-```
-
-### Step 3: Update `package.json`
-Add scripts for building and testing the scanner rules:
-```json
-"scripts": {
-  "build": "webpack",
-  "test": "node:test test/*.test.mjs"
+  // Handle other requests
+  return fetch(request)
 }
 ```
+This code uses a cache to reduce the load on the origin server and improve response times.
+
+## Step 3: Configure Rate Limiting
+To prevent abuse and ensure that the worker can handle the increased traffic, configure rate limiting:
+1. In the **Workers** tab, click on the three dots next to your worker and select **Edit**.
+2. In the worker editor, add the following code to configure rate limiting:
+```javascript
+const rateLimit = 100 // requests per minute
+const rateLimitWindow = 60 // seconds
+
+const requests = new Map()
+
+addEventListener('fetch', event => {
+  const request = event.request
+  const ip = request.headers.get('CF-Connecting-IP')
+  const now = Date.now() / 1000
+
+  if (requests.has(ip)) {
+    const requestCount = requests.get(ip)
+    const timestamp = requestCount.timestamp
+    const count = requestCount.count
+
+    if (now - timestamp < rateLimitWindow) {
+      if (count >= rateLimit) {
+        return new Response('Rate limit exceeded', { status: 429 })
+      }
+      requests.set(ip, { timestamp, count: count + 1 })
+    } else {
+      requests.set(ip, { timestamp: now, count: 1 })
+    }
+  } else {
+    requests.set(ip, { timestamp: now, count: 1 })
+  }
+
+  event.respondWith(handleRequest(event.request))
+})
+```
+This code limits the number of requests from a single IP address to 100 requests per minute.
+
+## Step 4: Test the Configuration
+To test the configuration, follow these steps:
+1. Deploy the updated worker to Cloudflare.
+2. Use a tool like `curl` or a web browser to send requests to the Accessibility Checker tool.
+3. Verify that the worker is handling requests correctly and that rate limiting is working as expected.
 
 ## Conclusion
-By implementing the proposed CI/CD pipeline, we can automate the deployment of updated scanner rules to production, ensuring that the Accessibility Checker remains up-to-date and effective in identifying accessibility compliance issues. The pipeline will build, test, and deploy the scanner rules on every push to the main branch, providing a seamless and efficient way to deliver updates to users.
+By configuring Cloudflare Worker to handle increased traffic from marketing campaigns, we can ensure that our Accessibility Checker tool remains responsive and provides a seamless experience for users. The configuration includes enabling Cloudflare Worker, configuring worker settings, and configuring rate limiting to prevent abuse.
