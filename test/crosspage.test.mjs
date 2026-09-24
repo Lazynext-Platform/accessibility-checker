@@ -24,6 +24,28 @@ test('different nav order → wcag-3.2.3 on the deviant page', () => {
   assert.equal(hits[0].url, '/3');
 });
 
+test('navs with different link sets but same shared order → no 3.2.3', () => {
+  // homepage has in-page anchors the subpages lack — the shared links
+  // (/ and /contact) still appear in the same relative order.
+  const home = nav([['/', 'Home'], ['#a', 'A'], ['#b', 'B'], ['/contact', 'C']]);
+  const sub = nav([['/', 'Home'], ['/docs', 'D'], ['/contact', 'C']]);
+  const issues = checkCrossPages([
+    { url: '/1', html: home }, { url: '/2', html: sub }, { url: '/3', html: sub },
+  ]);
+  assert.equal(issues.filter((i) => i.rule === 'wcag-3.2.3').length, 0);
+});
+
+test('shared links in flipped order → 3.2.3 on the deviant page', () => {
+  const ref = nav([['/', 'Home'], ['/docs', 'D'], ['/contact', 'C']]);
+  const bad = nav([['/', 'Home'], ['/x', 'X'], ['/contact', 'C'], ['/docs', 'D']]);
+  const issues = checkCrossPages([
+    { url: '/1', html: ref }, { url: '/2', html: ref }, { url: '/3', html: bad },
+  ]);
+  const hits = issues.filter((i) => i.rule === 'wcag-3.2.3');
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].url, '/3');
+});
+
 test('same href with different labels → wcag-3.2.4', () => {
   const issues = checkCrossPages([
     { url: '/1', html: '<a href="/contact">Contact us</a>' },
@@ -40,6 +62,30 @@ test('same href same label → clean', () => {
     { url: '/2', html: '<a href="/contact">Contact</a>' },
   ]);
   assert.equal(issues.filter((i) => i.rule === 'wcag-3.2.4').length, 0);
+});
+
+test('aria-label is the accessible name — beats differing innerText', () => {
+  const issues = checkCrossPages([
+    { url: '/1', html: '<a href="/contact" aria-label="Contact support">Contact us</a>' },
+    { url: '/2', html: '<a href="/contact" aria-label="Contact support">Get in touch</a>' },
+  ]);
+  assert.equal(issues.filter((i) => i.rule === 'wcag-3.2.4').length, 0);
+});
+
+test('aria-label on one page cannot mask a different label elsewhere', () => {
+  const issues = checkCrossPages([
+    { url: '/1', html: '<a href="/contact" aria-label="Contact support">Contact us</a>' },
+    { url: '/2', html: '<a href="/contact">Get in touch</a>' },
+  ]);
+  assert.equal(issues.filter((i) => i.rule === 'wcag-3.2.4').length, 1);
+});
+
+test('two labels for one target on a single page → 3.2.4', () => {
+  const issues = checkCrossPages([
+    { url: '/1', html: '<a href="/go">Start</a> <a href="/go">Begin</a>' },
+    { url: '/2', html: '<a href="/go">Start</a>' },
+  ]);
+  assert.equal(issues.filter((i) => i.rule === 'wcag-3.2.4').length, 1);
 });
 
 test('single page → no cross-page issues', () => {
