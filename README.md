@@ -5,7 +5,7 @@ Chromium, press Tab to trace keyboard focus, compute color contrast from
 computed styles, and return a scored report with rule citations you can file
 as tickets.
 
-**Live:** https://lazynext-platform.github.io/accessibility-checker/
+**Live:** https://checker.lazynext.com/
 **API:** `https://accessibility-checker.dry-hall-6a50.workers.dev`
 
 ```bash

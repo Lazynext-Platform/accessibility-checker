@@ -4,6 +4,7 @@ import { scanWcag22 } from './src/rules/wcag22.js';
 import { checkCrossPages } from './src/rules/crosspage.js';
 import { crawlSite } from './src/crawl.js';
 import { monitorKey, buildMonitorRecord } from './src/monitor.js';
+import { PAGE_HTML } from './src/page.js';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -49,12 +50,10 @@ async function isPro(env, license) {
 // (cancel / monitor add/remove) require mailbox proof: POST creates a
 // pending:<token> record and emails a confirmation link; GET /confirm
 // executes it once (the token is deleted on use). 15-minute expiry.
-const CONFIRM_BASE = 'https://accessibility-checker.dry-hall-6a50.workers.dev/confirm?token=';
-
-async function requestConfirm(env, email, action, extra = {}) {
+async function requestConfirm(env, origin, email, action, extra = {}) {
   const token = crypto.randomUUID();
   await kvPut(env, `pending:${token}`, JSON.stringify({ action, email: String(email).toLowerCase(), ...extra }), 900);
-  const link = CONFIRM_BASE + token;
+  const link = `${origin}/confirm?token=${token}`;
   const label = { cancel: `cancel the Pro subscription for ${email}`, monitor_add: `start daily monitoring for ${extra.url}`, monitor_del: `stop monitoring ${extra.url}` }[action];
   await platform(env, '/email/send', {
     method: 'POST',
@@ -70,7 +69,7 @@ function confirmPage(title, inner) {
   return new Response(`<!doctype html><meta charset="utf-8"><title>${title}</title>
 <body style="font-family:system-ui;max-width:640px;margin:4rem auto;padding:0 1rem">
 <h1>${title}</h1>${inner}
-<p><a href="https://lazynext-platform.github.io/accessibility-checker/">Back to Accessibility Checker</a></p>`,
+<p><a href="/">Back to Accessibility Checker</a></p>`,
     { headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" } });
 }
 
@@ -84,13 +83,20 @@ export default {
     }
 
     if (request.method === 'GET' && url.pathname === '/') {
+      // Browsers (and the branded domain) get the product UI; API callers get
+      // the usage doc. Same worker serves both — checker.lazynext.com is the
+      // canonical surface, workers.dev/github.io stay working.
+      const wantsHtml = (request.headers.get('accept') ?? '').includes('text/html') || url.hostname === 'checker.lazynext.com';
+      if (wantsHtml) {
+        return new Response(PAGE_HTML, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+      }
       return respond({
         name: 'Accessibility Checker API',
         scan: 'POST /scan {"url"|"html", "site"?: bool, "license"?: email, "email_report"?: bool}',
         checkout: 'GET /checkout', cancel: 'POST /cancel {"license": email}',
         confirm: 'GET /confirm?token=…', monitor: 'GET|POST|DELETE /monitor (Pro)',
         lead: 'POST /lead {"email"}', report: 'GET /report/:id',
-        site: 'https://lazynext-platform.github.io/accessibility-checker/',
+        site: 'https://checker.lazynext.com/',
       });
     }
 
@@ -115,7 +121,7 @@ export default {
 <h1>Accessibility report</h1><p><b>${esc(rep.url ?? 'pasted HTML')}</b> · ${new Date(rep.ts).toUTCString()} · rendered: ${rep.rendered}</p>
 <p style="font-size:3rem;margin:0"><b>${rep.score}</b>/100</p>
 <table style="width:100%;border-collapse:collapse">${rows || '<tr><td>No issues found.</td></tr>'}</table>
-<p><a href="https://lazynext-platform.github.io/accessibility-checker/">Run your own scan →</a></p>`,
+<p><a href="/">Run your own scan →</a></p>`,
         { headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" } });
     }
 
@@ -137,7 +143,7 @@ export default {
       const b = await request.json().catch(() => ({}));
       if (!b.license?.includes('@')) return respond({ error: 'purchase email required' }, 400);
       if (!(await isPro(env, b.license))) return respond({ error: 'no active Pro license for that email' }, 404);
-      await requestConfirm(env, b.license, 'cancel');
+      await requestConfirm(env, url.origin, b.license, 'cancel');
       return respond({ ok: true, confirm: 'email' });
     }
 
@@ -237,7 +243,7 @@ export default {
       // Persist a shareable report (30d) and optionally email it for Pro.
       const id = crypto.randomUUID().slice(0, 12);
       await kvPut(env, `report:${id}`, JSON.stringify({ ...result, url: body.url ?? null, ts: Date.now() }), 2592000);
-      result.report = `https://accessibility-checker.dry-hall-6a50.workers.dev/report/${id}`;
+      result.report = `${url.origin}/report/${id}`;
       if (pro && body.email_report) {
         await platform(env, '/email/send', {
           method: 'POST',
@@ -261,14 +267,14 @@ export default {
       const b = await request.json().catch(() => ({}));
       if (!(await isPro(env, b.license))) return respond({ error: 'pro license required', upgrade: '/checkout' }, 402);
       if (!b.url || !/^https?:\/\//i.test(b.url)) return respond({ error: 'provide {"url"}' }, 400);
-      await requestConfirm(env, b.license, 'monitor_add', { url: b.url });
+      await requestConfirm(env, url.origin, b.license, 'monitor_add', { url: b.url });
       return respond({ ok: true, confirm: 'email' });
     }
     if (url.pathname === '/monitor' && request.method === 'DELETE') {
       const b = await request.json().catch(() => ({}));
       if (!(await isPro(env, b.license))) return respond({ error: 'pro license required' }, 402);
       if (!b.url) return respond({ error: 'provide {"url"}' }, 400);
-      await requestConfirm(env, b.license, 'monitor_del', { url: b.url });
+      await requestConfirm(env, url.origin, b.license, 'monitor_del', { url: b.url });
       return respond({ ok: true, confirm: 'email' });
     }
     if (url.pathname === '/monitor' && request.method === 'GET') {

@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accessibility Checker — WCAG scanner</title>
     <meta name="description" content="Scan any website for WCAG accessibility issues — rendered-page checks, whole-site crawls, daily monitoring with email alerts, and shareable reports. Free tier included; Pro $9/mo with a 14-day trial.">
-    <link rel="canonical" href="https://lazynext-platform.github.io/accessibility-checker/">
+    <link rel="canonical" href="https://checker.lazynext.com/">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Accessibility Checker — WCAG scanner">
     <meta property="og:description" content="WCAG 2.1/2.2 scans, whole-site crawls, and daily score monitoring. Free scans; Pro $9/mo.">
-    <meta property="og:url" content="https://lazynext-platform.github.io/accessibility-checker/">
+    <meta property="og:url" content="https://checker.lazynext.com/">
     <meta name="twitter:card" content="summary">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <style>
@@ -58,18 +58,21 @@
     </div>
     <div id="leadStatus" role="status"></div>
     <script>
+        // Same-origin when served by the worker on the branded domain;
+        // absolute API URL when served from GitHub Pages.
+        const API = location.hostname === "checker.lazynext.com" ? "" : "https://accessibility-checker.dry-hall-6a50.workers.dev";
+        document.getElementById("pro").href = API + "/checkout";
         document.getElementById("join").onclick = async () => {
             const email = document.getElementById("lead").value.trim();
             const st = document.getElementById("leadStatus");
             if (!email.includes("@")) { st.textContent = "Enter a valid email."; return; }
-            const r = await fetch("https://accessibility-checker.dry-hall-6a50.workers.dev/lead", {
+            const r = await fetch(`${API}/lead`, {
                 method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email })
             });
             st.textContent = r.ok ? "You're on the list — first tip lands soon." : "Couldn't save that — try again.";
         };
     </script>
     <script>
-        const API = "https://accessibility-checker.dry-hall-6a50.workers.dev/scan";
         if (new URLSearchParams(location.search).get("upgraded")) {
             document.getElementById("status").innerHTML = "<b>Pro activated.</b> Enter your purchase email in the license field — unlimited scans.";
         }
@@ -83,14 +86,14 @@
                 const license = document.getElementById("license").value.trim();
                 const site = document.getElementById("siteScan").checked;
                 statusEl.textContent = site ? "Crawling and scanning pages…" : "Rendering page and scanning…";
-                const r = await fetch(API, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, ...(license ? { license } : {}), email_report: document.getElementById("emailReport").checked, ...(site ? { site: true } : {}) }) });
+                const r = await fetch(API + "/scan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url, ...(license ? { license } : {}), email_report: document.getElementById("emailReport").checked, ...(site ? { site: true } : {}) }) });
                 const d = await r.json();
                 if (r.status === 402) {
-                    statusEl.innerHTML = `Free limit reached — <a href="https://accessibility-checker.dry-hall-6a50.workers.dev/checkout">start a free 14-day Pro trial</a> for unlimited scans, or drop your email and we'll send you a discount:`;
+                    statusEl.innerHTML = `Free limit reached — <a href="${API}/checkout">start a free 14-day Pro trial</a> for unlimited scans, or drop your email and we'll send you a discount:`;
                     out.innerHTML = `<div class="row"><input id="limitEmail" type="email" placeholder="you@company.com" aria-label="Email for discount"><button id="limitJoin">Notify me</button></div>`;
                     document.getElementById("limitJoin").onclick = async () => {
                         const em = document.getElementById("limitEmail").value.trim();
-                        const lr = await fetch("https://accessibility-checker.dry-hall-6a50.workers.dev/lead", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: em }) });
+                        const lr = await fetch(`${API}/lead`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: em }) });
                         out.innerHTML = lr.ok ? "<p class='ok'>You're on the list — check your inbox.</p>" : "<p>Couldn't save that.</p>";
                     };
                     return;
@@ -113,7 +116,7 @@
             const email = document.getElementById("license").value.trim();
             if (!email.includes("@")) { statusEl.textContent = "Enter your purchase email in the license field first."; return; }
             if (!confirm(`Cancel the Pro subscription for ${email}? We'll email a confirmation link.`)) return;
-            const r = await fetch("https://accessibility-checker.dry-hall-6a50.workers.dev/cancel", {
+            const r = await fetch(`${API}/cancel`, {
                 method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ license: email })
             });
             const d = await r.json().catch(() => ({}));
@@ -125,7 +128,7 @@
             const url = urlEl.value.trim();
             if (!email.includes("@")) { statusEl.textContent = "Monitoring is a Pro feature — enter your purchase email in the license field first."; return; }
             if (!/^https?:\/\//i.test(url)) { statusEl.textContent = "Enter the URL to monitor in the scan field."; return; }
-            const r = await fetch("https://accessibility-checker.dry-hall-6a50.workers.dev/monitor", {
+            const r = await fetch(`${API}/monitor`, {
                 method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ license: email, url })
             });
             const d = await r.json().catch(() => ({}));
@@ -137,7 +140,7 @@
             e.preventDefault();
             const email = document.getElementById("license").value.trim();
             if (!email.includes("@")) { statusEl.textContent = "Enter your purchase email in the license field to see your monitors."; return; }
-            const r = await fetch(`https://accessibility-checker.dry-hall-6a50.workers.dev/monitor?license=${encodeURIComponent(email)}`);
+            const r = await fetch(`${API}/monitor?license=${encodeURIComponent(email)}`);
             const d = await r.json().catch(() => ({}));
             if (!r.ok) { statusEl.textContent = r.status === 402 ? "Monitoring needs a Pro license — start the free trial above." : `Couldn't load monitors: ${d.error ?? r.status}`; return; }
             const mons = d.monitors ?? [];
@@ -147,7 +150,7 @@
             out.querySelectorAll("[data-mon-stop]").forEach((a) => a.addEventListener("click", async (ev) => {
                 ev.preventDefault();
                 const url = a.getAttribute("data-mon-stop");
-                const r2 = await fetch("https://accessibility-checker.dry-hall-6a50.workers.dev/monitor", {
+                const r2 = await fetch(`${API}/monitor`, {
                     method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ license: email, url })
                 });
                 statusEl.textContent = r2.ok ? `Confirmation email sent — click the link in it to stop monitoring ${url}.` : "Couldn't remove that monitor — try again.";

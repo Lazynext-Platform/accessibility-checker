@@ -4,6 +4,6 @@
 > Pro adds rendered scans, daily monitoring with score-drop alerts, and
 > emailed reports. 14-day free trial.
 
-- Site: https://lazynext-platform.github.io/accessibility-checker/
+- Site: https://checker.lazynext.com/
 - API: https://accessibility-checker.dry-hall-6a50.workers.dev
 - Built by: https://lazynext.com
