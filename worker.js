@@ -153,6 +153,19 @@ export default {
       return respond({ ok: r.ok, ...(r.ok ? {} : { detail: d }) }, r.ok ? 200 : 502);
     }
 
+    // Public score badge — shields-style SVG for a stored report. Scanned sites
+    // embed it (linking back to the report) — the product's backlink loop.
+    if (request.method === 'GET' && url.pathname.startsWith('/badge/')) {
+      const id = url.pathname.slice(7).replace(/\.svg$/, '');
+      const raw = await kvGet(env, `report:${id}`);
+      if (!raw) return respond({ error: 'report not found or expired' }, 404);
+      const rep = JSON.parse(raw);
+      const score = Math.max(0, Math.min(100, Math.round(Number(rep.score) || 0)));
+      const color = score >= 80 ? '#4c1' : score >= 50 ? '#dfb317' : '#e05d44';
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="150" height="20" role="img" aria-label="accessibility: ${score}/100"><linearGradient id="s" x2="0" y2="100%"><stop offset="0" stop-color="#bbb" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient><clipPath id="r"><rect width="150" height="20" rx="3" fill="#fff"/></clipPath><g clip-path="url(#r)"><rect width="87" height="20" fill="#555"/><rect x="87" width="63" height="20" fill="${color}"/><rect width="150" height="20" fill="url(#s)"/></g><g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,sans-serif" font-size="110"><text x="445" y="150" transform="scale(.1)" fill="#fff">accessibility</text><text x="1175" y="150" transform="scale(.1)">${score}/100</text></g></svg>`;
+      return new Response(svg, { headers: { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'public, max-age=3600' } });
+    }
+
     // Shareable report — scans persist here for 30 days.
     // Suffixes: /report/:id.csv → CSV export, /report/:id.pdf → PDF via platform /pdf.
     if (request.method === 'GET' && url.pathname.startsWith('/report/')) {
@@ -179,7 +192,8 @@ export default {
 <p style="font-size:3rem;margin:0"><b>${rep.score}</b>/100${rep.site ? ' <span style="font-size:1rem;color:#555">site-wide (mean of ' + esc(String((rep.pages ?? []).length)) + ' pages)</span>' : ''}</p>
 ${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms ? 'conforms' : `${rep.section508.criteria_failed.length} WCAG criteria failed — FPC ${esc(rep.section508.clauses_implicated.join(', '))}`}</p>` : ''}
 ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;border-collapse:collapse;margin:0.5rem 0">${rep.pages.map((p) => `<tr><td style="font-family:monospace;font-size:0.85em">${esc(p.url)}</td><td style="text-align:right"><b>${p.score}</b>/100</td></tr>`).join('')}</table>` : ''}
-<p><a href="/report/${esc(id)}.csv">Download CSV</a> · <a href="/report/${esc(id)}.pdf">Download PDF</a></p>
+<p><a href="/report/${esc(id)}.csv">Download CSV</a> · <a href="/report/${esc(id)}.pdf">Download PDF</a> · <img src="/badge/${esc(id)}.svg" alt="accessibility score badge" style="vertical-align:middle"></p>
+<p style="font-size:0.85em;color:#555">Embed this badge: <code style="user-select:all">${esc(`<a href="${url.origin}/report/${id}"><img src="${url.origin}/badge/${id}.svg" alt="Accessibility score"></a>`)}</code></p>
 <table style="width:100%;border-collapse:collapse">${rows || '<tr><td>No issues found.</td></tr>'}</table>
 <p><a href="/">Run your own scan →</a></p>`,
         { headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" } });

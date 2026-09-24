@@ -100,6 +100,22 @@ test('GET /report/:id.csv exports findings as CSV', async () => {
   assert.ok(csv.includes('"fix, it"'), 'commas quoted');
 });
 
+test('GET /badge/:id.svg renders a score-colored SVG badge', async () => {
+  assert.equal((await get('/badge/missing.svg')).status, 404);
+  const env = mockEnv({
+    'report:abc': JSON.stringify({ url: 'https://x', ts: 0, score: 92, rendered: false, issues: [] }),
+  });
+  const r = await get('/badge/abc.svg', {}, env);
+  assert.equal(r.status, 200);
+  assert.match(r.headers.get('content-type'), /image\/svg\+xml/);
+  const svg = await r.text();
+  assert.ok(svg.includes('92/100'), 'badge shows the score');
+  assert.ok(svg.includes('#4c1'), 'score >= 80 is green');
+  const low = mockEnv({ 'report:low': JSON.stringify({ url: 'https://x', ts: 0, score: 30, issues: [] }) });
+  const svgLow = await (await get('/badge/low.svg', {}, low)).text();
+  assert.ok(svgLow.includes('#e05d44'), 'score < 50 is red');
+});
+
 test('GET /report/:id.pdf proxies the platform PDF render', async () => {
   const env = mockEnv(
     { 'report:abc': JSON.stringify({ url: 'https://x', ts: 0, score: 88, rendered: false, issues: [] }) },
