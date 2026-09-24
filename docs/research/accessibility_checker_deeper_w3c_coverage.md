@@ -1,5 +1,8 @@
 Deeper W3C Coverage
 ====================
+
+> **Editorial note (verified against shipped code):** this is an aspirational research doc, not current state. The "Code Implementation" section below is a sketch — there is no `src/crawl.js`, no `wcagGuidelines.js`, and no `WCAGGuidelines` module in this repo; the real scanner is `src/scanner.js` + `src/rules/*.js` (60+ rule IDs live — see `GET /rules`). ML image recognition, NLP, and computer vision are proposals only, not integrations. Interactive keyboard-trap testing is already shipped as a real-browser focus trace (`src/rules/focuscycle.js`), not a future idea. Do not generate implementation tasks from this document's code blocks.
+
 ### Introduction
 
 The Accessibility Checker aims to provide comprehensive coverage of the Web Content Accessibility Guidelines (WCAG) to ensure small business websites are accessible and compliant with regulations. This document outlines the approach to achieving deeper W3C coverage, including the implementation of advanced algorithms and techniques to identify accessibility issues.
