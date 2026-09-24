@@ -1,24 +1,50 @@
-# Introduction to Continuous Integration and Continuous Deployment (CI/CD)
-The Accessibility Checker project aims to provide a seamless experience for small business owners and solo entrepreneurs to ensure their websites are compliant with accessibility regulations. To achieve this, implementing a robust Continuous Integration and Continuous Deployment (CI/CD) pipeline is crucial. This pipeline will automate the testing, building, and deployment of the Accessibility Checker tool, ensuring that the deployed site (index.html) becomes a working client-side version of the product.
+# Accessibility Checker CI/CD
+## Introduction
+The Accessibility Checker is an AI-powered tool that scans small business websites for accessibility compliance issues and provides recommendations for improvement. As the tool evolves, it's essential to implement a robust Continuous Integration/Continuous Deployment (CI/CD) pipeline to ensure timely and automated deployment of updates, including new scanner rules, to production.
 
-## Current Repository Structure
-The existing repository contains the following files and directories:
-- `.github/workflows/test.yml`: Defines the GitHub Actions workflow for automated testing.
-- `docs/research/`: Directory containing research and documentation files, including this CI/CD document.
-- `src/`: Directory containing the source code for the Accessibility Checker tool.
-- `test/`: Directory containing test files for the Accessibility Checker tool.
-- `index.html`: The entry point for the client-side Accessibility Checker tool.
-- `package.json`: Defines the dependencies and scripts for the project.
+## Current State
+The existing repository contains the following relevant files:
+- `src/rules/additional.js`: Additional scanner rules
+- `src/rules/wcag22.js`: WCAG 2.2 scanner rules
+- `test/additional-rules.test.mjs`: Tests for additional scanner rules
+- `test/wcag22.test.mjs`: Tests for WCAG 2.2 scanner rules
+- `.github/workflows/test.yml`: Existing GitHub Actions workflow for testing
 
-## CI/CD Pipeline Overview
-The CI/CD pipeline for the Accessibility Checker project will consist of the following stages:
-1. **Build**: Install dependencies, build the project, and run tests.
-2. **Deploy**: Deploy the built project to a production environment.
+## Proposed CI/CD Pipeline
+To automate the deployment of updated scanner rules, we will enhance the existing GitHub Actions workflow to include the following steps:
+1. **Build**: Compile and bundle the scanner rules using a tool like Webpack or Rollup.
+2. **Test**: Run the existing tests for scanner rules using Node:test.
+3. **Deploy**: Deploy the updated scanner rules to production.
 
-## Automated Deployment Scripts
-To implement automated deployment scripts, we will utilize GitHub Actions. The `test.yml` file will be updated to include deployment steps.
+## Implementation
+### Step 1: Update `test/additional-rules.test.mjs` and `test/wcag22.test.mjs`
+Use Node:test to write tests for the scanner rules. For example:
+```javascript
+// test/additional-rules.test.mjs
+import { test } from 'node:test';
+import { AdditionalRules } from '../../src/rules/additional.js';
 
-### Updated `.github/workflows/test.yml` File
+test('Additional rules should return an array of issues', async () => {
+  const rules = new AdditionalRules();
+  const issues = await rules.scan('https://example.com');
+  expect(issues).toBeInstanceOf(Array);
+});
+```
+
+```javascript
+// test/wcag22.test.mjs
+import { test } from 'node:test';
+import { Wcag22Rules } from '../../src/rules/wcag22.js';
+
+test('WCAG 2.2 rules should return an array of issues', async () => {
+  const rules = new Wcag22Rules();
+  const issues = await rules.scan('https://example.com');
+  expect(issues).toBeInstanceOf(Array);
+});
+```
+
+### Step 2: Update `.github/workflows/test.yml`
+Enhance the existing GitHub Actions workflow to include the build, test, and deploy steps:
 ```yml
 name: Accessibility Checker CI/CD
 
@@ -32,33 +58,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install dependencies
         run: npm install
 
-      - name: Run tests
-        run: npm test
-
-      - name: Build project
+      - name: Build scanner rules
         run: npm run build
 
+      - name: Run tests
+        run: npm run test
+
       - name: Deploy to production
-        uses: gh-pages/action@v2
+        uses: gh-pages/deploy@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
+          publish_dir: ./dist
 ```
 
-### Explanation of the Updated `test.yml` File
-- The `on` section specifies that the workflow should trigger on push events to the `main` branch.
-- The `build-and-deploy` job runs on an `ubuntu-latest` environment.
-- The `steps` section defines the following steps:
-  1. Checkout the code using `actions/checkout@v2`.
-  2. Install dependencies using `npm install`.
-  3. Run tests using `npm test`.
-  4. Build the project using `npm run build`.
-  5. Deploy the built project to production using `gh-pages/action@v2`.
+### Step 3: Update `package.json`
+Add scripts for building and testing the scanner rules:
+```json
+"scripts": {
+  "build": "webpack",
+  "test": "node:test test/*.test.mjs"
+}
+```
 
 ## Conclusion
-By implementing automated deployment scripts using GitHub Actions, we can reduce the `deploy_count` to near zero, ensuring that the Accessibility Checker tool is always up-to-date and available for users. The updated `test.yml` file will automate the testing, building, and deployment of the project, providing a seamless experience for small business owners and solo entrepreneurs to ensure their websites are compliant with accessibility regulations.
+By implementing the proposed CI/CD pipeline, we can automate the deployment of updated scanner rules to production, ensuring that the Accessibility Checker remains up-to-date and effective in identifying accessibility compliance issues. The pipeline will build, test, and deploy the scanner rules on every push to the main branch, providing a seamless and efficient way to deliver updates to users.
