@@ -2,6 +2,7 @@ import { scanHtml, checkContrast, checkFacts, checkFocus, score } from './src/sc
 import { scanAdditionalHtml, checkContrastAAA } from './src/rules/additional.js';
 import { scanWcag22 } from './src/rules/wcag22.js';
 import { crawlSite } from './src/crawl.js';
+import { monitorKey, buildMonitorRecord } from './src/monitor.js';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -187,6 +188,36 @@ export default {
       }
 
       return respond(result);
+    }
+
+    // Pro site monitoring — register/unregister URLs for the platform's
+    // daily rescan sweep; Brevo alerts when a page's score drops >= 10.
+    if (url.pathname === '/monitor' && request.method === 'POST') {
+      const b = await request.json().catch(() => ({}));
+      if (!(await isPro(env, b.license))) return respond({ error: 'pro license required', upgrade: '/checkout' }, 402);
+      if (!b.url || !/^https?:\/\//i.test(b.url)) return respond({ error: 'provide {"url"}' }, 400);
+      const rec = buildMonitorRecord({ email: b.license, url: b.url });
+      await kvPut(env, monitorKey(b.license, b.url), JSON.stringify(rec), 0);
+      return respond({ ok: true, monitor: rec });
+    }
+    if (url.pathname === '/monitor' && request.method === 'DELETE') {
+      const b = await request.json().catch(() => ({}));
+      if (!(await isPro(env, b.license))) return respond({ error: 'pro license required' }, 402);
+      if (!b.url) return respond({ error: 'provide {"url"}' }, 400);
+      await platform(env, '/kv/delete', { method: 'POST', body: JSON.stringify({ key: monitorKey(b.license, b.url) }) });
+      return respond({ ok: true });
+    }
+    if (url.pathname === '/monitor' && request.method === 'GET') {
+      const license = url.searchParams.get('license');
+      if (!(await isPro(env, license))) return respond({ error: 'pro license required' }, 402);
+      const r = await platform(env, '/kv/list', { method: 'POST', body: JSON.stringify({ prefix: `mon:${String(license).toLowerCase()}:` }) });
+      const { keys = [] } = await r.json().catch(() => ({}));
+      const monitors = [];
+      for (const k of keys) {
+        const v = await kvGet(env, k);
+        if (v) monitors.push(JSON.parse(v));
+      }
+      return respond({ monitors });
     }
 
     return respond({ error: 'not found' }, 404);
