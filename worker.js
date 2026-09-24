@@ -5,6 +5,7 @@ import { checkCrossPages } from './src/rules/crosspage.js';
 import { crawlSite } from './src/crawl.js';
 import { monitorKey, buildMonitorRecord } from './src/monitor.js';
 import { PAGE_HTML } from './src/page.js';
+import { STATIC_FILES } from './src/static.js';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -98,6 +99,13 @@ export default {
         lead: 'POST /lead {"email"}', report: 'GET /report/:id',
         site: 'https://checker.lazynext.com/',
       });
+    }
+
+    // Discovery/static files — the branded domain is canonical, so crawlers
+    // and security tools must find robots/sitemap/llms/security.txt here too.
+    if (request.method === 'GET') {
+      const sf = STATIC_FILES[url.pathname];
+      if (sf) return new Response(sf.body, { headers: { 'content-type': sf.type } });
     }
 
     // Lead capture → platform /leads → Brevo contact + D1 event.
