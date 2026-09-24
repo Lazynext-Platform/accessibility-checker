@@ -165,3 +165,47 @@ test("stylesheet outline suppression flagged under 2.4.7", () => {
   const ok = scanAdditionalHtml('<style>a:focus{outline:none;box-shadow:0 0 0 3px #00f}</style><a href="/x">x</a>');
   assert.ok(!rules(ok).includes("wcag-2.4.7"));
 });
+
+test("accesskey flagged under 2.1.4", () => {
+  const bad = scanAdditionalHtml('<a href="/x" accesskey="s">x</a>');
+  assert.ok(rules(bad).includes("wcag-2.1.4"));
+  const ok = scanAdditionalHtml('<a href="/x">x</a>');
+  assert.ok(!rules(ok).includes("wcag-2.1.4"));
+});
+
+test("unguarded single-char key handler flagged; modified shortcut ok", () => {
+  const bad = scanAdditionalHtml('<div onkeydown="if(event.key===\'n\')location=\'/next\'">x</div>');
+  assert.ok(rules(bad).includes("wcag-2.1.4"));
+  const mod = scanAdditionalHtml('<div onkeydown="if(event.ctrlKey&&event.key===\'n\')location=\'/n\'">x</div>');
+  assert.ok(!rules(mod).includes("wcag-2.1.4"));
+  const inert = scanAdditionalHtml('<div onkeydown="console.log(event.key)">x</div>');
+  assert.ok(!rules(inert).includes("wcag-2.1.4"));
+});
+
+test("sentence-length img alt flags wcag-1.4.5; short alt does not", () => {
+  const bad = scanAdditionalHtml('<img src="banner.png" alt="Our summer sale starts on Monday June first and runs all week">');
+  assert.ok(rules(bad).includes("wcag-1.4.5"));
+  const ok = scanAdditionalHtml('<img src="logo.png" alt="Lazynext">');
+  assert.ok(!rules(ok).includes("wcag-1.4.5"));
+});
+
+test("link-heavy page with only nav flags wcag-2.4.5; search or sitemap satisfies", () => {
+  const links = Array.from({ length: 20 }, (_, i) => `<a href="/p${i}">p${i}</a>`).join("");
+  const bad = scanAdditionalHtml(`<nav>${links}</nav><main>content</main>`);
+  assert.ok(rules(bad).includes("wcag-2.4.5"));
+  const withSearch = scanAdditionalHtml(`<nav>${links}</nav><input type="search" name="q">`);
+  assert.ok(!rules(withSearch).includes("wcag-2.4.5"));
+  const withSitemap = scanAdditionalHtml(`<nav>${links}</nav><a href="/sitemap.xml">Sitemap</a>`);
+  assert.ok(!rules(withSitemap).includes("wcag-2.4.5"));
+  const small = scanAdditionalHtml(`<nav><a href="/a">a</a></nav>`);
+  assert.ok(!rules(small).includes("wcag-2.4.5"));
+});
+
+test("justified text without hyphenation flags wcag-1.4.8", () => {
+  const bad = scanAdditionalHtml('<style>p{text-align:justify}</style><p>x</p>');
+  assert.ok(rules(bad).includes("wcag-1.4.8"));
+  const ok = scanAdditionalHtml('<style>p{text-align:justify;hyphens:auto}</style><p>x</p>');
+  assert.ok(!rules(ok).includes("wcag-1.4.8"));
+  const inline = scanAdditionalHtml('<p style="text-align:justify">x</p>');
+  assert.ok(rules(inline).includes("wcag-1.4.8"));
+});

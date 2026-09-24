@@ -4,10 +4,12 @@
  * (html string); no DOM access.
  *
  * Deliberately not implemented here (need a rendered page or multi-page
- * crawl, not a single-page string scan):
- *   - 2.5.8 target size — needs layout/box dimensions.
- *   - 2.4.11/2.4.12/2.4.13 focus appearance/obscured — needs rendering.
- *   - 3.2.6 consistent help — needs multi-page crawl.
+ * crawl, not a single-page string scan — all now live in the rendered /
+ * site-scan paths, see src/rules/focuscycle.js and src/rules/crosspage.js):
+ *   - 2.5.8 target size — implemented via rendered box dimensions.
+ *   - 2.4.11/2.4.13 focus obscured/appearance — implemented via rendered
+ *     focus trace; 2.4.12 (AAA enhanced) remains deferred.
+ *   - 3.2.6 consistent help — implemented via cross-page crawl.
  *   - 3.3.9 accessible authentication (enhanced) — AAA, needs interactive
  *     functional testing.
  */

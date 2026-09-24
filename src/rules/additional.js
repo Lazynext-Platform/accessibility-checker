@@ -174,6 +174,79 @@ export function scanAdditionalHtml(html) {
     }
   }
 
+  // WCAG 2.1.4 (A) — Character Key Shortcuts: single-key shortcuts must be
+  // turn-offable, remappable, or active only on focus. `accesskey` creates
+  // exactly that kind of shortcut, and inline key handlers that act on a
+  // bare e.key/keyCode with no modifier guard do the same.
+  for (const m of src.matchAll(/<[a-z][^>]*\baccesskey\s*=\s*["'][^"']*["'][^>]*>/gi)) {
+    issues.push({
+      rule: "wcag-2.1.4",
+      message: `accesskey creates a single-key shortcut with no off switch or remapping: ${m[0].slice(0, 80)}`,
+    });
+  }
+  for (const m of src.matchAll(/<[a-z][^>]*\bonkey(?:down|press|up)\s*=\s*(["'])([\s\S]*?)\1[^>]*>/gi)) {
+    const code = m[2];
+    if (!/(?:\bkey\b|keyCode|which)\b/.test(code)) continue;
+    if (/(ctrlKey|altKey|metaKey|shiftKey)/.test(code)) continue; // modified shortcut is allowed
+    if (/(location|href|submit\s*\(|\.click\s*\(|window\.open|dispatch)/.test(code)) {
+      issues.push({
+        rule: "wcag-2.1.4",
+        message: `single-character key handler triggers an action with no modifier requirement: ${m[0].slice(0, 80)}`,
+      });
+    }
+  }
+
+  // WCAG 1.4.5 (AA) — Images of Text: a long sentence-like alt on an <img>
+  // means the image is really presenting text — screen magnification and
+  // user font/color overrides can't reach rasterized text.
+  for (const m of src.matchAll(/<img\b[^>]*>/gi)) {
+    const alt = m[0].match(/\balt\s*=\s*["']([^"']*)["']/i)?.[1] ?? "";
+    if (alt.length >= 40 && alt.trim().split(/\s+/).length >= 4) {
+      issues.push({
+        rule: "wcag-1.4.5",
+        message: `image appears to present text — use real text instead of an image of text: alt="${alt.slice(0, 60)}"`,
+      });
+    }
+  }
+
+  // WCAG 2.4.5 (AA) — Multiple Ways: a content page should offer more than
+  // the nav menu alone (site search or a sitemap link). Flagged only when a
+  // link-heavy page has a nav but no second mechanism — small pages and
+  // process steps are out of scope by the criterion itself.
+  {
+    const linkCount = src.match(/<a\b[^>]*\bhref\s*=/gi)?.length ?? 0;
+    const hasNav = /<nav\b|role\s*=\s*["']navigation["']/i.test(src);
+    const hasSearch = /type\s*=\s*["']search["']|role\s*=\s*["']search["']/i.test(src);
+    const hasSitemapLink = /<a\b[^>]*href\s*=\s*["'][^"']*sitemap[^"']*["']/i.test(src);
+    if (linkCount > 15 && hasNav && !hasSearch && !hasSitemapLink) {
+      issues.push({
+        rule: "wcag-2.4.5",
+        message: "this page offers only one way to navigate (the nav menu) — provide a second mechanism such as search or a sitemap link",
+      });
+    }
+  }
+
+  // WCAG 1.4.8 (AAA) — Visual Presentation: justified text without
+  // hyphenation creates uneven "rivers" that impair readability.
+  for (const m of src.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
+    if (/text-align\s*:\s*justify/i.test(m[1]) && !/hyphens\s*:\s*(?:auto|manual)/i.test(m[1])) {
+      issues.push({
+        rule: "wcag-1.4.8",
+        message: "stylesheet uses text-align:justify without hyphenation — uneven word spacing harms readability",
+      });
+      break;
+    }
+  }
+  for (const m of src.matchAll(/<[a-z][^>]*\bstyle\s*=\s*["'][^"']*text-align\s*:\s*justify[^"']*["'][^>]*>/gi)) {
+    if (!/hyphens\s*:\s*(?:auto|manual)/i.test(m[0])) {
+      issues.push({
+        rule: "wcag-1.4.8",
+        message: `justified text without hyphenation: ${m[0].slice(0, 80)}`,
+      });
+      break;
+    }
+  }
+
   return issues;
 }
 

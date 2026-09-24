@@ -89,3 +89,37 @@ test('rendered arg omitted entirely → no geometry findings, rest unchanged', (
   const trace = ['0:a', '1:b', '2:c'];
   assert.deepEqual(checkFocusDepth(trace, 3, null), []);
 });
+
+test('focused element with no outline or shadow flags wcag-2.4.13', () => {
+  const trace = ['0:a:nav', '1:button:go'];
+  const issues = checkFocusDepth(trace, 2, null, { noFocusInd: ['1:button:go'] });
+  const f = issues.find((i) => i.rule === 'wcag-2.4.13');
+  assert.ok(f, 'missing focus indicator should flag');
+  assert.match(f.message, /button:go/);
+});
+
+test('noFocusInd absent or empty → no 2.4.13 finding', () => {
+  const trace = ['0:a', '1:b'];
+  assert.deepEqual(checkFocusDepth(trace, 2, null, { noFocusInd: [] }).filter((i) => i.rule === 'wcag-2.4.13'), []);
+  assert.deepEqual(checkFocusDepth(trace, 2, null, {}).filter((i) => i.rule === 'wcag-2.4.13'), []);
+});
+
+test('low-contrast control boundary flags wcag-1.4.11', () => {
+  const trace = ['0:a'];
+  const issues = checkFocusDepth(trace, 1, null, {
+    nontextContrast: [{ d: 'input#email', ratio: 1.52 }, { d: 'button', ratio: 2.1 }],
+  });
+  const f = issues.find((i) => i.rule === 'wcag-1.4.11');
+  assert.ok(f, 'low-contrast boundary should flag');
+  assert.match(f.message, /input#email at 1.52:1/);
+});
+
+test('text clipping under spacing overrides flags wcag-1.4.12', () => {
+  const trace = ['0:a'];
+  const issues = checkFocusDepth(trace, 1, null, {
+    spacingClip: ['div#card:Terms and conditions apply…'],
+  });
+  const f = issues.find((i) => i.rule === 'wcag-1.4.12');
+  assert.ok(f, 'spacing-induced clipping should flag');
+  assert.match(f.message, /div#card/);
+});

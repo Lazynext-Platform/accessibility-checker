@@ -73,6 +73,40 @@ export function checkFocusDepth(trace, focusable, escape, rendered = {}) {
     });
   }
 
+  // WCAG 2.4.13 (2.2 AAA) — Focus Appearance: a focused element with no
+  // outline and no box-shadow gives keyboard users no visible indicator.
+  // (Warn-class: background/border swaps can't be detected without a
+  // pre-focus baseline.)
+  const noInd = [...new Set(rendered.noFocusInd ?? [])];
+  if (noInd.length > 0) {
+    issues.push({
+      rule: 'wcag-2.4.13',
+      message: `${noInd.length} focused element(s) show no visible indicator (no outline or shadow): ${noInd.slice(0, 3).join(', ')}`,
+    });
+  }
+
+  // WCAG 1.4.11 (2.1 AA) — Non-text Contrast: an interactive component's
+  // boundary (border, outline, or fill) must reach 3:1 vs adjacent colors.
+  const ntc = rendered.nontextContrast ?? [];
+  if (ntc.length > 0) {
+    const examples = ntc.slice(0, 3).map((t) => `${t.d} at ${t.ratio}:1`).join(', ');
+    issues.push({
+      rule: 'wcag-1.4.11',
+      message: `${ntc.length} control(s) have a visual boundary below 3:1 contrast: ${examples}`,
+    });
+  }
+
+  // WCAG 1.4.12 (2.1 AA) — Text Spacing: applying the criterion's spacing
+  // overrides must not clip content. Delta-only — pre-existing clipped
+  // overflow is the author's own, not a spacing failure.
+  const clip = rendered.spacingClip ?? [];
+  if (clip.length > 0) {
+    issues.push({
+      rule: 'wcag-1.4.12',
+      message: `content clips when WCAG text-spacing overrides apply: ${clip.slice(0, 3).join(', ')}`,
+    });
+  }
+
   return issues;
 }
 

@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<title>Non-text contrast + spacing + focus-indicator fixture</title>
+<style>
+  body{font:16px/1.4 sans-serif;background:#fff}
+  /* 1.4.11: field border ~1.2:1 against white — invisible boundary */
+  .faint{border:1px solid #eee;background:#fff;padding:8px}
+  /* 1.4.12: text fits at normal spacing but clips under WCAG overrides */
+  .clip{height:46px;overflow:hidden;width:280px}
+  /* 2.4.13: focused element loses its only indicator, no replacement */
+  .noind:focus{outline:none}
+</style>
+</head>
+<body>
+<main>
+<a href="/">nav</a>
+<label>Email <input class="faint" type="email" name="e"></label>
+<div class="clip"><p style="margin:0">Fixture text sized to exactly two lines</p></div>
+<a href="/ok" class="noind">focus me</a>
+</main>
+</body>
+</html>

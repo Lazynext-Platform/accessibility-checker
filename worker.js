@@ -251,7 +251,7 @@ ${rep.section508 ? `<p style="color:#555">Section 508: ${rep.section508.conforms
             .concat(checkContrastAAA(page.styles))
             .concat(checkFacts(page.facts))
             .concat(checkFocus(page.focus))
-            .concat(checkFocusDepth(page.focus, page.focusable, page.escape, { undersized: page.undersized, obscured: page.obscured }))
+            .concat(checkFocusDepth(page.focus, page.focusable, page.escape, { undersized: page.undersized, obscured: page.obscured, noFocusInd: page.noFocusInd, nontextContrast: page.nontextContrast, spacingClip: page.spacingClip }))
             .concat(scanKeyboardStatics(page.html));
           rendered = true;
         } catch (e) {
