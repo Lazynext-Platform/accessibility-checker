@@ -4,7 +4,7 @@ import { isEmail, isHttpUrl, isToken } from './src/validator.js';
 import { PAGE_HTML } from './src/page.js';
 import { STATIC_FILES } from './src/static.js';
 import { runScan } from './src/scan_pipeline.js';
-import { AGENT_CARD, handleMcp, handleA2a, WIDGET_JS } from './src/agent_surfaces.js';
+import { AGENT_CARD, handleMcp, handleA2a, a2aTaskGet, WIDGET_JS } from './src/agent_surfaces.js';
 
 const CORS = {
   'access-control-allow-origin': '*',
@@ -27,7 +27,7 @@ function respond(data, status = 200) {
 // Single-file UI: everything is inline, and API calls stay same-origin on both
 // hosts (workers.dev fetches resolve to this same script).
 const UI_HEADERS = {
-  'content-security-policy': "default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+  'content-security-policy': "default-src 'self'; script-src 'unsafe-inline'; worker-src 'self'; style-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
   'x-content-type-options': 'nosniff',
   'x-frame-options': 'DENY',
   'referrer-policy': 'strict-origin-when-cross-origin',
@@ -124,11 +124,17 @@ export default {
     const url = new URL(request.url);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
 
-    if (request.method === 'GET' && url.pathname === '/health') {
+    // HEAD = bodyless GET on read-only surfaces (browsers, Lighthouse, uptime
+    // probes all HEAD; Workers strips the response body on the wire). State-
+    // changing GETs (/unsubscribe, /confirm) keep exact-match — a link
+    // scanner's HEAD probe must not consume a token or flip a flag.
+    const get = request.method === 'GET' || request.method === 'HEAD';
+
+    if (get && url.pathname === '/health') {
       return respond({ ok: true, service: 'accessibility-checker' });
     }
 
-    if (request.method === 'GET' && url.pathname === '/') {
+    if (get && url.pathname === '/') {
       // Browsers (and the branded domain) get the product UI; API callers get
       // the usage doc. Same worker serves both — checker.lazynext.com is the
       // canonical surface, workers.dev/github.io stay working.
@@ -144,7 +150,7 @@ export default {
         lead: 'POST /lead {"email"}', report: 'GET /report/:id',
         badge: 'GET /badge/:id.svg', rules: 'GET /rules',
         mcp: 'POST /mcp (JSON-RPC tools: scan_url, scan_html, get_report, list_rules)',
-        a2a: 'POST /a2a (message/send, tasks/get) · GET /.well-known/agent.json',
+        a2a: 'POST /a2a (message/send, tasks/get) · GET /a2a/tasks/:id · GET /.well-known/agent.json',
         widget: 'GET /widget.js — <script> embed for any site',
         site: 'https://checker.lazynext.com/',
       });
@@ -152,7 +158,7 @@ export default {
 
     // Discovery/static files — the branded domain is canonical, so crawlers
     // and security tools must find robots/sitemap/llms/security.txt here too.
-    if (request.method === 'GET') {
+    if (get) {
       // /favicon.ico is the default-probe path browsers/crawlers hit when no
       // <link rel="icon"> is honored — redirect to the real SVG icon.
       if (url.pathname === '/favicon.ico') {
@@ -209,13 +215,13 @@ export default {
 
     // Rule coverage manifest — every WCAG criterion the scanner can emit, with
     // name/level/version/detection path. Makes "X checks" claims verifiable.
-    if (request.method === 'GET' && url.pathname === '/rules') {
+    if (get && url.pathname === '/rules') {
       return respond({ count: RULES.length, rules: RULES });
     }
 
     // Public score badge — shields-style SVG for a stored report. Scanned sites
     // embed it (linking back to the report) — the product's backlink loop.
-    if (request.method === 'GET' && url.pathname.startsWith('/badge/')) {
+    if (get && url.pathname.startsWith('/badge/')) {
       const id = url.pathname.slice(7).replace(/\.svg$/, '');
       const raw = await kvGet(env, `report:${id}`);
       if (!raw) return respond({ error: 'report not found or expired' }, 404);
@@ -228,7 +234,7 @@ export default {
 
     // Shareable report — scans persist here for 30 days.
     // Suffixes: /report/:id.csv → CSV export, /report/:id.pdf → PDF via platform /pdf.
-    if (request.method === 'GET' && url.pathname.startsWith('/report/')) {
+    if (get && url.pathname.startsWith('/report/')) {
       const seg = url.pathname.slice(8);
       const fmt = seg.endsWith('.csv') ? 'csv' : seg.endsWith('.pdf') ? 'pdf' : 'html';
       const id = fmt === 'html' ? seg : seg.slice(0, -4);
@@ -268,7 +274,7 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
     }
 
     // Redirect to a real Dodo checkout for the Pro plan via the platform.
-    if (request.method === 'GET' && url.pathname === '/checkout') {
+    if (get && url.pathname === '/checkout') {
       const r = await platform(env, '/api/v1/billing/checkout', {
         method: 'POST',
         body: JSON.stringify({ product_id: 'pdt_0NoEqD9VCMUZnIogq4Epy', plan: 'pro', trial_days: 14 }),
@@ -357,13 +363,16 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
     if (url.pathname === '/a2a') {
       return handleA2a(request, env, KV_OPS, request.headers.get('cf-connecting-ip') ?? 'anon', url.origin);
     }
-    if (request.method === 'GET' && url.pathname === '/.well-known/agent.json') {
+    if (get && url.pathname.startsWith('/a2a/tasks/')) {
+      return a2aTaskGet(env, KV_OPS, url.pathname.slice('/a2a/tasks/'.length));
+    }
+    if (get && url.pathname === '/.well-known/agent.json') {
       return respond(AGENT_CARD);
     }
 
     // Embeddable scan widget — <script src="/widget.js"> mounts a Shadow-DOM
     // scan form on any page; posts back to this worker's /scan.
-    if (request.method === 'GET' && url.pathname === '/widget.js') {
+    if (get && url.pathname === '/widget.js') {
       return new Response(WIDGET_JS, { headers: { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=3600', ...CORS } });
     }
 
@@ -410,7 +419,7 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
       }
       return respond({ ok: true, confirm: 'email' });
     }
-    if (url.pathname === '/monitor' && request.method === 'GET') {
+    if (url.pathname === '/monitor' && get) {
       const license = url.searchParams.get('license');
       if (!(await isPro(env, license))) return respond({ error: 'pro license required' }, 402);
       const r = await platform(env, '/kv/list', { method: 'POST', body: JSON.stringify({ prefix: `mon:${String(license).toLowerCase()}:` }) });

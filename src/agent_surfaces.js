@@ -204,6 +204,16 @@ export async function handleA2a(request, env, kv, ip, origin) {
   return new Response(JSON.stringify(out), { headers: { 'content-type': 'application/json' } });
 }
 
+// REST shortcut for agents that can't do JSON-RPC: GET /a2a/tasks/:id replays
+// the same task view as the tasks/get method (task id === report id).
+export async function a2aTaskGet(env, kv, id) {
+  const raw = await kv.kvGet(env, `report:${id}`);
+  if (!raw) {
+    return new Response(JSON.stringify({ error: 'task not found' }), { status: 404, headers: { 'content-type': 'application/json' } });
+  }
+  return new Response(JSON.stringify({ task: taskView(id, JSON.parse(raw)) }), { headers: { 'content-type': 'application/json' } });
+}
+
 // ── Embeddable widget ────────────────────────────────────────────────────
 // <script src="https://checker.lazynext.com/widget.js" data-target="#el">
 // mounts a scan box into #el (or a fresh <div> at script position). Shadow

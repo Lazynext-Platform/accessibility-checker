@@ -159,6 +159,18 @@ test('A2A tasks/get replays a completed task from its report id', async () => {
   assert.equal(d.result.task.artifacts[0].parts[0].data.score, 91);
 });
 
+test('GET /a2a/tasks/:id replays the same task without JSON-RPC', async () => {
+  const env = mockEnv({ 'report:task9': JSON.stringify({ score: 91, issues: [], url: 'https://x.test' }) });
+  const r = await get('/a2a/tasks/task9', env);
+  assert.equal(r.status, 200);
+  const d = await r.json();
+  assert.equal(d.task.id, 'task9');
+  assert.equal(d.task.status.state, 'completed');
+  assert.equal(d.task.artifacts[0].parts[0].data.score, 91);
+  const miss = await get('/a2a/tasks/nope', mockEnv());
+  assert.equal(miss.status, 404);
+});
+
 test('A2A message/send without a URL or HTML is a -32602', async () => {
   const r = await rpc('/a2a', { method: 'message/send', params: { message: { parts: [{ type: 'text', text: 'hello there' }] } } });
   assert.equal((await r.json()).error.code, -32602);

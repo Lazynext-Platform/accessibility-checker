@@ -1,8 +1,8 @@
 // Accessibility Checker service worker — makes the PWA installable and the
 // shell available offline. Scans stay network-only (a cached scan would be a
 // stale audit); only the static shell + discovery files are cached.
-const CACHE = 'a11y-shell-v1';
-const SHELL = ['/', '/manifest.json', '/favicon.svg', '/robots.txt'];
+const CACHE = 'a11y-shell-v2';
+const SHELL = ['/', '/manifest.json', '/favicon.svg', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png', '/robots.txt'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

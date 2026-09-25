@@ -22,7 +22,12 @@ const files = {
   '/trap.html': 'text/html; charset=utf-8',
   '/trap2.html': 'text/html; charset=utf-8',
 };
-const binaryFiles = { '/og.png': 'image/png' };
+const binaryFiles = {
+  '/og.png': 'image/png',
+  '/icon-192.png': 'image/png',
+  '/icon-512.png': 'image/png',
+  '/icon-maskable-512.png': 'image/png',
+};
 const entries = Object.entries(files).map(([route, type]) => {
   const body = readFileSync(new URL(route.slice(1), root), 'utf8');
   return `  ${JSON.stringify(route)}: { type: ${JSON.stringify(type)}, body: ${JSON.stringify(body)} },`;
