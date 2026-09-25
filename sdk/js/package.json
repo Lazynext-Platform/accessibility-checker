@@ -1,0 +1,8 @@
+{
+  "name": "@lazynext/accessibility-checker",
+  "version": "1.0.0",
+  "description": "Accessibility Checker API client — WCAG 2.1/2.2 scans, site crawls, reports, monitors.",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "license": "MIT"
+}

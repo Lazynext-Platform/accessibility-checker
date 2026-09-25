@@ -1,33 +1,20 @@
-import { scanHtml, checkContrast, checkFacts, checkFocus, score } from './src/scanner.js';
-import { scanAdditionalHtml, checkContrastAAA, checkUseOfColor, scanKeyboardStatics } from './src/rules/additional.js';
-import { scanWcag22 } from './src/rules/wcag22.js';
-import { section508Report } from './src/rules/section508.js';
-import { withRecommendations } from './src/recommendations.js';
-import { checkCrossPages } from './src/rules/crosspage.js';
 import { RULES } from './src/rules/manifest.js';
-import { crawlSite } from './src/crawl.js';
 import { monitorKey, buildMonitorRecord } from './src/monitor.js';
-import { checkFocusDepth } from './src/rules/focuscycle.js';
-import { isEmail, isHttpUrl, isToken, withinBytes } from './src/validator.js';
+import { isEmail, isHttpUrl, isToken } from './src/validator.js';
 import { PAGE_HTML } from './src/page.js';
 import { STATIC_FILES } from './src/static.js';
+import { runScan } from './src/scan_pipeline.js';
+import { AGENT_CARD, handleMcp, handleA2a, WIDGET_JS } from './src/agent_surfaces.js';
 
 const CORS = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, OPTIONS',
   'access-control-allow-headers': 'content-type',
 };
-const FREE_LIMIT = 3; // rendered scans per IP per day
 
-// Append a throwaway query param so edge caches (cf-cache-status HIT serves
-// stale HTML for hours on cached sites) can't feed a scan yesterday's page —
-// a scanner must measure the page as it is now. Wire URL only; stored/report
-// URLs stay clean. Fragment-safe.
-const cacheBust = (u) => {
-  const h = u.indexOf("#");
-  const base = h === -1 ? u : u.slice(0, h);
-  return `${base}${base.includes("?") ? "&" : "?"}_lz=${Date.now()}${h === -1 ? "" : u.slice(h)}`;
-};
+// Shared platform-KV helpers handed to runScan + the agent surfaces, so
+// /scan, /mcp and /a2a enforce the same quota and persist the same reports.
+const KV_OPS = { kvGet, kvPut, rlHit, isPro, platform };
 
 // Escape user- and scanned-page-controlled text before it lands in report HTML
 // or email bodies — report URLs are shareable, so raw interpolation is stored XSS.
@@ -156,6 +143,9 @@ export default {
         confirm: 'GET /confirm?token=…', monitor: 'GET|POST|DELETE /monitor (Pro)',
         lead: 'POST /lead {"email"}', report: 'GET /report/:id',
         badge: 'GET /badge/:id.svg', rules: 'GET /rules',
+        mcp: 'POST /mcp (JSON-RPC tools: scan_url, scan_html, get_report, list_rules)',
+        a2a: 'POST /a2a (message/send, tasks/get) · GET /.well-known/agent.json',
+        widget: 'GET /widget.js — <script> embed for any site',
         site: 'https://checker.lazynext.com/',
       });
     }
@@ -347,104 +337,34 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
 
     if (request.method === 'POST' && url.pathname === '/scan') {
       const body = await request.json().catch(() => ({}));
+      // Quota, fetch/render/crawl, scoring, report persistence, and Pro email
+      // all live in the shared pipeline — /mcp and /a2a run the same code.
+      const r = await runScan(env, KV_OPS, {
+        url: body.url, html: body.html, site: body.site,
+        license: body.license, email_report: body.email_report,
+        ip: request.headers.get('cf-connecting-ip') ?? 'anon',
+        origin: url.origin,
+      });
+      return r.ok ? respond(r.result) : respond(r.payload, r.status);
+    }
 
-      // Paid tier: license = buyer email, validated via platform KV. Free tier:
-      // 3 rendered scans per IP per day, tracked in platform KV.
-      const pro = await isPro(env, body.license);
-      const day = new Date().toISOString().slice(0, 10);
-      const ip = request.headers.get('cf-connecting-ip') ?? 'anon';
-      const rlKey = `rl:scan:${ip}:${day}`;
-      if (!pro && body.url) {
-        const used = parseInt((await kvGet(env, rlKey)) ?? '0', 10);
-        if (used >= FREE_LIMIT) {
-          return respond({ error: 'free limit reached (3/day)', upgrade: '/checkout' }, 402);
-        }
-        await kvPut(env, rlKey, String(used + 1), 90000).catch(() => {});
-      }
-      // Licensed scans still cost real Browser-Rendering time — a leaked Pro
-      // email would otherwise let a script run unlimited renders on our bill.
-      // 100/day/IP is effectively unlimited for a human and fatal for a bot.
-      if (pro && body.url && await rlHit(env, `rl:pro:${ip}:${day}`, 100)) {
-        return respond({ error: 'daily scan quota exceeded — try again tomorrow' }, 429);
-      }
+    // Agent surfaces — MCP for tool-using agents, A2A for task-protocol
+    // agents, /.well-known/agent.json for discovery. Scans through these run
+    // the identical pipeline + quota as POST /scan.
+    if (url.pathname === '/mcp') {
+      return handleMcp(request, env, KV_OPS, request.headers.get('cf-connecting-ip') ?? 'anon', url.origin);
+    }
+    if (url.pathname === '/a2a') {
+      return handleA2a(request, env, KV_OPS, request.headers.get('cf-connecting-ip') ?? 'anon', url.origin);
+    }
+    if (request.method === 'GET' && url.pathname === '/.well-known/agent.json') {
+      return respond(AGENT_CARD);
+    }
 
-      let issues = [];
-      let rendered = false;
-      let renderError = null;
-      let sitePages = null;
-
-      if (isHttpUrl(body.url) && body.site === true) {
-        // Site-wide scan: BFS same-origin pages, apply the HTML ruleset to
-        // each, aggregate with per-page attribution. Free: 3 pages, Pro: 10.
-        const maxPages = pro ? 10 : 3;
-        try {
-          const crawl = await crawlSite(body.url, { maxPages, delayMs: 150 });
-          sitePages = crawl.pages.map((p) => {
-            const pageIssues = scanHtml(p.html)
-              .concat(scanAdditionalHtml(p.html))
-              .concat(scanWcag22(p.html))
-              .concat(scanKeyboardStatics(p.html));
-            return { url: p.url, score: score(pageIssues), issues: pageIssues };
-          });
-          issues = sitePages.flatMap((p) => p.issues.map((i) => ({ ...i, url: p.url })))
-            .concat(checkCrossPages(crawl.pages));
-          if (!sitePages.length) return respond({ error: 'no pages could be crawled', skipped: crawl.skipped }, 502);
-        } catch (e) {
-          return respond({ error: 'site crawl failed', detail: String(e?.message ?? e) }, 502);
-        }
-      } else if (isHttpUrl(body.url)) {
-        try {
-          const r = await platform(env, '/render', { method: 'POST', body: JSON.stringify({ url: cacheBust(body.url) }) });
-          if (!r.ok) throw new Error(`render ${r.status}`);
-          const page = await r.json();
-          issues = scanHtml(page.html)
-            .concat(scanAdditionalHtml(page.html))
-            .concat(scanWcag22(page.html))
-            .concat(checkContrast(page.styles))
-            .concat(checkContrastAAA(page.styles))
-            .concat(checkUseOfColor(page.styles))
-            .concat(checkFacts(page.facts))
-            .concat(checkFocus(page.focus))
-            .concat(checkFocusDepth(page.focus, page.focusable, page.escape, { undersized: page.undersized, undersizedAAA: page.undersizedAAA, obscured: page.obscured, noFocusInd: page.noFocusInd, nontextContrast: page.nontextContrast, spacingClip: page.spacingClip, backtrace: page.backtrace, clickTraps: page.clickTraps }))
-            .concat(scanKeyboardStatics(page.html));
-          rendered = true;
-        } catch (e) {
-          renderError = String(e?.message ?? e);
-          const page = await fetch(cacheBust(body.url)).then((x) => x.text()).catch(() => '');
-          issues = scanHtml(page).concat(scanAdditionalHtml(page)).concat(scanWcag22(page)).concat(scanKeyboardStatics(page));
-        }
-      } else if (typeof body.html === 'string' && body.html.trim()) {
-        if (!withinBytes(body.html, 512_000)) return respond({ error: 'html too large (512KB max)' }, 413);
-        issues = scanHtml(body.html).concat(scanAdditionalHtml(body.html)).concat(scanWcag22(body.html)).concat(scanKeyboardStatics(body.html));
-      } else {
-        return respond({ error: 'provide {"url"} or {"html"}' }, 400);
-      }
-
-      issues = withRecommendations(issues);
-      const result = { score: sitePages ? Math.round(sitePages.reduce((t, p) => t + p.score, 0) / sitePages.length) : score(issues), issues, rendered, plan: pro ? 'pro' : 'free', section508: section508Report(issues), ...(renderError ? { render_error: renderError } : {}), ...(sitePages ? { site: true, pages: sitePages.map(({ url, score: s, issues: i }) => ({ url, score: s, count: i.length })) } : {}) };
-
-      // Persist a shareable report (30d) and optionally email it for Pro. If the
-      // platform KV write fails, still return the scan — just without a report
-      // URL (a link that 404s is worse than no link).
-      const id = crypto.randomUUID().slice(0, 12);
-      try {
-        await kvPut(env, `report:${id}`, JSON.stringify({ ...result, url: body.url ?? null, ts: Date.now() }), 2592000);
-        result.report = `${url.origin}/report/${id}`;
-      } catch {
-        result.report_error = 'report persistence unavailable';
-      }
-      if (pro && body.email_report) {
-        await platform(env, '/email/send', {
-          method: 'POST',
-          body: JSON.stringify({
-            to: body.license,
-            subject: `Accessibility report: ${String(body.url ?? 'pasted HTML').slice(0, 120)} — score ${result.score}/100`,
-            html: `<p>Score: <b>${result.score}/100</b> (${result.issues.length} issues, rendered: ${rendered})</p>${result.report ? `<p>Full report: <a href="${result.report}">${result.report}</a></p>` : '<p>Shareable report link is temporarily unavailable — re-run the scan to generate one.</p>'}`,
-          }),
-        });
-      }
-
-      return respond(result);
+    // Embeddable scan widget — <script src="/widget.js"> mounts a Shadow-DOM
+    // scan form on any page; posts back to this worker's /scan.
+    if (request.method === 'GET' && url.pathname === '/widget.js') {
+      return new Response(WIDGET_JS, { headers: { 'content-type': 'application/javascript; charset=utf-8', 'cache-control': 'public, max-age=3600', ...CORS } });
     }
 
     // Pro site monitoring — register/unregister URLs for the platform's

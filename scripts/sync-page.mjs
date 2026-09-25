@@ -16,6 +16,7 @@ const files = {
   '/favicon.svg': 'image/svg+xml',
   '/.well-known/security.txt': 'text/plain; charset=utf-8',
   '/manifest.json': 'application/manifest+json',
+  '/sw.js': 'application/javascript; charset=utf-8',
   '/targets.html': 'text/html; charset=utf-8',
   '/targets2.html': 'text/html; charset=utf-8',
   '/trap.html': 'text/html; charset=utf-8',

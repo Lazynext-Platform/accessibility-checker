@@ -1,0 +1,128 @@
+// Shared scan pipeline — the quota checks, fetch/crawl/scan stages, scoring,
+// and report persistence every scan surface runs through. Extracted from the
+// /scan handler so MCP and A2A get identical quota + findings semantics
+// instead of a divergent copy.
+import { scanHtml, checkContrast, checkFacts, checkFocus, score } from './scanner.js';
+import { scanAdditionalHtml, checkContrastAAA, checkUseOfColor, scanKeyboardStatics } from './rules/additional.js';
+import { scanWcag22 } from './rules/wcag22.js';
+import { section508Report } from './rules/section508.js';
+import { withRecommendations } from './recommendations.js';
+import { checkCrossPages } from './rules/crosspage.js';
+import { crawlSite } from './crawl.js';
+import { checkFocusDepth } from './rules/focuscycle.js';
+import { isHttpUrl, withinBytes } from './validator.js';
+
+const FREE_LIMIT = 3; // rendered scans per IP per day
+
+// Append a throwaway query param so edge caches (cf-cache-status HIT serves
+// stale HTML for hours on cached sites) can't feed a scan yesterday's page —
+// a scanner must measure the page as it is now. Wire URL only; stored/report
+// URLs stay clean. Fragment-safe.
+const cacheBust = (u) => {
+  const h = u.indexOf("#");
+  const base = h === -1 ? u : u.slice(0, h);
+  return `${base}${base.includes("?") ? "&" : "?"}_lz=${Date.now()}${h === -1 ? "" : u.slice(h)}`;
+};
+
+// Run a scan through the full pipeline. `kv` supplies the platform-side
+// helpers (kvGet/kvPut/rlHit/isPro/platform fetch) so this module stays
+// worker-runtime free and unit-testable. `origin` is the report-link host.
+//
+// Returns { ok: true, result, pro, rendered } or
+//         { ok: false, status, payload }  — map payload onto the HTTP/JSON-RPC
+// surface unchanged.
+export async function runScan(env, kv, { url, html, site, license, email_report, ip, origin }) {
+  const pro = await kv.isPro(env, license);
+  const day = new Date().toISOString().slice(0, 10);
+  const rlKey = `rl:scan:${ip}:${day}`;
+  if (!pro && url) {
+    const used = parseInt((await kv.kvGet(env, rlKey)) ?? '0', 10);
+    if (used >= FREE_LIMIT) {
+      return { ok: false, status: 402, payload: { error: 'free limit reached (3/day)', upgrade: '/checkout' } };
+    }
+    await kv.kvPut(env, rlKey, String(used + 1), 90000).catch(() => {});
+  }
+  // Licensed scans still cost real Browser-Rendering time — a leaked Pro
+  // email would otherwise let a script run unlimited renders on our bill.
+  // 100/day/IP is effectively unlimited for a human and fatal for a bot.
+  if (pro && url && await kv.rlHit(env, `rl:pro:${ip}:${day}`, 100)) {
+    return { ok: false, status: 429, payload: { error: 'daily scan quota exceeded — try again tomorrow' } };
+  }
+
+  let issues = [];
+  let rendered = false;
+  let renderError = null;
+  let sitePages = null;
+
+  if (isHttpUrl(url) && site === true) {
+    // Site-wide scan: BFS same-origin pages, apply the HTML ruleset to
+    // each, aggregate with per-page attribution. Free: 3 pages, Pro: 10.
+    const maxPages = pro ? 10 : 3;
+    try {
+      const crawl = await crawlSite(url, { maxPages, delayMs: 150 });
+      sitePages = crawl.pages.map((p) => {
+        const pageIssues = scanHtml(p.html)
+          .concat(scanAdditionalHtml(p.html))
+          .concat(scanWcag22(p.html))
+          .concat(scanKeyboardStatics(p.html));
+        return { url: p.url, score: score(pageIssues), issues: pageIssues };
+      });
+      issues = sitePages.flatMap((p) => p.issues.map((i) => ({ ...i, url: p.url })))
+        .concat(checkCrossPages(crawl.pages));
+      if (!sitePages.length) return { ok: false, status: 502, payload: { error: 'no pages could be crawled', skipped: crawl.skipped } };
+    } catch (e) {
+      return { ok: false, status: 502, payload: { error: 'site crawl failed', detail: String(e?.message ?? e) } };
+    }
+  } else if (isHttpUrl(url)) {
+    try {
+      const r = await kv.platform(env, '/render', { method: 'POST', body: JSON.stringify({ url: cacheBust(url) }) });
+      if (!r.ok) throw new Error(`render ${r.status}`);
+      const page = await r.json();
+      issues = scanHtml(page.html)
+        .concat(scanAdditionalHtml(page.html))
+        .concat(scanWcag22(page.html))
+        .concat(checkContrast(page.styles))
+        .concat(checkContrastAAA(page.styles))
+        .concat(checkUseOfColor(page.styles))
+        .concat(checkFacts(page.facts))
+        .concat(checkFocus(page.focus))
+        .concat(checkFocusDepth(page.focus, page.focusable, page.escape, { undersized: page.undersized, undersizedAAA: page.undersizedAAA, obscured: page.obscured, noFocusInd: page.noFocusInd, nontextContrast: page.nontextContrast, spacingClip: page.spacingClip, backtrace: page.backtrace, clickTraps: page.clickTraps }))
+        .concat(scanKeyboardStatics(page.html));
+      rendered = true;
+    } catch (e) {
+      renderError = String(e?.message ?? e);
+      const page = await fetch(cacheBust(url)).then((x) => x.text()).catch(() => '');
+      issues = scanHtml(page).concat(scanAdditionalHtml(page)).concat(scanWcag22(page)).concat(scanKeyboardStatics(page));
+    }
+  } else if (typeof html === 'string' && html.trim()) {
+    if (!withinBytes(html, 512_000)) return { ok: false, status: 413, payload: { error: 'html too large (512KB max)' } };
+    issues = scanHtml(html).concat(scanAdditionalHtml(html)).concat(scanWcag22(html)).concat(scanKeyboardStatics(html));
+  } else {
+    return { ok: false, status: 400, payload: { error: 'provide {"url"} or {"html"}' } };
+  }
+
+  issues = withRecommendations(issues);
+  const result = { score: sitePages ? Math.round(sitePages.reduce((t, p) => t + p.score, 0) / sitePages.length) : score(issues), issues, rendered, plan: pro ? 'pro' : 'free', section508: section508Report(issues), ...(renderError ? { render_error: renderError } : {}), ...(sitePages ? { site: true, pages: sitePages.map(({ url, score: s, issues: i }) => ({ url, score: s, count: i.length })) } : {}) };
+
+  // Persist a shareable report (30d) and optionally email it for Pro. If the
+  // platform KV write fails, still return the scan — just without a report
+  // URL (a link that 404s is worse than no link).
+  const id = crypto.randomUUID().slice(0, 12);
+  try {
+    await kv.kvPut(env, `report:${id}`, JSON.stringify({ ...result, url: url ?? null, ts: Date.now() }), 2592000);
+    result.report = `${origin}/report/${id}`;
+  } catch {
+    result.report_error = 'report persistence unavailable';
+  }
+  if (pro && email_report) {
+    await kv.platform(env, '/email/send', {
+      method: 'POST',
+      body: JSON.stringify({
+        to: license,
+        subject: `Accessibility report: ${String(url ?? 'pasted HTML').slice(0, 120)} — score ${result.score}/100`,
+        html: `<p>Score: <b>${result.score}/100</b> (${result.issues.length} issues, rendered: ${rendered})</p>${result.report ? `<p>Full report: <a href="${result.report}">${result.report}</a></p>` : '<p>Shareable report link is temporarily unavailable — re-run the scan to generate one.</p>'}`,
+      }),
+    });
+  }
+  return { ok: true, result, pro, rendered };
+}

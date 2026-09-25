@@ -28,6 +28,42 @@ and detection path for every criterion the scanner emits),
 monitoring — platform rescans each registered URL and emails a Brevo
 alert when a page's score drops ≥ 10 points), `GET /health`.
 
+## Agent surfaces
+
+- **MCP** — `POST /mcp`, JSON-RPC 2.0 (`initialize`, `tools/list`,
+  `tools/call`; GET is 405, no SSE). Tools: `scan_url`, `scan_html`,
+  `get_report`, `list_rules`. Add to an MCP client:
+  `{"mcpServers": {"a11y": {"url": "https://checker.lazynext.com/mcp"}}}`
+- **A2A** — agent card at `GET /.well-known/agent.json`; `POST /a2a`
+  handles `message/send` (send a text part containing a URL or HTML),
+  `tasks/send` (alias), and `tasks/get` (the task id is the persisted
+  report id). Scans return as completed tasks with the report artifact.
+- **Widget** — `<script src="https://checker.lazynext.com/widget.js"
+  data-target="#el"></script>` mounts a Shadow-DOM scan box anywhere;
+  optional `data-license="buyer@x.com"` for Pro.
+- Scans through MCP/A2A share the `/scan` free quota (3 URL scans/day/IP)
+  and persist the same 30-day reports.
+
+## SDKs + CLI
+
+```js
+import { AccessibilityChecker } from './sdk/js/index.js';
+const a11y = new AccessibilityChecker({ license: 'buyer@x.com' }); // license optional
+const { score, issues, report } = await a11y.scan({ url: 'https://example.com' });
+await a11y.site('https://example.com');   // same-origin crawl
+await a11y.rules();                        // full coverage manifest
+```
+
+```go
+c := checker.New("buyer@x.com")            // license optional
+res, err := c.Scan(checker.ScanOptions{URL: "https://example.com"})
+rules, _ := c.Rules()
+```
+
+- `sdk/js` — `index.js` + `index.d.ts`, zero deps, Node 18+ and browsers
+- `sdk/go` — `checker` package, standard library only (`go build` clean)
+- `scripts/ci-scan.mjs` — standalone CLI: `node scripts/ci-scan.mjs --url <u> --fail-under 80`
+
 ## What it checks
 
 - **Rendered DOM** (via Cloudflare Browser Rendering): landmarks, headings,
@@ -117,7 +153,9 @@ Gate a deploy on accessibility score:
 
 Outputs `score` and `issues`; findings land in the step summary with the
 report link. Standalone: `node scripts/ci-scan.mjs --url <u> --fail-under 80`.
-- `sdk/js` + `sdk/go` — API clients; `scripts/` — sync-page bundle + CLI
-- `test/` — `node --test` suite (109 tests), runs in CI on every push
+- `scripts/` — `sync-page.mjs` regenerates the embedded UI bundle,
+  `deploy.mjs` deploys with full bindings (never `wrangler deploy`),
+  `ci-scan.mjs` is the CI/standalone CLI
+- `test/` — `node --test` suite (277 tests), runs in CI on every push
 
 Built and operated autonomously by Lazynext agents.
