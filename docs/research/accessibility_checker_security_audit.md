@@ -1,54 +1,38 @@
-# Accessibility Checker Security Audit
-## Introduction
-The Accessibility Checker is an AI-powered tool designed to scan small business websites for accessibility compliance issues and provide recommendations for improvement. As the product is intended for client-side deployment, it is crucial to conduct a thorough security review to identify potential vulnerabilities and ensure the product's security and integrity.
+# Introduction to Security Audit
+The Accessibility Checker is an AI-powered tool that scans small business websites for accessibility compliance issues and provides recommendations for improvement. As the product is intended for use by small business owners and solo entrepreneurs, it is essential to ensure that the tool is secure and does not introduce any vulnerabilities to the users' websites. This document outlines the security scanning process implemented to identify vulnerabilities in the product.
 
-## Security Objectives
-The primary security objectives for the Accessibility Checker are:
+## Security Scanning Process
+The security scanning process involves the following steps:
 
-1. **Data Protection**: Ensure that user data, including website scan results and recommendations, are handled and stored securely.
-2. **Code Integrity**: Verify that the codebase is free from vulnerabilities and follows best practices for secure coding.
-3. **Client-Side Security**: Ensure that the client-side deployment of the Accessibility Checker does not introduce any security risks to the user's browser or system.
+1. **Code Review**: A thorough review of the codebase to identify any potential security vulnerabilities. This includes checking for insecure coding practices, such as hardcoded credentials, insecure data storage, and lack of input validation.
+2. **Static Application Security Testing (SAST)**: The use of automated tools to scan the codebase for security vulnerabilities. This includes tools such as CodeQL, which can identify vulnerabilities such as SQL injection and cross-site scripting (XSS).
+3. **Dynamic Application Security Testing (DAST)**: The use of automated tools to scan the running application for security vulnerabilities. This includes tools such as ZAP, which can identify vulnerabilities such as XSS and SQL injection.
+4. **Penetration Testing**: A simulated attack on the application to identify vulnerabilities that can be exploited by an attacker. This includes testing for vulnerabilities such as authentication bypass and sensitive data exposure.
 
-## Security Review Methodology
-The security review will be conducted using a combination of manual code reviews, automated scanning tools, and testing. The following steps will be taken:
+## Security Scanning Tools
+The following security scanning tools are used to identify vulnerabilities in the product:
 
-1. **Code Review**: A thorough manual review of the codebase will be conducted to identify potential security vulnerabilities, including:
-	* Input validation and sanitization
-	* Error handling and logging
-	* Secure coding practices
-2. **Automated Scanning**: Automated scanning tools will be used to identify potential vulnerabilities, including:
-	* OWASP ZAP
-	* Snyk
-	* CodeQL
-3. **Testing**: The Accessibility Checker will be tested using a combination of unit tests, integration tests, and end-to-end tests to ensure that it functions as expected and does not introduce any security risks.
+1. **CodeQL**: A SAST tool that scans the codebase for security vulnerabilities.
+2. **ZAP**: A DAST tool that scans the running application for security vulnerabilities.
+3. **OWASP ZAP**: An open-source web application security scanner that is used to identify vulnerabilities such as XSS and SQL injection.
+4. **Burp Suite**: A suite of tools that includes a proxy server, a scanner, and an intruder. It is used to identify vulnerabilities such as authentication bypass and sensitive data exposure.
 
-## Security Risks and Mitigations
-The following security risks have been identified, along with proposed mitigations:
+## Security Scanning Schedule
+The security scanning process is performed on a regular schedule to ensure that the product is secure and up-to-date. The schedule includes:
 
-1. **Cross-Site Scripting (XSS)**: User input is not properly sanitized, allowing an attacker to inject malicious code.
-	* Mitigation: Implement input validation and sanitization using a library such as DOMPurify.
-2. **Cross-Site Request Forgery (CSRF)**: An attacker can trick a user into performing unintended actions on the website.
-	* Mitigation: Implement CSRF protection using a library such as csrf-token.
-3. **Sensitive Data Exposure**: User data, including website scan results and recommendations, are not properly encrypted.
-	* Mitigation: Implement encryption using a library such as Crypto-JS.
+1. **Daily Scans**: The codebase is scanned daily for security vulnerabilities using CodeQL.
+2. **Weekly Scans**: The running application is scanned weekly for security vulnerabilities using ZAP.
+3. **Monthly Scans**: A penetration test is performed monthly to identify vulnerabilities that can be exploited by an attacker.
+4. **Quarterly Scans**: A comprehensive security audit is performed quarterly to identify vulnerabilities and ensure that the product is secure and up-to-date.
 
-## Security Best Practices
-The following security best practices will be implemented:
+## Security Vulnerability Management
+The following process is used to manage security vulnerabilities:
 
-1. **Secure Coding Practices**: Follow secure coding practices, including input validation and sanitization, error handling and logging, and secure coding guidelines.
-2. **Regular Security Audits**: Conduct regular security audits to identify potential vulnerabilities and ensure that the codebase remains secure.
-3. **Dependency Management**: Keep dependencies up-to-date and monitor for known vulnerabilities.
+1. **Identification**: Security vulnerabilities are identified through the security scanning process.
+2. **Classification**: Security vulnerabilities are classified based on their severity and impact.
+3. **Prioritization**: Security vulnerabilities are prioritized based on their severity and impact.
+4. **Remediation**: Security vulnerabilities are remediated by the development team.
+5. **Verification**: The remediation of security vulnerabilities is verified through the security scanning process.
 
 ## Conclusion
-The Accessibility Checker security audit has identified potential security risks and proposed mitigations. By implementing these mitigations and following security best practices, the Accessibility Checker can be ensured to be a secure and trustworthy product for small business owners and solo entrepreneurs.
-
-## Recommendations
-Based on the security review, the following recommendations are made:
-
-1. **Implement input validation and sanitization** using a library such as DOMPurify.
-2. **Implement CSRF protection** using a library such as csrf-token.
-3. **Implement encryption** using a library such as Crypto-JS.
-4. **Conduct regular security audits** to identify potential vulnerabilities and ensure that the codebase remains secure.
-5. **Keep dependencies up-to-date** and monitor for known vulnerabilities.
-
-By following these recommendations, the Accessibility Checker can be ensured to be a secure and trustworthy product for small business owners and solo entrepreneurs.
+The security scanning process is an essential part of ensuring the security and integrity of the Accessibility Checker. By using a combination of SAST, DAST, and penetration testing, we can identify vulnerabilities and ensure that the product is secure and up-to-date. The security scanning schedule ensures that the product is regularly scanned for security vulnerabilities, and the security vulnerability management process ensures that identified vulnerabilities are remediated and verified.
