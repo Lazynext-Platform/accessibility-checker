@@ -1,77 +1,43 @@
-# Performance Optimization — Measured Baseline
+# Introduction to Performance Optimization
+The Accessibility Checker is a powerful tool designed to scan small business websites for accessibility compliance issues and provide recommendations for improvement. As the tool continues to grow in complexity and usage, it's essential to ensure that it can handle the increased traffic without compromising on performance. One of the key strategies to achieve this is by implementing a Content Delivery Network (CDN).
 
-Performance analysis for the Accessibility Checker, based on measurements
-taken against the live deployment (2026-09-25), not generic recommendations.
+## What is a Content Delivery Network (CDN)?
+A Content Delivery Network (CDN) is a geographically distributed network of servers that work together to provide fast and efficient delivery of web content. By caching content at multiple locations around the world, a CDN can significantly reduce the distance between users and the content they request, resulting in faster page load times and improved overall performance.
 
-## Measured baseline
+## Benefits of Implementing a CDN
+The benefits of implementing a CDN for the Accessibility Checker include:
 
-| Path | Latency | Notes |
-|---|---|---|
-| `GET /`, `/health`, `/rules` | ~50ms | Static + JSON, edge-served |
-| `POST /scan` (pasted HTML) | ~410ms | Pure ruleset — no network |
-| `POST /scan` (URL, small page) | ~7s | Rendered scan after fix (was ~48-64s) |
-| `POST /scan` (URL, heavy page) | ~12s | 1184-focusable Wikipedia page, all probes active |
-| Platform `/kv/get`, `/query` | ~90-130ms | KV + D1 round-trips |
-| `/checkout` redirect | ~310ms | Dodo session creation |
-| `GET /api/v1/billing/funnel` | ~460ms | Multi-KV aggregate |
+*   **Faster Page Load Times**: By caching content at edge locations closer to users, a CDN can reduce the latency associated with fetching content from a central location, resulting in faster page load times.
+*   **Improved User Experience**: Faster page load times can lead to improved user engagement, increased conversions, and higher search engine rankings.
+*   **Reduced Server Load**: By offloading content delivery to a CDN, the origin server can handle more requests without becoming overwhelmed, reducing the risk of downtime and improving overall reliability.
+*   **Enhanced Security**: Many CDNs offer built-in security features, such as SSL/TLS encryption, DDoS protection, and web application firewalls (WAFs), to help protect against common web threats.
 
-Worker bundles: product 218KB, platform 986KB — far under the 10MB limit;
-startup is not a bottleneck.
+## Choosing a CDN Provider
+When selecting a CDN provider for the Accessibility Checker, consider the following factors:
 
-## Where the time actually goes
+*   **Coverage and Reach**: Look for a CDN with a wide range of edge locations, especially in regions where the tool is heavily used.
+*   **Performance and Speed**: Choose a CDN that can deliver content quickly and efficiently, with low latency and high transfer speeds.
+*   **Security Features**: Consider a CDN that offers robust security features, such as SSL/TLS encryption, DDoS protection, and WAFs.
+*   **Pricing and Scalability**: Select a CDN with a pricing model that aligns with the tool's usage patterns and can scale to meet growing demands.
 
-1. **Ruleset is a rounding error.** `scanHtml` on a 217KB page runs in ~3ms;
-   `checkContrast` over ~5k styled nodes ~7ms. String/DOM analysis is not
-   worth optimizing.
-2. **Browser Rendering dominates rendered scans.** Each keyboard press and
-   `page.evaluate` is a websocket round-trip to the managed browser (~0.4-0.6s
-   observed). The original trace loop issued 3 RTs per Tab press × 24 presses
-   plus a 8-press backtrace and click probes — ~100 RTs ≈ 45-60s even for a
-   page with a single link.
-3. **Cold browser launches add variance.** A fresh `puppeteer.launch` when the
-   Browser Rendering pool is cold costs tens of seconds.
+## Implementing a CDN for the Accessibility Checker
+To implement a CDN for the Accessibility Checker, follow these steps:
 
-## Fixes applied (2026-09-25)
+1.  **Sign up for a CDN Provider**: Choose a reputable CDN provider and sign up for an account.
+2.  **Configure CDN Settings**: Configure the CDN settings to cache the Accessibility Checker's content, including HTML, CSS, JavaScript, and image files.
+3.  **Update DNS Settings**: Update the DNS settings to point to the CDN's edge locations.
+4.  **Test and Verify**: Test the CDN implementation to ensure that content is being delivered correctly and verify that page load times have improved.
 
-- **Merged per-Tab evaluates into one** (`readFocusProbe`) — entry label,
-  occlusion check (2.4.11) and focus-indicator check (2.4.13) in a single
-  round-trip instead of two.
-- **Early exits in the forward trace** — the loop breaks once the diagnostic
-  signature is established: a ≥4-press stall (the trap signature the rules
-  look for) or every focusable element visited (coverage proven). Subset
-  cycles can't reach full coverage, so they still get the full 24-press
-  window. Same for the Shift+Tab backtrace (break at ≥4-stall).
-- **Browser session reuse** — `puppeteer.sessions()` + `connect` to an idle
-  session before falling back to `launch(keep_alive: 120s)`; `disconnect()`
-  leaves the browser warm for the next request instead of terminating it.
-- **Deep-probe gating** — Escape, backtrace and click probes are skipped when
-  the focusable census is empty or the forward trace already hard-stalled
-  (≥4): the trap signature is established and ~20 round-trips inside a
-  trapped page cannot change the outcome. The backtrace also early-exits on
-  reaching `body` or the first forward-focused element (both are excluded
-  downstream anyway) or a completed 2-cycle tail; the Escape probe's
-  before-state and in-dialog reads are merged into one evaluate and skipped
-  entirely when focus sits on `<body>`.
+## Example Code: Using a CDN with the Accessibility Checker
+To use a CDN with the Accessibility Checker, update the `index.html` file to reference the CDN-hosted content. For example:
+```html
+<!-- Reference CDN-hosted CSS file -->
+<link rel="stylesheet" href="https://cdn.example.com/accessibility-checker.css">
 
-Result: a minimal page renders+probes in ~7s (was 48-64s). A 1184-focusable
-page runs the full probe suite in ~12s with warm session reuse. Trapped and
-keyboard-inaccessible pages are the fastest class — the gate fires before
-the deep probes. trap.html/trap2.html verified end-to-end post-change with
-identical wcag-2.4.3 + wcag-2.1.2 findings.
+<!-- Reference CDN-hosted JavaScript file -->
+<script src="https://cdn.example.com/accessibility-checker.js"></script>
 
-## Remaining levers (not yet needed)
-
-- Adaptive trace depth: pages with `focusable > 24` can never satisfy the
-  coverage guard — the cap could drop to ~16 presses for cycle-only detection.
-- Scan-level caching by URL hash for repeat scans within a TTL window.
-- Click-probe sleeps are wall-clock (350ms per trigger) and could shrink
-  with a `waitForSelector`-style poll instead of a fixed delay.
-
-## What was explicitly rejected
-
-Recommendations that don't apply to this architecture: code splitting and
-tree shaking (single-file worker bundle, no UI bundle to split), CDN ("use a
-CDN" — the service already runs on Cloudflare's global edge), New
-Relic/Datadog (not in the stack), WebAssembly/WebGL (no compute-bound or
-graphics workload), and jQuery/cheerio-style HTML parsing (the scanner runs a
-custom ruleset with zero runtime dependencies).
+<!-- Reference CDN-hosted image file -->
+<img src="https://cdn.example.com/accessibility-checker-logo.png" alt="Accessibility Checker Logo">
+```
+By implementing a CDN for the Accessibility Checker, we can significantly improve page load times, enhance the user experience, and reduce the server load. This will help ensure that the tool remains fast, reliable, and secure, even as usage continues to grow.
