@@ -733,6 +733,34 @@ export function scanAdditionalHtml(html) {
     }
   }
 
+  // WCAG 3.1.4 (AAA) — Abbreviations: an <abbr> with no expansion mechanism
+  // (title, aria-label, or aria-labelledby) leaves screen-reader users with
+  // only the acronym's letters. <abbr title> IS the canonical mechanism.
+  for (const m of src.matchAll(/<abbr\b([^>]*)>/gi)) {
+    if (!/\b(?:title|aria-label|aria-labelledby)\s*=/i.test(m[1])) {
+      issues.push({
+        rule: "wcag-3.1.4",
+        message: `<abbr> without title or aria-label — no expanded form available: ${m[0].slice(0, 70)}`,
+      });
+    }
+  }
+
+  // WCAG 2.3.3 (AAA) — Animation from Interactions: motion tied to user
+  // interaction (transition/animation on :hover/:focus/:active) should be
+  // disableable. Heuristic: inline <style> blocks animate interactions but
+  // the document never references prefers-reduced-motion. Warn-class.
+  {
+    const styleBlocks = [...src.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1]);
+    const animatesInteraction = styleBlocks.some((css) =>
+      /:(?:hover|focus|active)\b[^{]*\{[^}]*(?:transition|animation)\s*:/i.test(css));
+    if (animatesInteraction && !/prefers-reduced-motion/i.test(src)) {
+      issues.push({
+        rule: "wcag-2.3.3",
+        message: "interactive animation (transition/animation on :hover/:focus) with no prefers-reduced-motion support — motion can't be disabled (AAA advisory)",
+      });
+    }
+  }
+
   return issues;
 }
 

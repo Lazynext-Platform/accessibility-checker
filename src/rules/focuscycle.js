@@ -7,7 +7,8 @@
 //            focus is on the page itself)
 // focusable: total count of visible focusable elements on the page
 // escape:    { inDialog, responds } from the Escape probe, or null
-// rendered:  { undersized: [{d,w,h}], obscured: [trace-entry strings] } —
+// rendered:  { undersized: [{d,w,h}], undersizedAAA: [{d,w,h}],
+//            obscured: [trace-entry strings], ... } —
 //            geometry facts captured during the render pass
 
 export function checkFocusDepth(trace, focusable, escape, rendered = {}) {
@@ -60,6 +61,18 @@ export function checkFocusDepth(trace, focusable, escape, rendered = {}) {
     issues.push({
       rule: 'wcag-2.5.8',
       message: `${under.length} interactive target(s) smaller than 24×24 CSS px: ${examples}`,
+    });
+  }
+
+  // WCAG 2.5.5 (AAA) — enhanced target size: the 24-43px band that passes AA
+  // but misses the AAA 44×44 requirement. Below-24px targets are already
+  // reported under 2.5.8, so they're excluded upstream to avoid double-counting.
+  const underAAA = rendered.undersizedAAA ?? [];
+  if (underAAA.length > 0) {
+    const examples = underAAA.slice(0, 3).map((t) => `${t.d} ${t.w}×${t.h}px`).join(', ');
+    issues.push({
+      rule: 'wcag-2.5.5',
+      message: `${underAAA.length} interactive target(s) smaller than the AAA 44×44 CSS px minimum: ${examples}`,
     });
   }
 

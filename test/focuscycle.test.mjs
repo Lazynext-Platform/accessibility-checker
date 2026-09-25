@@ -123,3 +123,14 @@ test('text clipping under spacing overrides flags wcag-1.4.12', () => {
   assert.ok(f, 'spacing-induced clipping should flag');
   assert.match(f.message, /div#card/);
 });
+
+test("24–43px targets flag wcag-2.5.5 (AAA band); <24px stays 2.5.8-only", () => {
+  const trace = ["a", "b"];
+  const mid = checkFocusDepth(trace, 3, null, { undersizedAAA: [{ d: "0:button#go", w: 30, h: 30 }] });
+  assert.ok(mid.some((i) => i.rule === "wcag-2.5.5"));
+  const small = checkFocusDepth(trace, 3, null, { undersized: [{ d: "0:button#go", w: 12, h: 12 }] });
+  assert.ok(small.some((i) => i.rule === "wcag-2.5.8"));
+  assert.ok(!small.some((i) => i.rule === "wcag-2.5.5"));
+  const clean = checkFocusDepth(trace, 3, null, { undersizedAAA: [] });
+  assert.ok(!clean.some((i) => i.rule === "wcag-2.5.5"));
+});

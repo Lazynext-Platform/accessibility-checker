@@ -432,3 +432,21 @@ test("pointerdown+pointermove on one element flags wcag-2.5.1; each alone passes
   // split across elements — not a path gesture on either
   assert.ok(!rules(scanAdditionalHtml('<div onpointerdown="a()"></div><div onpointermove="b()"></div>')).includes("wcag-2.5.1"));
 });
+
+test("<abbr> without expansion flags wcag-3.1.4 (AAA)", () => {
+  assert.ok(rules(scanAdditionalHtml("<p>The <abbr>WCAG</abbr> standard</p>")).includes("wcag-3.1.4"));
+  assert.ok(!rules(scanAdditionalHtml('<p>The <abbr title="Web Content Accessibility Guidelines">WCAG</abbr></p>')).includes("wcag-3.1.4"));
+  assert.ok(!rules(scanAdditionalHtml('<p>The <abbr aria-label="Web Content Accessibility Guidelines">WCAG</abbr></p>')).includes("wcag-3.1.4"));
+  assert.ok(!rules(scanAdditionalHtml("<p>no abbreviations</p>")).includes("wcag-3.1.4"));
+});
+
+test("interactive animation without prefers-reduced-motion flags wcag-2.3.3 (AAA)", () => {
+  const animated = "<style>a:hover { transition: all .3s; }</style><a href='/x'>link</a>";
+  assert.ok(rules(scanAdditionalHtml(animated)).includes("wcag-2.3.3"));
+  // transition without an interaction trigger is fine
+  assert.ok(!rules(scanAdditionalHtml("<style>a { transition: all .3s; }</style>")).includes("wcag-2.3.3"));
+  // interaction trigger without motion is fine
+  assert.ok(!rules(scanAdditionalHtml("<style>a:hover { color: red; }</style>")).includes("wcag-2.3.3"));
+  // reduced-motion support present
+  assert.ok(!rules(scanAdditionalHtml("<style>a:hover { animation: spin 1s; } @media (prefers-reduced-motion) { a:hover { animation: none; } }</style>")).includes("wcag-2.3.3"));
+});
