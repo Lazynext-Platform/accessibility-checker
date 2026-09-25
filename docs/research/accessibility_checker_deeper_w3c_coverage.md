@@ -1,48 +1,82 @@
 Deeper W3C Coverage
 ====================
-### Introduction
 
-The Accessibility Checker aims to provide a comprehensive scanning tool for small business owners and solo entrepreneurs to ensure their websites are compliant with accessibility regulations. As part of this effort, we are committed to expanding our coverage of the Web Content Accessibility Guidelines (WCAG) to provide a more thorough and accurate assessment of website accessibility.
+### Status of this document (read before generating tasks)
 
-### Current WCAG Coverage
+This is a research/planning document. Rule sources live in `src/scanner.js` and
+`src/rules/*.js`; the authoritative list of shipped criteria is `GET /rules`
+(served by `src/rules/manifest.js`, which is test-enforced to match the code —
+`test/rules-manifest.test.mjs` fails if they drift). Do not generate tasks to
+"add" criteria listed as shipped here — check `/rules` first.
 
-Our current implementation covers a range of WCAG success criteria, including:
+### Current shipped coverage (all live, all tested)
 
-* Color contrast and readability
-* Image alt text and descriptive links
-* Closed captions and audio descriptions for multimedia content
-* Keyboard navigability and screen reader compatibility
-* Clear and consistent navigation and page structure
+The scanner runs three analysis layers and reports every finding with a
+remediation hint (`src/recommendations.js`) and a Section 508 clause mapping
+(`src/rules/section508.js`):
 
-### Expanded WCAG Coverage
+**Static HTML rules** (`scanHtml` / `scanAdditionalHtml` / `scanKeyboardStatics`)
+run on every scan path — pasted HTML, fetched pages, and every crawled page:
 
-To provide deeper W3C coverage, we plan to expand our scanning tool to include the following additional WCAG success criteria:
+* 1.1.1 non-text alternatives; 1.2.1 media captions; 1.3.1 structure/landmarks
+  (incl. duplicate unnamed landmarks); 1.3.3 sensory characteristics;
+  1.3.4 orientation lock; 1.3.5 input purpose (autocomplete); 1.4.1 use of
+  color (prose-scoped); 1.4.2/2.2.2 autoplay/marquee/blink; 1.4.4/1.4.8 resize
+  and justify; 1.4.5 images of text (heuristic); 1.4.10 fixed-width reflow;
+  2.1.1 keyboard (scrollable regions, tabindex -1 on focusables);
+  2.1.2 keyboard-trap statics (Tab-swallowing handlers, undismissable dialogs);
+  2.1.4 accesskey + single-char shortcuts; 2.2.1 meta refresh; 2.3.1 flashing
+  markup; 2.4.1 skip-nav; 2.4.2 title; 2.4.3 positive tabindex;
+  2.4.4 link purpose (javascript:/dead/dangling links); 2.4.5 multiple ways;
+  2.4.6 headings/labels; 2.4.7 focus outline suppression (inline + stylesheet);
+  2.5.1 pointer gestures; 2.5.2 down-event actions; 2.5.3 label-in-name;
+  2.5.4 motion actuation; 3.1.1 missing lang; 3.1.2 language of parts;
+  3.2.1 onfocus/onchange navigation; 3.2.2 auto-submit select jump-menus;
+  3.3.2 unlabeled inputs; 3.3.7 redundant entry; 3.3.8 accessible
+  authentication; 4.1.1 duplicate ids; 4.1.2 name/role/value (invalid aria
+  names, body aria-hidden, icon-only controls, aria-hidden focusables);
+  4.1.3 status regions; plus dangling label/aria references, nested
+  interactives, stray list/dl/table structure, deprecated presentational markup.
 
-* **1.4.10 Reflow**: Ensure that content can be presented without loss of information or functionality when the screen is resized to 320px or less.
-* **1.4.11 Non-Text Contrast**: Ensure that visual presentation of non-text elements, such as icons and graphics, has a contrast ratio of at least 4.5:1 with the surrounding background.
-* **1.4.12 Text Spacing**: Ensure that text can be spaced to at least 1.5 times the font size for line height, and 0.5 times the font size for letter spacing, without loss of content or functionality.
-* **2.4.6 Headings and Labels**: Ensure that headings and labels are descriptive and consistent, and that they provide a clear indication of the content and purpose of the page.
-* **3.2.3 Consistent Navigation**: Ensure that navigation is consistent throughout the website, and that it provides a clear and intuitive way for users to access different pages and content.
+**Rendered checks** (real browser via Browser Rendering — computed styles,
+layout boxes, and a live keyboard trace: 24 Tab presses + focusable census +
+Escape probe):
 
-### Technical Implementation
+* 1.4.3 contrast AA; 1.4.6 contrast AAA; 1.4.11 non-text contrast;
+  1.4.12 text-spacing clipping; 1.4.13 hover/focus content;
+  2.1.2 keyboard traps — dynamic (focus stall, tail cycles, dialogs that
+  ignore Escape — verified live against `test/trap.html` / `/trap.html`);
+  2.4.3 focus coverage gaps; 2.4.11 focus-not-obscured; 2.4.13 focus
+  appearance; 2.5.7 dragging; 2.5.8 target size.
 
-To implement the expanded WCAG coverage, we will use a combination of HTML parsing, CSS analysis, and JavaScript execution to evaluate the website's content and structure. We will also leverage existing libraries and tools, such as the W3C's Accessibility Guidelines and the axe-core accessibility testing library.
+**Cross-page checks** (`site:true` scans, `src/rules/crosspage.js`):
 
-### Algorithmic Approach
+* 3.2.3 consistent navigation; 3.2.4 consistent identification (accessible
+  names, aria-aware); 3.2.6 consistent help.
 
-Our algorithmic approach will involve the following steps:
+### Genuinely remaining criteria — and why they're not shipped
 
-1. **HTML Parsing**: Parse the website's HTML content to identify and extract relevant elements, such as headings, links, images, and multimedia content.
-2. **CSS Analysis**: Analyze the website's CSS styles to evaluate the visual presentation of content, including color contrast, font sizes, and spacing.
-3. **JavaScript Execution**: Execute JavaScript code to evaluate the website's dynamic content and behavior, including keyboard navigability and screen reader compatibility.
-4. **WCAG Evaluation**: Evaluate the extracted elements and analyzed styles against the expanded WCAG success criteria, using a combination of automated and manual testing techniques.
+The rest of WCAG 2.x is not statically/rendered-detectable without either
+media-content analysis or human judgment. These are the honest remaining
+frontier, grouped by why they're hard:
 
-### Testing and Validation
+* **Media-content semantics** — 1.2.3/1.2.5 audio descriptions, 1.2.6 sign
+  language, 1.2.7 extended audio description, 1.2.8/1.2.9 media alternatives,
+  1.4.7 low background audio. A `track kind="descriptions"` presence check is
+  feasible but only proves the track exists, not that it describes anything.
+* **AAA-level criteria** — 1.4.9, 2.1.3, 2.2.3–2.2.5, 2.4.8, 2.4.9, 2.4.12,
+  2.5.5, 3.1.3/3.1.4/3.1.6, 3.3.3/3.3.4/3.3.6/3.3.9. Several are partially
+  covered by shipped AA rules (2.5.8 ⊂ 2.5.5, 3.3.8 ⊂ 3.3.9,
+  2.4.11 ⊂ 2.4.12/13); the full AAA forms need deeper analysis.
+* **Judgment-required** — error suggestion quality (3.3.3), error prevention
+  (3.3.4/3.3.6), meaningful sequence under unusual layouts, cognitive
+  accessibility. Static analysis can flag absence of patterns, not quality.
 
-To ensure the accuracy and effectiveness of our expanded WCAG coverage, we will conduct thorough testing and validation of our scanning tool. This will include:
+### Deliberately not done (architecture decisions, not gaps)
 
-* **Automated Testing**: Use automated testing tools, such as axe-core, to evaluate the website's content and structure against the expanded WCAG success criteria.
-* **Manual Testing**: Conduct manual testing and review of the website's content and structure to validate the accuracy of our automated testing results.
-* **User Testing**: Conduct user testing and feedback sessions to ensure that our scanning tool is providing accurate and actionable results that meet the needs of small business owners and solo entrepreneurs.
-
-By expanding our WCAG coverage and providing a more comprehensive scanning tool, we aim to help small business owners and solo entrepreneurs ensure that their websites are accessible and usable by everyone, regardless of ability or disability.
+* **axe-core integration** — possible but the product is dependency-free by
+  design (single-file ES module, zero npm deps). axe-core is the industry
+  standard; adopting it is a product/architecture decision, not a task.
+* **"W3C validation service" calls** — the Nu Html Checker is a validator, not
+  an accessibility evaluator; it would duplicate 4.1.1-class checks we already
+  do internally. No external validation dependency is planned.
