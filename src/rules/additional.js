@@ -136,6 +136,9 @@ export function scanAdditionalHtml(html) {
   // WCAG 2.2.1 — timed refresh/redirect the user can't control.
   if (/<meta\b[^>]*http-equiv\s*=\s*["']?refresh/i.test(src)) {
     issues.push({ rule: "wcag-2.2.1", message: "<meta http-equiv=refresh> reloads or redirects on a timer without user control" });
+    // WCAG 2.2.4 (AAA) — no interruptions at all: ANY meta refresh fails at
+    // Level AAA, even with a long delay the A-level check would tolerate.
+    issues.push({ rule: "wcag-2.2.4", message: "<meta http-equiv=refresh> interrupts the user — at Level AAA timed refreshes are never allowed" });
   }
 
   // WCAG 1.4.2 / 2.2.2 — audio that auto-plays, or moving content with no
@@ -470,6 +473,70 @@ export function scanAdditionalHtml(html) {
     }
   }
 
+  // WCAG 4.1.2 — valid aria-* names with invalid values: booleans/enumerated
+  // attributes accept only a fixed vocabulary; anything else is silently
+  // ignored by AT (axe's aria-valid-attr-value). Covers the enumerable set —
+  // freeform attrs (label/labelledby/describedby/valuetext…) are skipped by
+  // design.
+  {
+    const ENUM = {
+      atomic: ["true", "false"], busy: ["true", "false"], checked: ["true", "false", "mixed", "undefined"],
+      current: ["true", "false", "page", "step", "location", "date", "time"],
+      disabled: ["true", "false"], dropeffect: ["copy", "execute", "link", "move", "none", "popup"],
+      expanded: ["true", "false", "undefined"], grabbed: ["true", "false", "undefined"],
+      haspopup: ["true", "false", "menu", "listbox", "tree", "grid", "dialog"],
+      hidden: ["true", "false", "undefined"], invalid: ["true", "false", "grammar", "spelling"],
+      live: ["off", "polite", "assertive"], modal: ["true", "false"],
+      multiline: ["true", "false"], multiselectable: ["true", "false"],
+      orientation: ["horizontal", "vertical", "undefined"], pressed: ["true", "false", "mixed", "undefined"],
+      readonly: ["true", "false"], relevant: ["additions", "removals", "text", "all", "additions text"],
+      required: ["true", "false"], selected: ["true", "false", "undefined"],
+      sort: ["ascending", "descending", "none", "other"],
+    };
+    const bad = [];
+    for (const m of src.matchAll(/\baria-([a-z]+)\s*=\s*["']([^"']*)["']/gi)) {
+      const a = m[1].toLowerCase();
+      const allowed = ENUM[a];
+      if (!allowed) continue;
+      const v = m[2].trim().toLowerCase();
+      if (!allowed.includes(v)) bad.push(`aria-${a}="${m[2]}"`);
+      if (bad.length >= 3) break;
+    }
+    if (bad.length) {
+      issues.push({
+        rule: "wcag-4.1.2",
+        message: `ARIA attribute has a value outside its vocabulary — AT ignores it: ${bad.join(", ")}`,
+      });
+    }
+  }
+
+  // WCAG 4.1.2 — roles with missing required ARIA attributes (axe's
+  // aria-required-attr). A custom widget claiming these roles without its
+  // state attributes is unusable to AT. Covers the common widget roles.
+  {
+    const REQUIRED = {
+      checkbox: ["aria-checked"], radio: ["aria-checked"], switch: ["aria-checked"],
+      slider: ["aria-valuenow"], spinbutton: ["aria-valuenow"], scrollbar: ["aria-valuenow"],
+      option: ["aria-selected"], combobox: ["aria-expanded"],
+      tab: ["aria-selected"], row: ["aria-rowindex"], rowheadercell: ["aria-sort"],
+    };
+    const seen = new Set();
+    for (const m of src.matchAll(/<(\w+)\b([^>]*\brole\s*=\s*["']([^"']*)["'][^>]*)>/gi)) {
+      const roles = m[3].toLowerCase().split(/\s+/).filter(Boolean);
+      const reqd = roles.map((r) => REQUIRED[r]).find(Boolean);
+      if (!reqd || seen.has(roles[0])) continue;
+      const missing = reqd.filter((a) => !new RegExp(`\\b${a}\\s*=`, "i").test(m[2]));
+      if (missing.length) {
+        issues.push({
+          rule: "wcag-4.1.2",
+          message: `role="${roles[0]}" is missing required ${missing.join("/")} — AT can't expose the widget's state`,
+        });
+        seen.add(roles[0]);
+        if (seen.size >= 3) break;
+      }
+    }
+  }
+
   // WCAG 4.1.2 — aria-hidden on <body> removes the entire page from the
   // accessibility tree; always a defect (it survives into the DOM this way).
   if (/<body\b[^>]*aria-hidden\s*=\s*["']true["']/i.test(src)) {
@@ -600,10 +667,17 @@ export function scanAdditionalHtml(html) {
   // messages say "verify" rather than "missing".
   for (const m of src.matchAll(/<video\b([^>]*)>([\s\S]*?)<\/video>/gi)) {
     if (/<track\b[^>]*\bkind\s*=\s*["'](?:captions|subtitles)["']/i.test(m[2])) continue;
-    issues.push({
-      rule: "wcag-1.2.1",
-      message: "<video> has no <track kind=captions> — verify captions aren't burned in; prerecorded video needs synchronized captions",
-    });
+    if (/\bmuted\b/i.test(m[1])) {
+      issues.push({
+        rule: "wcag-1.2.1",
+        message: "muted <video> has no <track kind=captions> — video-only content still needs an alternative (transcript or audio description)",
+      });
+    } else {
+      issues.push({
+        rule: "wcag-1.2.2",
+        message: "<video> has no <track kind=captions> — verify captions aren't burned in; prerecorded video with audio needs synchronized captions",
+      });
+    }
     break;
   }
   for (const m of src.matchAll(/<audio\b([^>]*)>([\s\S]*?)<\/audio>/gi)) {
@@ -701,6 +775,12 @@ export function scanAdditionalHtml(html) {
       issues.push({
         rule: "wcag-2.1.1",
         message: `scrollable region (overflow:auto/scroll) has no tabindex — keyboard users can't scroll it: ${snippet.slice(0, 60)}`,
+      });
+      // WCAG 2.1.3 (AAA — keyboard, no exception): the same mechanism is also
+      // the AAA criterion, so AAA-level consumers see the violation tagged.
+      issues.push({
+        rule: "wcag-2.1.3",
+        message: `scrollable region isn't keyboard-reachable — fails Level AAA keyboard access outright: ${snippet.slice(0, 60)}`,
       });
     };
     let scrollFlag = false;

@@ -8,7 +8,8 @@
 export const RULES = [
   // ── Perceivable ────────────────────────────────────────────────────────
   { rule: "wcag-1.1.1",  name: "Non-text Content",          level: "A",   wcag: "2.0", how: "static",    detects: "img/area/image-input/embed/svg/canvas/object missing alt, title, or fallback text" },
-  { rule: "wcag-1.2.1",  name: "Audio-only and Video-only (Prerecorded)", level: "A", wcag: "2.0", how: "rendered", detects: "<video>/<audio> elements without captions or a text alternative" },
+  { rule: "wcag-1.2.1",  name: "Audio-only and Video-only (Prerecorded)", level: "A", wcag: "2.0", how: "static",   detects: "<audio>/<video muted> without captions or a text alternative" },
+  { rule: "wcag-1.2.2",  name: "Captions (Prerecorded)",         level: "A",  wcag: "2.0", how: "static",    detects: "<video> (unmuted) without <track kind=captions>" },
   { rule: "wcag-1.2.5",  name: "Audio Description (Prerecorded)", level: "AA", wcag: "2.0", how: "static",   detects: "<video> without <track kind=descriptions> and not muted (warn-class — burned-in description satisfies it)" },
   { rule: "wcag-1.3.1",  name: "Info and Relationships",    level: "A",   wcag: "2.0", how: "static",    detects: "heading skips/no <h1>/no headings, missing <main> landmark, stray <li>/<dt>/<dd>, <fieldset> w/o <legend>, <optgroup> w/o label, tables w/o <th>, duplicate landmarks" },
   { rule: "wcag-1.3.3",  name: "Sensory Characteristics",   level: "A",   wcag: "2.0", how: "static",    detects: "instructions relying on position/shape/sound alone (e.g. 'the menu on the left')" },
@@ -27,9 +28,11 @@ export const RULES = [
   { rule: "wcag-1.4.13", name: "Content on Hover or Focus", level: "AAA", wcag: "2.1", how: "static",    detects: "title-attr/popup content with no dismiss mechanism (warn-class heuristic)" },
   // ── Operable ───────────────────────────────────────────────────────────
   { rule: "wcag-2.1.1",  name: "Keyboard",                  level: "A",   wcag: "2.0", how: "rendered",  detects: "no focusable elements, unreachable focusables, tabindex=-1 on natively focusable elements, scrollable regions not keyboard-reachable" },
+  { rule: "wcag-2.1.3",  name: "Keyboard (No Exception)",   level: "AAA", wcag: "2.0", how: "static",    detects: "scrollable region not keyboard-reachable — the same failure is an outright AAA violation" },
   { rule: "wcag-2.1.2",  name: "No Keyboard Trap",          level: "A",   wcag: "2.0", how: "rendered",  detects: "Tab-swallowing keydown handlers, undismissable dialogs, focus stall/cycle in a real 24-press Tab trace, Escape ignored inside dialogs, Shift+Tab backward stalls/cycles, click-opened dialogs with no keyboard exit" },
   { rule: "wcag-2.1.4",  name: "Character Key Shortcuts",   level: "A",   wcag: "2.1", how: "static",    detects: "accesskey attributes / single-character key handlers with no remapping or off switch" },
   { rule: "wcag-2.2.1",  name: "Timing Adjustable",         level: "A",   wcag: "2.0", how: "static",    detects: "<meta http-equiv=refresh> timed reload/redirect" },
+  { rule: "wcag-2.2.4",  name: "Interruptions",             level: "AAA", wcag: "2.0", how: "static",    detects: "any <meta http-equiv=refresh> — AAA bans timed refreshes outright" },
   { rule: "wcag-2.2.2",  name: "Pause, Stop, Hide",         level: "A",   wcag: "2.0", how: "static",    detects: "<marquee> and auto-moving content with no pause control" },
   { rule: "wcag-2.3.1",  name: "Three Flashes",             level: "A",   wcag: "2.0", how: "static",    detects: "<blink> / text-decoration:blink flashing content" },
   { rule: "wcag-2.3.3",  name: "Animation from Interactions", level: "AAA", wcag: "2.1", how: "static",   detects: "transition/animation on :hover/:focus/:active with no prefers-reduced-motion support (warn-class, inline <style> only)" },

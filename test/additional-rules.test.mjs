@@ -101,9 +101,10 @@ test("tabindex 0 and -1 are fine", () => {
 
 // --- timing/media/input-purpose statics ------------------------------------
 
-test("meta http-equiv=refresh flags wcag-2.2.1", () => {
+test("meta http-equiv=refresh flags wcag-2.2.1 + AAA wcag-2.2.4", () => {
   const out = scanAdditionalHtml('<head><meta http-equiv="refresh" content="30"></head>');
   assert.ok(rules(out).includes("wcag-2.2.1"));
+  assert.ok(rules(out).includes("wcag-2.2.4"));
 });
 
 test("no meta refresh → clean", () => {
@@ -339,10 +340,14 @@ test("non-text alternatives flag wcag-1.1.1; alternatives pass", () => {
   assert.ok(!rules(scanAdditionalHtml('<input type="image" alt="Search"><canvas>fallback text</canvas><svg role="img"><title>Chart</title></svg>')).includes("wcag-1.1.1"));
 });
 
-test("media without captions flags wcag-1.2.1; captioned passes", () => {
-  assert.ok(rules(scanAdditionalHtml('<video><source src="v.mp4"></video>')).includes("wcag-1.2.1"));
+test("media without captions flags correct criterion; captioned passes", () => {
+  // synchronized media (unmuted video) → 1.2.2; audio-only / muted video → 1.2.1
+  assert.ok(rules(scanAdditionalHtml('<video><source src="v.mp4"></video>')).includes("wcag-1.2.2"));
+  assert.ok(!rules(scanAdditionalHtml('<video><source src="v.mp4"></video>')).includes("wcag-1.2.1"));
   assert.ok(rules(scanAdditionalHtml('<audio><source src="a.mp3"></audio>')).includes("wcag-1.2.1"));
-  assert.ok(!rules(scanAdditionalHtml('<video><track kind="captions"></video>')).includes("wcag-1.2.1"));
+  assert.ok(rules(scanAdditionalHtml('<video muted><source src="v.mp4"></video>')).includes("wcag-1.2.1"));
+  const good = rules(scanAdditionalHtml('<video><track kind="captions"></video>'));
+  assert.ok(!good.includes("wcag-1.2.1") && !good.includes("wcag-1.2.2"));
 });
 
 test("autofocus flags wcag-3.2.1", () => {
@@ -355,10 +360,14 @@ test("keyboard-access gaps flag wcag-2.1.1", () => {
   assert.ok(rules(scanAdditionalHtml('<div onclick="go()">x</div>')).includes("wcag-2.1.1"));
   assert.ok(rules(scanAdditionalHtml('<a href="/x" tabindex="-1">t</a>')).includes("wcag-2.1.1"));
   assert.ok(rules(scanAdditionalHtml('<div style="overflow:auto"><pre>code</pre></div>')).includes("wcag-2.1.1"));
+  // the same scrollable failure is also an outright AAA violation (2.1.3)
+  const scroll = rules(scanAdditionalHtml('<div style="overflow:scroll"><pre>code</pre></div>'));
+  assert.ok(scroll.includes("wcag-2.1.1") && scroll.includes("wcag-2.1.3"));
   // positive cases
   assert.ok(!rules(scanAdditionalHtml('<div role="button" tabindex="0">x</div>')).includes("wcag-2.1.1"));
   assert.ok(!rules(scanAdditionalHtml('<div tabindex="0" style="overflow:auto"><pre>code</pre></div>')).includes("wcag-2.1.1"));
   assert.ok(!rules(scanAdditionalHtml('<input type="hidden" tabindex="-1">')).includes("wcag-2.1.1"));
+  assert.ok(!rules(scanAdditionalHtml('<div tabindex="0" style="overflow:scroll"><pre>code</pre></div>')).includes("wcag-2.1.3"));
 });
 
 test("link-mechanics issues flag wcag-2.4.4", () => {
@@ -494,4 +503,32 @@ test("same text to same target or query variants not flagged (2.4.9)", () => {
   assert.ok(!rules(scanAdditionalHtml('<a href="/a">Home</a> <a href="/a">Home</a>')).includes("wcag-2.4.9"));
   assert.ok(!rules(scanAdditionalHtml('<a href="/list?page=1">Next</a> <a href="/list?page=2">Next</a>')).includes("wcag-2.4.9"));
   assert.ok(!rules(scanAdditionalHtml('<a href="/a">About us</a> <a href="/b">Contact us</a>')).includes("wcag-2.4.9"));
+});
+
+// WCAG 4.1.2 — ARIA attribute values outside their vocabulary (axe
+// aria-valid-attr-value): valid names with invalid values are ignored by AT.
+test("aria attr with out-of-vocabulary value flagged (4.1.2)", () => {
+  assert.ok(rules(scanAdditionalHtml('<button aria-pressed="purple">b</button>')).includes("wcag-4.1.2"));
+  assert.ok(rules(scanAdditionalHtml('<div aria-live="yell"></div>')).includes("wcag-4.1.2"));
+  assert.ok(rules(scanAdditionalHtml('<div aria-expanded="maybe"></div>')).includes("wcag-4.1.2"));
+});
+test("valid enumerated values not flagged (4.1.2)", () => {
+  assert.ok(!rules(scanAdditionalHtml('<div aria-live="assertive"></div>')).includes("wcag-4.1.2"));
+  assert.ok(!rules(scanAdditionalHtml('<div aria-current="page"></div>')).includes("wcag-4.1.2"));
+  assert.ok(!rules(scanAdditionalHtml('<input type="checkbox" aria-checked="mixed">')).includes("wcag-4.1.2"));
+  // freeform attributes aren't vocabulary-checked
+  assert.ok(!rules(scanAdditionalHtml('<button aria-label="anything at all 123">x</button>')).includes("wcag-4.1.2"));
+});
+
+// WCAG 4.1.2 — roles missing their required ARIA attributes (axe
+// aria-required-attr): widget roles need state to be usable.
+test("widget role missing required attr flagged (4.1.2)", () => {
+  assert.ok(rules(scanAdditionalHtml('<div role="checkbox" tabindex="0"></div>')).includes("wcag-4.1.2"));
+  assert.ok(rules(scanAdditionalHtml('<div role="slider" tabindex="0"></div>')).includes("wcag-4.1.2"));
+  assert.ok(rules(scanAdditionalHtml('<div role="option">x</div>')).includes("wcag-4.1.2"));
+});
+test("widget role with required attr or no widget role not flagged (4.1.2)", () => {
+  assert.ok(!rules(scanAdditionalHtml('<div role="checkbox" aria-checked="false" tabindex="0"></div>')).includes("wcag-4.1.2"));
+  assert.ok(!rules(scanAdditionalHtml('<div role="slider" aria-valuenow="3" tabindex="0"></div>')).includes("wcag-4.1.2"));
+  assert.ok(!rules(scanAdditionalHtml('<div role="navigation"></div>')).includes("wcag-4.1.2"));
 });
