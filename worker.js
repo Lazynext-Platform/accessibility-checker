@@ -130,6 +130,11 @@ export default {
     // Discovery/static files — the branded domain is canonical, so crawlers
     // and security tools must find robots/sitemap/llms/security.txt here too.
     if (request.method === 'GET') {
+      // /favicon.ico is the default-probe path browsers/crawlers hit when no
+      // <link rel="icon"> is honored — redirect to the real SVG icon.
+      if (url.pathname === '/favicon.ico') {
+        return Response.redirect(`${url.origin}/favicon.svg`, 301);
+      }
       const sf = STATIC_FILES[url.pathname];
       if (sf) {
         // Binary entries embed as base64 (b64:true) — decode to bytes.
