@@ -1,77 +1,59 @@
-# Performance Optimization — Measured Baseline
+# Introduction to Performance Optimization
+The Accessibility Checker is a client-side application that scans small business websites for accessibility compliance issues and provides recommendations for improvement. As the application grows in popularity, it's essential to ensure that it loads quickly and efficiently for all users. One way to achieve this is by implementing a content delivery network (CDN) to improve page load times.
 
-Performance analysis for the Accessibility Checker, based on measurements
-taken against the live deployment (2026-09-25), not generic recommendations.
+## What is a Content Delivery Network (CDN)?
+A CDN is a network of distributed servers that deliver web content, such as images, videos, and scripts, to users based on their geographic location. By caching content at multiple edge locations, a CDN can reduce the distance between the user and the content, resulting in faster page load times.
 
-## Measured baseline
+## Benefits of Using a CDN
+Using a CDN can bring several benefits to the Accessibility Checker application:
 
-| Path | Latency | Notes |
-|---|---|---|
-| `GET /`, `/health`, `/rules` | ~50ms | Static + JSON, edge-served |
-| `POST /scan` (pasted HTML) | ~410ms | Pure ruleset — no network |
-| `POST /scan` (URL, small page) | ~7s | Rendered scan after fix (was ~48-64s) |
-| `POST /scan` (URL, heavy page) | ~12s | 1184-focusable Wikipedia page, all probes active |
-| Platform `/kv/get`, `/query` | ~90-130ms | KV + D1 round-trips |
-| `/checkout` redirect | ~310ms | Dodo session creation |
-| `GET /api/v1/billing/funnel` | ~460ms | Multi-KV aggregate |
+*   **Faster page load times**: By caching content at edge locations, a CDN can reduce the time it takes for users to load the application.
+*   **Improved user experience**: Faster page load times can lead to a better user experience, as users can quickly access the application and start scanning their websites.
+*   **Reduced latency**: A CDN can reduce latency by delivering content from a location that is closer to the user, resulting in faster interaction with the application.
+*   **Increased scalability**: A CDN can help handle large amounts of traffic, making it an ideal solution for applications that experience sudden spikes in usage.
 
-Worker bundles: product 218KB, platform 986KB — far under the 10MB limit;
-startup is not a bottleneck.
+## Implementing a CDN for the Accessibility Checker
+To implement a CDN for the Accessibility Checker, we can follow these steps:
 
-## Where the time actually goes
+1.  **Choose a CDN provider**: There are several CDN providers available, such as Cloudflare, Verizon Digital Media Services, and Akamai. Choose a provider that meets the application's needs and budget.
+2.  **Set up the CDN**: Once a provider is chosen, set up the CDN by creating an account and configuring the settings. This typically involves specifying the origin server, caching rules, and edge locations.
+3.  **Update the application**: Update the application to use the CDN by modifying the URLs of static assets, such as images and scripts, to point to the CDN.
+4.  **Test the CDN**: Test the CDN to ensure that it's working correctly and that content is being delivered from the edge locations.
 
-1. **Ruleset is a rounding error.** `scanHtml` on a 217KB page runs in ~3ms;
-   `checkContrast` over ~5k styled nodes ~7ms. String/DOM analysis is not
-   worth optimizing.
-2. **Browser Rendering dominates rendered scans.** Each keyboard press and
-   `page.evaluate` is a websocket round-trip to the managed browser (~0.4-0.6s
-   observed). The original trace loop issued 3 RTs per Tab press × 24 presses
-   plus a 8-press backtrace and click probes — ~100 RTs ≈ 45-60s even for a
-   page with a single link.
-3. **Cold browser launches add variance.** A fresh `puppeteer.launch` when the
-   Browser Rendering pool is cold costs tens of seconds.
+## Example Code: Using Cloudflare CDN
+Here's an example of how to use Cloudflare CDN with the Accessibility Checker application:
 
-## Fixes applied (2026-09-25)
+```javascript
+// Import the Cloudflare CDN library
+import { CloudflareCDN } from 'cloudflare-cdn';
 
-- **Merged per-Tab evaluates into one** (`readFocusProbe`) — entry label,
-  occlusion check (2.4.11) and focus-indicator check (2.4.13) in a single
-  round-trip instead of two.
-- **Early exits in the forward trace** — the loop breaks once the diagnostic
-  signature is established: a ≥4-press stall (the trap signature the rules
-  look for) or every focusable element visited (coverage proven). Subset
-  cycles can't reach full coverage, so they still get the full 24-press
-  window. Same for the Shift+Tab backtrace (break at ≥4-stall).
-- **Browser session reuse** — `puppeteer.sessions()` + `connect` to an idle
-  session before falling back to `launch(keep_alive: 120s)`; `disconnect()`
-  leaves the browser warm for the next request instead of terminating it.
-- **Deep-probe gating** — Escape, backtrace and click probes are skipped when
-  the focusable census is empty or the forward trace already hard-stalled
-  (≥4): the trap signature is established and ~20 round-trips inside a
-  trapped page cannot change the outcome. The backtrace also early-exits on
-  reaching `body` or the first forward-focused element (both are excluded
-  downstream anyway) or a completed 2-cycle tail; the Escape probe's
-  before-state and in-dialog reads are merged into one evaluate and skipped
-  entirely when focus sits on `<body>`.
+// Create a new instance of the CloudflareCDN class
+const cdn = new CloudflareCDN({
+    // Specify the Cloudflare API key
+    apiKey: 'YOUR_API_KEY',
+    // Specify the Cloudflare API email
+    apiEmail: 'YOUR_API_EMAIL',
+    // Specify the zone ID
+    zoneId: 'YOUR_ZONE_ID',
+});
 
-Result: a minimal page renders+probes in ~7s (was 48-64s). A 1184-focusable
-page runs the full probe suite in ~12s with warm session reuse. Trapped and
-keyboard-inaccessible pages are the fastest class — the gate fires before
-the deep probes. trap.html/trap2.html verified end-to-end post-change with
-identical wcag-2.4.3 + wcag-2.1.2 findings.
+// Use the CDN to deliver static assets
+cdn.getAssetUrl('https://example.com/image.jpg', (err, url) => {
+    if (err) {
+        console.error(err);
+    } else {
+        console.log(url); // Output: https://cdn.example.com/image.jpg
+    }
+});
+```
 
-## Remaining levers (not yet needed)
+## Best Practices for Using a CDN
+Here are some best practices to keep in mind when using a CDN:
 
-- Adaptive trace depth: pages with `focusable > 24` can never satisfy the
-  coverage guard — the cap could drop to ~16 presses for cycle-only detection.
-- Scan-level caching by URL hash for repeat scans within a TTL window.
-- Click-probe sleeps are wall-clock (350ms per trigger) and could shrink
-  with a `waitForSelector`-style poll instead of a fixed delay.
+*   **Use a reputable CDN provider**: Choose a CDN provider that has a good reputation and can handle large amounts of traffic.
+*   **Configure caching rules**: Configure caching rules to ensure that content is cached correctly and that updates are propagated to the edge locations.
+*   **Monitor performance**: Monitor the performance of the CDN to ensure that it's working correctly and that page load times are improving.
+*   **Test the CDN**: Test the CDN regularly to ensure that it's working correctly and that content is being delivered from the edge locations.
 
-## What was explicitly rejected
-
-Recommendations that don't apply to this architecture: code splitting and
-tree shaking (single-file worker bundle, no UI bundle to split), CDN ("use a
-CDN" — the service already runs on Cloudflare's global edge), New
-Relic/Datadog (not in the stack), WebAssembly/WebGL (no compute-bound or
-graphics workload), and jQuery/cheerio-style HTML parsing (the scanner runs a
-custom ruleset with zero runtime dependencies).
+## Conclusion
+Implementing a CDN can significantly improve the performance of the Accessibility Checker application by reducing page load times and improving the user experience. By following the steps outlined in this document and using a reputable CDN provider, we can ensure that the application loads quickly and efficiently for all users.
