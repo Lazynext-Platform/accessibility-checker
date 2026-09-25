@@ -29,8 +29,10 @@ run on every scan path — pasted HTML, fetched pages, and every crawled page:
   markup; 2.4.1 skip-nav; 2.4.2 title; 2.4.3 positive tabindex;
   2.4.4 link purpose (javascript:/dead/dangling links); 2.4.5 multiple ways;
   2.4.6 headings/labels; 2.4.7 focus outline suppression (inline + stylesheet);
+  2.3.3 interactive animation without prefers-reduced-motion (warn-class);
   2.5.1 pointer gestures; 2.5.2 down-event actions; 2.5.3 label-in-name;
   2.5.4 motion actuation; 3.1.1 missing lang; 3.1.2 language of parts;
+  3.1.4 abbreviations without expansion (title/aria-label);
   3.2.1 onfocus/onchange navigation; 3.2.2 auto-submit select jump-menus;
   3.3.2 unlabeled inputs; 3.3.7 redundant entry; 3.3.8 accessible
   authentication; 4.1.1 duplicate ids; 4.1.2 name/role/value (invalid aria
@@ -47,7 +49,9 @@ Escape probe):
   2.1.2 keyboard traps — dynamic (focus stall, tail cycles, dialogs that
   ignore Escape — verified live against `test/trap.html` / `/trap.html`);
   2.4.3 focus coverage gaps; 2.4.11 focus-not-obscured; 2.4.13 focus
-  appearance; 2.5.7 dragging; 2.5.8 target size.
+  appearance; 2.5.7 dragging; 2.5.8 target size (AA 24px); 2.5.5 enhanced
+  target size (AAA 44px — the 24–43px band reported separately from AA
+  failures).
 
 **Cross-page checks** (`site:true` scans, `src/rules/crosspage.js`):
 
@@ -65,9 +69,10 @@ frontier, grouped by why they're hard:
   1.4.7 low background audio. A `track kind="descriptions"` presence check is
   feasible but only proves the track exists, not that it describes anything.
 * **AAA-level criteria** — 1.4.9, 2.1.3, 2.2.3–2.2.5, 2.4.8, 2.4.9, 2.4.12,
-  2.5.5, 3.1.3/3.1.4/3.1.6, 3.3.3/3.3.4/3.3.6/3.3.9. Several are partially
-  covered by shipped AA rules (2.5.8 ⊂ 2.5.5, 3.3.8 ⊂ 3.3.9,
-  2.4.11 ⊂ 2.4.12/13); the full AAA forms need deeper analysis.
+  3.1.3/3.1.6, 3.3.3/3.3.4/3.3.6/3.3.9. Several are partially
+  covered by shipped AA rules (3.3.8 ⊂ 3.3.9, 2.4.11 ⊂ 2.4.12/13);
+  2.5.5 and 3.1.4 now ship as bounded versions (the 24–43px band and
+  `<abbr>`-expansion respectively); the full AAA forms need deeper analysis.
 * **Judgment-required** — error suggestion quality (3.3.3), error prevention
   (3.3.4/3.3.6), meaningful sequence under unusual layouts, cognitive
   accessibility. Static analysis can flag absence of patterns, not quality.
