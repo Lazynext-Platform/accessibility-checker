@@ -63,7 +63,13 @@ async function kvGet(env, key) {
 }
 
 async function kvPut(env, key, value, ttl) {
-  await platform(env, '/kv/put', { method: 'POST', body: JSON.stringify({ key, value, ttl }) });
+  const r = await platform(env, '/kv/put', { method: 'POST', body: JSON.stringify({ key, value, ttl }) });
+  if (!r.ok) throw new Error(`kv put failed: ${r.status}`);
+}
+
+async function kvDel(env, key) {
+  const r = await platform(env, '/kv/delete', { method: 'POST', body: JSON.stringify({ key }) });
+  if (!r.ok) throw new Error(`kv delete failed: ${r.status}`);
 }
 
 async function isPro(env, license) {
@@ -81,7 +87,7 @@ async function requestConfirm(env, origin, email, action, extra = {}) {
   await kvPut(env, `pending:${token}`, JSON.stringify({ action, email: String(email).toLowerCase(), ...extra }), 900);
   const link = `${origin}/confirm?token=${token}`;
   const label = { cancel: `cancel the Pro subscription for ${email}`, monitor_add: `start daily monitoring for ${extra.url}`, monitor_del: `stop monitoring ${extra.url}` }[action];
-  await platform(env, '/email/send', {
+  const r = await platform(env, '/email/send', {
     method: 'POST',
     body: JSON.stringify({
       to: email,
@@ -89,6 +95,9 @@ async function requestConfirm(env, origin, email, action, extra = {}) {
       html: `<p>Someone (hopefully you) asked to ${esc(label)}.</p><p><a href="${link}">${link}</a></p><p>This link expires in 15 minutes. If this wasn't you, ignore this email.</p>`,
     }),
   });
+  // A 200 here tells the caller "check your email" — if Brevo/platform rejected
+  // the send that's a lie; surface it as a 502 via the caller's catch.
+  if (!r.ok) throw new Error(`confirmation email failed: ${r.status}`);
 }
 
 function confirmPage(title, inner) {
@@ -154,7 +163,7 @@ export default {
       const rlKey = `rl:lead:${ip}:${day}`;
       const used = parseInt((await kvGet(env, rlKey)) ?? '0', 10);
       if (used >= 10) return respond({ error: 'rate limit — try again later' }, 429);
-      await kvPut(env, rlKey, String(used + 1), 90000);
+      await kvPut(env, rlKey, String(used + 1), 90000).catch(() => {});
       const r = await platform(env, '/leads', { method: 'POST', body: JSON.stringify({ email: b.email, source: 'accessibility-checker' }) });
       const d = await r.json().catch(() => ({}));
       return respond({ ok: r.ok, ...(r.ok ? {} : { detail: d }) }, r.ok ? 200 : 502);
@@ -238,7 +247,11 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
       const b = await request.json().catch(() => ({}));
       if (!isEmail(b.license)) return respond({ error: 'purchase email required' }, 400);
       if (!(await isPro(env, b.license))) return respond({ error: 'no active Pro license for that email' }, 404);
-      await requestConfirm(env, url.origin, b.license, 'cancel');
+      try {
+        await requestConfirm(env, url.origin, b.license, 'cancel');
+      } catch {
+        return respond({ error: 'could not create confirmation — try again shortly' }, 502);
+      }
       return respond({ ok: true, confirm: 'email' });
     }
 
@@ -248,19 +261,29 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
       const raw = isToken(token) ? await kvGet(env, `pending:${token}`) : null;
       const pend = raw ? JSON.parse(raw) : null;
       if (!pend) return confirmPage('Link expired', '<p>This confirmation link is invalid or has expired.</p>');
-      await platform(env, '/kv/delete', { method: 'POST', body: JSON.stringify({ key: `pending:${token}` }) });
 
       if (pend.action === 'cancel') {
         const r = await platform(env, '/api/v1/billing/cancel', { method: 'POST', body: JSON.stringify({ email: pend.email }) });
         if (!r.ok) return confirmPage('Cancellation failed', '<p>Something went wrong on our side — please try again or reply to your receipt email.</p>');
+        await kvDel(env, `pending:${token}`).catch(() => {});
         return confirmPage('Subscription cancelled', `<p>The Pro subscription for <b>${esc(pend.email)}</b> has been cancelled. Your license stays active until the end of the current billing period.</p>`);
       }
       if (pend.action === 'monitor_add') {
-        await kvPut(env, monitorKey(pend.email, pend.url), JSON.stringify(buildMonitorRecord({ email: pend.email, url: pend.url })), 0);
+        try {
+          await kvPut(env, monitorKey(pend.email, pend.url), JSON.stringify(buildMonitorRecord({ email: pend.email, url: pend.url })), 0);
+        } catch {
+          return confirmPage('Monitoring setup failed', '<p>Something went wrong on our side — please try the confirmation link again or request a new one.</p>');
+        }
+        await kvDel(env, `pending:${token}`).catch(() => {});
         return confirmPage('Monitoring on', `<p><b>${esc(pend.url)}</b> will be rescanned daily — we email <b>${esc(pend.email)}</b> if the score drops.</p>`);
       }
       if (pend.action === 'monitor_del') {
-        await platform(env, '/kv/delete', { method: 'POST', body: JSON.stringify({ key: monitorKey(pend.email, pend.url) }) });
+        try {
+          await kvDel(env, monitorKey(pend.email, pend.url));
+        } catch {
+          return confirmPage('Could not stop monitoring', '<p>Something went wrong on our side — please try the confirmation link again or request a new one.</p>');
+        }
+        await kvDel(env, `pending:${token}`).catch(() => {});
         return confirmPage('Monitoring stopped', `<p><b>${esc(pend.url)}</b> is no longer being monitored.</p>`);
       }
       return confirmPage('Link expired', '<p>This confirmation link is invalid or has expired.</p>');
@@ -280,7 +303,7 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
         if (used >= FREE_LIMIT) {
           return respond({ error: 'free limit reached (3/day)', upgrade: '/checkout' }, 402);
         }
-        await kvPut(env, rlKey, String(used + 1), 90000);
+        await kvPut(env, rlKey, String(used + 1), 90000).catch(() => {});
       }
 
       let issues = [];
@@ -338,17 +361,23 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
       issues = withRecommendations(issues);
       const result = { score: sitePages ? Math.round(sitePages.reduce((t, p) => t + p.score, 0) / sitePages.length) : score(issues), issues, rendered, plan: pro ? 'pro' : 'free', section508: section508Report(issues), ...(renderError ? { render_error: renderError } : {}), ...(sitePages ? { site: true, pages: sitePages.map(({ url, score: s, issues: i }) => ({ url, score: s, count: i.length })) } : {}) };
 
-      // Persist a shareable report (30d) and optionally email it for Pro.
+      // Persist a shareable report (30d) and optionally email it for Pro. If the
+      // platform KV write fails, still return the scan — just without a report
+      // URL (a link that 404s is worse than no link).
       const id = crypto.randomUUID().slice(0, 12);
-      await kvPut(env, `report:${id}`, JSON.stringify({ ...result, url: body.url ?? null, ts: Date.now() }), 2592000);
-      result.report = `${url.origin}/report/${id}`;
+      try {
+        await kvPut(env, `report:${id}`, JSON.stringify({ ...result, url: body.url ?? null, ts: Date.now() }), 2592000);
+        result.report = `${url.origin}/report/${id}`;
+      } catch {
+        result.report_error = 'report persistence unavailable';
+      }
       if (pro && body.email_report) {
         await platform(env, '/email/send', {
           method: 'POST',
           body: JSON.stringify({
             to: body.license,
             subject: `Accessibility report: ${String(body.url ?? 'pasted HTML').slice(0, 120)} — score ${result.score}/100`,
-            html: `<p>Score: <b>${result.score}/100</b> (${result.issues.length} issues, rendered: ${rendered})</p><p>Full report: <a href="${result.report}">${result.report}</a></p>`,
+            html: `<p>Score: <b>${result.score}/100</b> (${result.issues.length} issues, rendered: ${rendered})</p>${result.report ? `<p>Full report: <a href="${result.report}">${result.report}</a></p>` : '<p>Shareable report link is temporarily unavailable — re-run the scan to generate one.</p>'}`,
           }),
         });
       }
@@ -365,20 +394,29 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
       const b = await request.json().catch(() => ({}));
       if (!(await isPro(env, b.license))) return respond({ error: 'pro license required', upgrade: '/checkout' }, 402);
       if (!isHttpUrl(b.url)) return respond({ error: 'provide {"url"}' }, 400);
-      await requestConfirm(env, url.origin, b.license, 'monitor_add', { url: b.url });
+      try {
+        await requestConfirm(env, url.origin, b.license, 'monitor_add', { url: b.url });
+      } catch {
+        return respond({ error: 'could not create confirmation — try again shortly' }, 502);
+      }
       return respond({ ok: true, confirm: 'email' });
     }
     if (url.pathname === '/monitor' && request.method === 'DELETE') {
       const b = await request.json().catch(() => ({}));
       if (!(await isPro(env, b.license))) return respond({ error: 'pro license required' }, 402);
       if (!b.url) return respond({ error: 'provide {"url"}' }, 400);
-      await requestConfirm(env, url.origin, b.license, 'monitor_del', { url: b.url });
+      try {
+        await requestConfirm(env, url.origin, b.license, 'monitor_del', { url: b.url });
+      } catch {
+        return respond({ error: 'could not create confirmation — try again shortly' }, 502);
+      }
       return respond({ ok: true, confirm: 'email' });
     }
     if (url.pathname === '/monitor' && request.method === 'GET') {
       const license = url.searchParams.get('license');
       if (!(await isPro(env, license))) return respond({ error: 'pro license required' }, 402);
       const r = await platform(env, '/kv/list', { method: 'POST', body: JSON.stringify({ prefix: `mon:${String(license).toLowerCase()}:` }) });
+      if (!r.ok) return respond({ error: 'monitor list unavailable — try again shortly' }, 502);
       const { keys = [] } = await r.json().catch(() => ({}));
       const monitors = [];
       for (const k of keys) {

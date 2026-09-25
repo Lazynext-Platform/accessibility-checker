@@ -148,3 +148,66 @@ test('POST /cancel 404s for a well-formed but non-Pro email', async () => {
   const r = await post('/cancel', { license: 'nobody@x.test' });
   assert.equal(r.status, 404);
 });
+
+// ── Platform KV write failures ────────────────────────────────────────────
+// Regression for the deploy incident: PLATFORM_TOKEN was wiped and kvPut
+// swallowed the 4xx — scans returned report URLs that 404'd. Writes now throw;
+// each call site chooses propagate (confirm/monitor → honest error) or degrade
+// (scan findings still return minus the share URL; rate counters fail open).
+
+const KV_DOWN = { '/kv/put': async () => new Response('boom', { status: 500 }) };
+
+test('POST /scan returns findings but no report URL when persistence fails', async () => {
+  const r = await post('/scan', { html: '<img src=a>' }, {}, mockEnv({}, KV_DOWN));
+  const d = await r.json();
+  assert.equal(r.status, 200);
+  assert.ok(Array.isArray(d.issues));
+  assert.equal(d.report, undefined);
+  assert.match(d.report_error, /persistence/);
+});
+
+test('free URL scan survives failed rate-limit and report writes', async () => {
+  const env = mockEnv({}, {
+    ...KV_DOWN,
+    '/render': async () => Response.json({ html: '<html><body><h1>x</h1></body></html>', styles: [], facts: {}, focus: [], focusable: 1 }),
+  });
+  const r = await post('/scan', { url: 'https://x.test' }, {}, env);
+  const d = await r.json();
+  assert.equal(r.status, 200);
+  assert.equal(d.report, undefined);
+  assert.ok(d.report_error);
+});
+
+test('POST /cancel 502s when the pending-token write fails', async () => {
+  const r = await post('/cancel', { license: 'pro@x.test' }, {}, mockEnv({ 'license:pro@x.test': 'pro' }, KV_DOWN));
+  assert.equal(r.status, 502);
+});
+
+test('POST /cancel 502s when the confirmation email fails', async () => {
+  const env = mockEnv({ 'license:pro@x.test': 'pro' }, { '/email/send': async () => new Response('boom', { status: 500 }) });
+  const r = await post('/cancel', { license: 'pro@x.test' }, {}, env);
+  assert.equal(r.status, 502);
+});
+
+test('GET /confirm monitor_add shows a failure page when the monitor write fails', async () => {
+  const token = '11111111-1111-1111-1111-111111111111';
+  const env = mockEnv({ [`pending:${token}`]: JSON.stringify({ action: 'monitor_add', email: 'pro@x.test', url: 'https://x.test' }) }, KV_DOWN);
+  const r = await get(`/confirm?token=${token}`, {}, env);
+  assert.match(await r.text(), /Monitoring setup failed/);
+});
+
+test('GET /confirm monitor_del shows a failure page when the monitor delete fails', async () => {
+  const token = '22222222-2222-2222-2222-222222222222';
+  const env = mockEnv(
+    { [`pending:${token}`]: JSON.stringify({ action: 'monitor_del', email: 'pro@x.test', url: 'https://x.test' }) },
+    { '/kv/delete': async () => new Response('boom', { status: 500 }) },
+  );
+  const r = await get(`/confirm?token=${token}`, {}, env);
+  assert.match(await r.text(), /Could not stop monitoring/);
+});
+
+test('GET /monitor 502s when the monitor list read fails', async () => {
+  const env = mockEnv({ 'license:pro@x.test': 'pro' }, { '/kv/list': async () => new Response('boom', { status: 500 }) });
+  const r = await get('/monitor?license=pro@x.test', {}, env);
+  assert.equal(r.status, 502);
+});

@@ -204,6 +204,20 @@ test('POST /scan rejects oversized and missing payloads', async () => {
   assert.equal((await post('/scan', { html: 'x'.repeat(513_000) })).status, 413);
 });
 
+test('POST /scan persists a report that GET /report/:id serves back', async () => {
+  const kv = {};
+  const env = mockEnv(kv, {
+    '/kv/put': async (req) => { const b = await req.json(); kv[b.key] = b.value; return Response.json({ ok: true }); },
+  });
+  const scan = await post('/scan', { html: '<html lang="en"><head><title>t</title></head><body><h1>hi</h1></body></html>' }, {}, env);
+  const d = await scan.json();
+  assert.ok(d.report);
+  const rep = await get(new URL(d.report).pathname, {}, env);
+  assert.equal(rep.status, 200);
+  assert.match(rep.headers.get('content-type') ?? '', /text\/html/);
+  assert.match(await rep.text(), /Accessibility report/);
+});
+
 test('POST /monitor requires a Pro license', async () => {
   assert.equal((await post('/monitor', { license: 'free@x.com', url: 'https://x.com' })).status, 402);
 });
