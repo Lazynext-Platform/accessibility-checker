@@ -5,7 +5,6 @@
 // Env required:
 //   CLOUDFLARE_DEPLOY_TOKEN — Cloudflare REST token (Workers Scripts Edit)
 //   CLOUDFLARE_ACCOUNT_ID   — account id
-//   CLOUDFLARE_API_TOKEN    — platform worker bearer; becomes PLATFORM_TOKEN
 //
 // Deploys to BOTH script names — `accessibility-checker` (called by the Pages
 // UI) and `accessibility-checker-api` (legacy mirror). Deploy one and not the
@@ -14,15 +13,16 @@
 // Two upload traps this script is written around (both hit before):
 //   - omitting `bindings` from metadata silently drops them at runtime —
 //     the settings API still lists them but env.PLATFORM is undefined (1101)
-//   - secret_text bindings need `text` in the re-sent metadata or the upload
-//     fails with error 10021
+//   - secret_text nuance (verified live): listing one WITHOUT `text` fails
+//     10021, but OMITTING it entirely keeps the existing value — so this
+//     script omits PLATFORM_TOKEN rather than risk writing a stale token
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const { CLOUDFLARE_DEPLOY_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN } = process.env;
-for (const [k, v] of Object.entries({ CLOUDFLARE_DEPLOY_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN })) {
+const { CLOUDFLARE_DEPLOY_TOKEN, CLOUDFLARE_ACCOUNT_ID } = process.env;
+for (const [k, v] of Object.entries({ CLOUDFLARE_DEPLOY_TOKEN, CLOUDFLARE_ACCOUNT_ID })) {
   if (!v) { console.error(`missing env: ${k}`); process.exit(1); }
 }
 
@@ -38,7 +38,8 @@ const metadata = {
   compatibility_date: '2024-09-01',
   bindings: [
     { name: 'PLATFORM', type: 'service', service: 'ai-company-os', environment: 'production' },
-    { name: 'PLATFORM_TOKEN', type: 'secret_text', text: CLOUDFLARE_API_TOKEN },
+    // PLATFORM_TOKEN secret intentionally absent — omitted secrets keep their
+    // existing value; a stale CLOUDFLARE_API_TOKEN here would poison it.
   ],
 };
 
