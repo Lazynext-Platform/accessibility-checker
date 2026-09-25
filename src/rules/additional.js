@@ -207,6 +207,24 @@ export function scanAdditionalHtml(html) {
         message: `image appears to present text — use real text instead of an image of text: alt="${alt.slice(0, 60)}"`,
       });
     }
+    // WCAG 1.1.1 — an alt that just echoes the image filename ("IMG_2045.jpg",
+    // "logo.png") isn't a text alternative; it conveys nothing to AT. Flag alt
+    // values that literally carry an image extension or exactly equal the src
+    // basename (extension stripped). Requires alt= present — the missing-alt
+    // case already reports from scanner.js.
+    const trimmedAlt = alt.trim();
+    if (trimmedAlt) {
+      const srcFile = m[0].match(/\bsrc\s*=\s*["']([^"']+?)["']/i)?.[1]
+        ?.split("?")[0].split("/").pop() ?? "";
+      const base = srcFile.replace(/\.[^.]+$/, "").toLowerCase();
+      if (/\.(?:jpe?g|png|gif|webp|avif|bmp|tiff?|svg)$/i.test(trimmedAlt) ||
+          (base && trimmedAlt.replace(/\.[^.]+$/, "").toLowerCase() === base)) {
+        issues.push({
+          rule: "wcag-1.1.1",
+          message: `<img> alt text is just the filename — write a real description: alt="${trimmedAlt.slice(0, 60)}"`,
+        });
+      }
+    }
   }
 
   // WCAG 2.4.5 (AA) — Multiple Ways: a content page should offer more than
@@ -459,6 +477,20 @@ export function scanAdditionalHtml(html) {
       rule: "wcag-4.1.2",
       message: "<body aria-hidden=true> hides the whole page from assistive technology",
     });
+  }
+
+  // WCAG 4.1.2 — aria-label/aria-labelledby on <div>/<span>/<p> without a
+  // naming-capable role is dropped by AT (the generic role is name-prohibited
+  // and <p> maps to paragraph, also name-prohibited). A role attribute that
+  // supports naming (button, navigation, …) legitimates it, so only flag the
+  // role-less / generic cases.
+  for (const m of src.matchAll(/<(div|span|p)\b([^>]*aria-label(?:ledby)?\s*=\s*["'][^"']+["'][^>]*)>/gi)) {
+    if (/\brole\s*=\s*["'](?!generic["']|none["']|presentation["'])[^"']+["']/i.test(m[2])) continue;
+    issues.push({
+      rule: "wcag-4.1.2",
+      message: `<${m[1].toLowerCase()}> has aria-label but no naming-capable role — assistive tech ignores the label: ${m[0].slice(0, 80)}`,
+    });
+    break;
   }
 
   // WCAG 1.3.1 — landmark regions of the same type must be distinguishable:

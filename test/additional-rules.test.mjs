@@ -450,3 +450,27 @@ test("interactive animation without prefers-reduced-motion flags wcag-2.3.3 (AAA
   // reduced-motion support present
   assert.ok(!rules(scanAdditionalHtml("<style>a:hover { animation: spin 1s; } @media (prefers-reduced-motion) { a:hover { animation: none; } }</style>")).includes("wcag-2.3.3"));
 });
+
+test("alt text that echoes the filename flags wcag-1.1.1; real alts pass", () => {
+  // literal image extension in the alt
+  assert.ok(rules(scanAdditionalHtml('<img src="/assets/team.jpg" alt="IMG_2045.jpg">')).includes("wcag-1.1.1"));
+  // alt equal to src basename (extension stripped)
+  assert.ok(rules(scanAdditionalHtml('<img src="/assets/hero-banner.png" alt="hero-banner">')).includes("wcag-1.1.1"));
+  // different basename, no extension — a real (if terse) description
+  assert.ok(!rules(scanAdditionalHtml('<img src="/assets/hero-banner.png" alt="Launch day keynote">')).includes("wcag-1.1.1"));
+  // no alt at all is handled by the missing-alt rule, not this one
+  const out = scanAdditionalHtml('<img src="/assets/a.png">');
+  assert.ok(!out.some((i) => i.rule === "wcag-1.1.1" && i.message.includes("filename")));
+});
+
+test("aria-label on generic elements flags wcag-4.1.2; naming roles pass", () => {
+  assert.ok(rules(scanAdditionalHtml('<div aria-label="Menu">x</div>')).includes("wcag-4.1.2"));
+  assert.ok(rules(scanAdditionalHtml('<span aria-label="star rating">★</span>')).includes("wcag-4.1.2"));
+  assert.ok(rules(scanAdditionalHtml('<p aria-label="Summary">text</p>')).includes("wcag-4.1.2"));
+  // naming-capable roles legitimize the label
+  assert.ok(!rules(scanAdditionalHtml('<div role="button" aria-label="Close">x</div>')).includes("wcag-4.1.2"));
+  assert.ok(!rules(scanAdditionalHtml('<span role="img" aria-label="Warning">⚠</span>')).includes("wcag-4.1.2"));
+  assert.ok(!rules(scanAdditionalHtml('<div aria-label="Menu" role="navigation">x</div>')).includes("wcag-4.1.2"));
+  // no label — nothing to check
+  assert.ok(!rules(scanAdditionalHtml("<div>x</div>")).includes("wcag-4.1.2"));
+});
