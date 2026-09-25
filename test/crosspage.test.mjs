@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkCrossPages } from '../src/rules/crosspage.js';
 
-const nav = (links) => `<nav>${links.map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</nav>`;
+const nav = (links) => `<nav>${links.map(([h, t], i) => `<a href="${h}"${i === 0 ? ' aria-current="page"' : ''}>${t}</a>`).join('')}</nav>`;
 
 test('consistent nav across pages → no issues', () => {
   const n = nav([['/a', 'A'], ['/b', 'B']]);
@@ -109,6 +109,53 @@ test('role=navigation works without <nav>', () => {
     { url: '/3', html: navHtml([['/b', 'B'], ['/a', 'A']]) },
   ]);
   assert.equal(issues.filter((i) => i.rule === 'wcag-3.2.3').length, 1);
+});
+
+test('site with no wayfinding anywhere → one wcag-2.4.8 finding, not per-page spam', () => {
+  const nav = '<nav><a href="/a">A</a><a href="/b">B</a></nav>';
+  const issues = checkCrossPages([
+    { url: '/1', html: nav },
+    { url: '/2', html: nav },
+  ]);
+  const hits = issues.filter((i) => i.rule === 'wcag-2.4.8');
+  assert.equal(hits.length, 1);
+  assert.match(hits[0].message, /none of the 2 pages/);
+});
+
+test('inconsistent wayfinding → per-page wcag-2.4.8 on the gap page', () => {
+  const nav = '<nav><a href="/a">A</a></nav>';
+  const issues = checkCrossPages([
+    { url: '/1', html: nav + '<ol class="breadcrumb"><li>Home</li></ol>' },
+    { url: '/2', html: nav + '<ol class="breadcrumb"><li>Page</li></ol>' },
+    { url: '/3', html: nav },
+  ]);
+  const hits = issues.filter((i) => i.rule === 'wcag-2.4.8');
+  assert.equal(hits.length, 1);
+  assert.equal(hits[0].url, '/3');
+});
+
+test('breadcrumb / aria-current / sitemap each satisfy wcag-2.4.8', () => {
+  const nav = '<nav><a href="/a">A</a></nav>';
+  for (const marker of [
+    '<ol class="breadcrumb"><li>Home</li></ol>',
+    '<a href="/a" aria-current="page">A</a>',
+    '<a href="/sitemap">Sitemap</a>',
+    '"@type":"BreadcrumbList"',
+  ]) {
+    const issues = checkCrossPages([
+      { url: '/1', html: nav + marker },
+      { url: '/2', html: nav + marker },
+    ]);
+    assert.equal(issues.filter((i) => i.rule === 'wcag-2.4.8').length, 0, marker);
+  }
+});
+
+test('pages without any nav are exempt from wcag-2.4.8', () => {
+  const issues = checkCrossPages([
+    { url: '/1', html: '<p>standalone tool page</p>' },
+    { url: '/2', html: '<p>another</p>' },
+  ]);
+  assert.equal(issues.filter((i) => i.rule === 'wcag-2.4.8').length, 0);
 });
 
 test('empty/garbage input → no crash, no issues', () => {

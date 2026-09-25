@@ -139,6 +139,18 @@ export function checkFocusDepth(trace, focusable, escape, rendered = {}) {
     });
   }
 
+  // WCAG 2.4.12 (2.2 AAA) — Focus Not Obscured (Enhanced): any coverage
+  // fails, not just total occlusion. The render probe samples the four
+  // corners as well as the centre; centre-free/corner-covered elements land
+  // here (fully covered ones are already owned by 2.4.11, no double-count).
+  const obscP = [...new Set(rendered.obscuredPartial ?? [])];
+  if (obscP.length > 0) {
+    issues.push({
+      rule: 'wcag-2.4.12',
+      message: `Tab focus landed on element(s) partially covered by other content: ${obscP.slice(0, 3).join(', ')}`,
+    });
+  }
+
   // WCAG 2.4.13 (2.2 AAA) — Focus Appearance: a focused element with no
   // outline and no box-shadow gives keyboard users no visible indicator.
   // (Warn-class: background/border swaps can't be detected without a

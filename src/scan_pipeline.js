@@ -86,7 +86,7 @@ export async function runScan(env, kv, { url, html, site, license, email_report,
         .concat(checkUseOfColor(page.styles))
         .concat(checkFacts(page.facts))
         .concat(checkFocus(page.focus))
-        .concat(checkFocusDepth(page.focus, page.focusable, page.escape, { undersized: page.undersized, undersizedAAA: page.undersizedAAA, obscured: page.obscured, noFocusInd: page.noFocusInd, nontextContrast: page.nontextContrast, spacingClip: page.spacingClip, backtrace: page.backtrace, clickTraps: page.clickTraps }))
+        .concat(checkFocusDepth(page.focus, page.focusable, page.escape, { undersized: page.undersized, undersizedAAA: page.undersizedAAA, obscured: page.obscured, obscuredPartial: page.obscuredPartial, noFocusInd: page.noFocusInd, nontextContrast: page.nontextContrast, spacingClip: page.spacingClip, backtrace: page.backtrace, clickTraps: page.clickTraps }))
         .concat(scanKeyboardStatics(page.html));
       rendered = true;
     } catch (e) {

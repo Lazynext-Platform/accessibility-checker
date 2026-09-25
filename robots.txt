@@ -2,6 +2,10 @@ User-agent: *
 Allow: /
 Disallow: /report/
 Disallow: /trap.html
+Disallow: /trap2.html
 Disallow: /targets.html
 Disallow: /targets2.html
+Disallow: /partial-obscured.html
+Disallow: /nav-a.html
+Disallow: /nav-b.html
 Sitemap: https://checker.lazynext.com/sitemap.xml

@@ -48,3 +48,15 @@ test('small or fluid widths do not flag wcag-1.4.10', () => {
   assert.ok(!rules(scanAdditionalHtml('<div style="width:300px">content</div>')).includes('wcag-1.4.10'));
   assert.ok(!rules(scanAdditionalHtml('<div style="width:100%">content</div>')).includes('wcag-1.4.10'));
 });
+
+test('CSS order-breaking signals flag wcag-1.3.2', () => {
+  assert.ok(rules(scanAdditionalHtml('<style>.card{order:2}</style><div class="card">x</div>')).includes('wcag-1.3.2'));
+  assert.ok(rules(scanAdditionalHtml('<div style="flex-direction: row-reverse">x</div>')).includes('wcag-1.3.2'));
+  assert.ok(rules(scanAdditionalHtml('<span style="direction:rtl;unicode-bidi:bidi-override">x</span>')).includes('wcag-1.3.2'));
+  assert.ok(rules(scanAdditionalHtml('<p aria-flowto="next">x</p>')).includes('wcag-1.3.2'));
+});
+
+test('ordinary CSS does not flag wcag-1.3.2', () => {
+  assert.ok(!rules(scanAdditionalHtml('<style>.card{border:1px solid #000; flex-direction: column}</style>')).includes('wcag-1.3.2'));
+  assert.ok(!rules(scanAdditionalHtml('<p dir="rtl">مرحبا</p>')).includes('wcag-1.3.2'));
+});

@@ -134,5 +134,32 @@ export function checkCrossPages(pages) {
     }
   }
 
+  // WCAG 2.4.8 (AAA) — Location: the user must be able to determine where
+  // they are within a set of pages. A site without breadcrumbs, an
+  // aria-current marker, or a sitemap link offers no wayfinding signal at
+  // all. Warn-class: we check for the common mechanisms, not whether the
+  // nav styling alone already conveys position (a visual-only highlight
+  // fails this criterion anyway for AT users).
+  const LOCATION_RE = /breadcrumb|aria-current\s*=|"@type"\s*:\s*"BreadcrumbList"|itemtype\s*=\s*["'][^"']*BreadcrumbList/i;
+  const SITEMAP_RE = /<a\b[^>]*href=["'][^"']*sitemap[^"']*["']/i;
+  const navPages = list.filter((p) => /<nav\b|role=["']navigation["']/i.test(p.html));
+  const noLocation = navPages.filter((p) => !LOCATION_RE.test(p.html) && !SITEMAP_RE.test(p.html));
+  if (noLocation.length === navPages.length && navPages.length > 0) {
+    // Site-wide gap — one finding, not one per page (same defect repeated).
+    issues.push({
+      rule: "wcag-2.4.8",
+      url: navPages[0].url,
+      message: `none of the ${navPages.length} pages with site nav provide a wayfinding signal (breadcrumb, aria-current, or sitemap link) — user cannot determine position within the site`,
+    });
+  } else {
+    for (const p of noLocation) {
+      issues.push({
+        rule: "wcag-2.4.8",
+        url: p.url,
+        message: "no location indicator (breadcrumb, aria-current, or sitemap link) — other pages on the site provide one",
+      });
+    }
+  }
+
   return issues;
 }

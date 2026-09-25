@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Partial occlusion fixture — wcag-2.4.12</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; }
+    /* The wide action bar is a normal focusable target. */
+    #action { display: inline-block; width: 300px; height: 60px; font-size: 1rem; }
+    /* The badge floats over the button's top-right corner — the centre
+       stays visible (2.4.11 passes) but a corner is covered (2.4.12 fails). */
+    #badge {
+      position: fixed; left: 270px; top: 60px; width: 70px; height: 50px;
+      background: #4338ca; color: #fff; z-index: 10; font-size: .7rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip</a>
+  <main id="main">
+    <p>Fixture: a focusable element partially covered by a fixed badge.</p>
+    <div id="badge">NEW</div>
+    <button id="action" type="button">Wide action target</button>
+    <p><a href="/">home</a></p>
+  </main>
+</body>
+</html>

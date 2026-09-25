@@ -60,6 +60,32 @@ export function scanAdditionalHtml(html) {
     break; // one representative finding is enough
   }
 
+  // WCAG 1.3.2 — Meaningful Sequence: the DOM order assistive tech reads
+  // must match the visual order. Markup-visible order-breaking signals:
+  // CSS `order` (flex/grid reordering), reversed flex directions, and
+  // `unicode-bidi: bidi-override` (explicitly reorders characters). All are
+  // warn-class: a sighted user sees the CSS result but the DOM may already
+  // be in the correct order regardless — these flag the pattern to review.
+  const ORDER_SIGNALS = [
+    { re: /(?:^|[^-\w])order\s*:\s*-?\d/i, label: "CSS `order` property reorders flex/grid children" },
+    { re: /flex-direction\s*:\s*(?:row|column)-reverse/i, label: "reversed flex-direction presents children backwards" },
+    { re: /unicode-bidi\s*:\s*bidi-override/i, label: "unicode-bidi:bidi-override reverses character order" },
+  ];
+  const cssSources = [...src.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1])
+    .concat([...src.matchAll(/\bstyle=["']([^"']*)["']/gi)].map((m) => m[1]));
+  for (const css of cssSources) {
+    const hit = ORDER_SIGNALS.find((s) => s.re.test(css));
+    if (hit) {
+      issues.push({ rule: "wcag-1.3.2", message: `${hit.label} — verify visual order matches DOM order` });
+      break;
+    }
+  }
+  // aria-flowto explicitly overrides the reading sequence for AT users;
+  // presence is the warning signal (the override itself may be justified).
+  if (/\baria-flowto\s*=/i.test(src)) {
+    issues.push({ rule: "wcag-1.3.2", message: "aria-flowto overrides the reading sequence — verify it preserves a meaningful order" });
+  }
+
   // WCAG 3.1.2 — runs of non-Latin script without a lang attribute.
   const NONLATIN = /[一-鿿぀-ヿ가-힯Ѐ-ӿ֐-׿؀-ۿऀ-ॿ]/;
   for (const m of src.matchAll(/<(\w+)\b([^>]*)>([^<>]{8,}?)<\/\1>/g)) {

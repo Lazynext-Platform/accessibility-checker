@@ -85,6 +85,15 @@ test('focus obscured by author content flags wcag-2.4.11', () => {
   assert.match(o.message, /hidden-link/);
 });
 
+test('partially obscured focus flags wcag-2.4.12, not 2.4.11', () => {
+  const trace = ['0:a:nav', '7:a:corner-cut', '8:a:footer'];
+  const issues = checkFocusDepth(trace, 3, null, { obscuredPartial: ['7:a:corner-cut'] });
+  const p = issues.find((i) => i.rule === 'wcag-2.4.12');
+  assert.ok(p, 'partial occlusion should flag');
+  assert.match(p.message, /corner-cut/);
+  assert.equal(issues.filter((i) => i.rule === 'wcag-2.4.11').length, 0, 'partial-only must not double-count as full occlusion');
+});
+
 test('rendered arg omitted entirely → no geometry findings, rest unchanged', () => {
   const trace = ['0:a', '1:b', '2:c'];
   assert.deepEqual(checkFocusDepth(trace, 3, null), []);
