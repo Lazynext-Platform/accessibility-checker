@@ -22,7 +22,7 @@ same-origin pages — 3 free / 10 Pro — and returns per-page scores),
 `POST /cancel` (self-service cancellation by purchase email),
 `POST /lead` (email capture), `GET /report/:id` (shareable report),
 `GET /badge/:id.svg` (embeddable score badge for a report),
-`GET /rules` (the 56-rule coverage manifest — name, level, WCAG version,
+`GET /rules` (the 61-rule coverage manifest — name, level, WCAG version,
 and detection path for every criterion the scanner emits),
 `POST /monitor` / `GET /monitor?license=` / `DELETE /monitor` (Pro daily
 monitoring — platform rescans each registered URL and emails a Brevo
