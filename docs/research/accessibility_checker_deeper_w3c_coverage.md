@@ -1,38 +1,48 @@
-# Introduction to Deeper WCAG Coverage
-The Accessibility Checker aims to provide comprehensive scanning of small business websites for accessibility compliance issues, with a focus on adhering to the Web Content Accessibility Guidelines (WCAG). To enhance the tool's effectiveness, this module explores the implementation of deeper WCAG coverage, ensuring that the Accessibility Checker can identify and report a wider range of accessibility issues, thus aiding small businesses in achieving better compliance and inclusivity.
+Deeper W3C Coverage
+====================
+### Introduction
 
-## Understanding WCAG
-WCAG 2.1 provides a set of guidelines for making web content more accessible to people with disabilities. The guidelines are organized into four principles: Perceivable, Operable, Understandable, and Robust (POUR). Each principle contains guidelines and success criteria that are testable.
+The Accessibility Checker aims to provide a comprehensive scanning tool for small business owners and solo entrepreneurs to ensure their websites are compliant with accessibility regulations. As part of this effort, we are committed to expanding our coverage of the Web Content Accessibility Guidelines (WCAG) to provide a more thorough and accurate assessment of website accessibility.
 
-## Current Implementation
-The current version of the Accessibility Checker scans websites for basic accessibility issues such as missing alt tags for images, insufficient color contrast, and missing labels for form fields. While this provides a good starting point, there is a need to expand the checker's capabilities to cover more advanced and nuanced accessibility issues.
+### Current WCAG Coverage
 
-## Advanced WCAG Coverage Features
-To achieve deeper WCAG coverage, the following features will be implemented:
+Our current implementation covers a range of WCAG success criteria, including:
 
-1. **Dynamic Content Evaluation**: The ability to evaluate dynamically loaded content for accessibility issues, such as content loaded via JavaScript.
-2. **ARIA Attribute Validation**: Validation of ARIA attributes to ensure they are used correctly to provide a better experience for screen reader users.
-3. **Complex Table Analysis**: Improved analysis of complex tables, including tables with nested headers, to ensure they are accessible.
-4. **Custom Widget Accessibility**: Evaluation of custom widgets and components for accessibility, including ensuring they can be operated using a keyboard.
-5. **Multimedia Accessibility**: Checking for accessibility features in multimedia content, such as closed captions for videos and transcripts for audio content.
+* Color contrast and readability
+* Image alt text and descriptive links
+* Closed captions and audio descriptions for multimedia content
+* Keyboard navigability and screen reader compatibility
+* Clear and consistent navigation and page structure
 
-## Technical Implementation
-The deeper WCAG coverage module will be implemented using JavaScript, leveraging the power of client-side execution to analyze web pages without the need for a backend server. The module will integrate with the existing Accessibility Checker codebase, utilizing the `scripts/ci-scan.mjs` script as a starting point for the advanced scanning capabilities.
+### Expanded WCAG Coverage
+
+To provide deeper W3C coverage, we plan to expand our scanning tool to include the following additional WCAG success criteria:
+
+* **1.4.10 Reflow**: Ensure that content can be presented without loss of information or functionality when the screen is resized to 320px or less.
+* **1.4.11 Non-Text Contrast**: Ensure that visual presentation of non-text elements, such as icons and graphics, has a contrast ratio of at least 4.5:1 with the surrounding background.
+* **1.4.12 Text Spacing**: Ensure that text can be spaced to at least 1.5 times the font size for line height, and 0.5 times the font size for letter spacing, without loss of content or functionality.
+* **2.4.6 Headings and Labels**: Ensure that headings and labels are descriptive and consistent, and that they provide a clear indication of the content and purpose of the page.
+* **3.2.3 Consistent Navigation**: Ensure that navigation is consistent throughout the website, and that it provides a clear and intuitive way for users to access different pages and content.
+
+### Technical Implementation
+
+To implement the expanded WCAG coverage, we will use a combination of HTML parsing, CSS analysis, and JavaScript execution to evaluate the website's content and structure. We will also leverage existing libraries and tools, such as the W3C's Accessibility Guidelines and the axe-core accessibility testing library.
 
 ### Algorithmic Approach
-The algorithm for deeper WCAG coverage will involve the following steps:
-1. **Page Loading and Parsing**: Load the webpage and parse its HTML structure.
-2. **Element Analysis**: Analyze each element on the page for accessibility issues, using a combination of static analysis and dynamic evaluation techniques.
-3. **Reporting**: Compile the findings into a report that highlights accessibility issues, provides recommendations for improvement, and offers resources for learning more about accessibility.
 
-## Integration with Existing Modules
-The deeper WCAG coverage module will be integrated with the existing Accessibility Checker modules, including the MVP features outlined in `docs/research/mvp_features.md`. This integration will ensure a seamless user experience, where users can easily navigate between the basic and advanced scanning features.
+Our algorithmic approach will involve the following steps:
 
-## Testing and Validation
-To ensure the effectiveness and accuracy of the deeper WCAG coverage module, a comprehensive testing strategy will be employed. This includes:
-- **Unit Testing**: Individual components of the module will be tested to ensure they function as expected.
-- **Integration Testing**: The module will be tested as part of the larger Accessibility Checker application to ensure it integrates correctly and does not introduce any regressions.
-- **Manual Testing**: Manual testing will be conducted to validate the module's performance on a variety of websites and scenarios.
+1. **HTML Parsing**: Parse the website's HTML content to identify and extract relevant elements, such as headings, links, images, and multimedia content.
+2. **CSS Analysis**: Analyze the website's CSS styles to evaluate the visual presentation of content, including color contrast, font sizes, and spacing.
+3. **JavaScript Execution**: Execute JavaScript code to evaluate the website's dynamic content and behavior, including keyboard navigability and screen reader compatibility.
+4. **WCAG Evaluation**: Evaluate the extracted elements and analyzed styles against the expanded WCAG success criteria, using a combination of automated and manual testing techniques.
 
-## Conclusion
-The deeper WCAG coverage module represents a significant enhancement to the Accessibility Checker, enabling small businesses to achieve higher levels of accessibility compliance and provide a better experience for all users. By integrating advanced scanning capabilities into the existing tool, we can help ensure that websites are not only legally compliant but also genuinely accessible and inclusive.
+### Testing and Validation
+
+To ensure the accuracy and effectiveness of our expanded WCAG coverage, we will conduct thorough testing and validation of our scanning tool. This will include:
+
+* **Automated Testing**: Use automated testing tools, such as axe-core, to evaluate the website's content and structure against the expanded WCAG success criteria.
+* **Manual Testing**: Conduct manual testing and review of the website's content and structure to validate the accuracy of our automated testing results.
+* **User Testing**: Conduct user testing and feedback sessions to ensure that our scanning tool is providing accurate and actionable results that meet the needs of small business owners and solo entrepreneurs.
+
+By expanding our WCAG coverage and providing a more comprehensive scanning tool, we aim to help small business owners and solo entrepreneurs ensure that their websites are accessible and usable by everyone, regardless of ability or disability.
