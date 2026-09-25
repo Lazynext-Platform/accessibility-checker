@@ -1,110 +1,43 @@
-# Introduction to Monitoring
-The Accessibility Checker is a critical tool for small business owners and solo entrepreneurs to ensure their websites are compliant with accessibility regulations. To ensure the tool is always available and performing optimally, a monitoring system is necessary. This document outlines the approach to monitoring and reporting on product uptime and performance.
+# Introduction to Accessibility Checker Monitoring
+The Accessibility Checker is an AI-powered tool designed to scan small business websites for accessibility compliance issues and provide recommendations for improvement. As the tool is used by small business owners and solo entrepreneurs, it is essential to measure its effectiveness in improving customer accessibility. This document outlines a system to monitor the Accessibility Checker's performance and identify areas for improvement.
 
-## Uptime Monitoring
-Uptime monitoring is crucial to ensure the Accessibility Checker is always available to users. The following approach will be taken:
+## Key Performance Indicators (KPIs)
+To measure the effectiveness of the Accessibility Checker, we will track the following KPIs:
 
-* Utilize a third-party uptime monitoring service (e.g. Uptime Robot, Pingdom) to periodically check the Accessibility Checker's website for availability.
-* Configure the monitoring service to send notifications to the development team in case of downtime or availability issues.
-* Integrate the monitoring service with the existing GitHub workflow (e.g. `.github/workflows/self-scan.yml`) to automate the monitoring process.
+1. **Scan Completion Rate**: The percentage of scans completed successfully, indicating the tool's reliability and user engagement.
+2. **Issue Detection Rate**: The average number of accessibility issues detected per scan, highlighting the tool's ability to identify problems.
+3. **Resolution Rate**: The percentage of issues resolved by users after receiving recommendations, demonstrating the tool's impact on improving accessibility.
+4. **User Engagement**: The frequency and duration of user interactions with the tool, indicating its usability and value proposition.
+5. **Customer Satisfaction**: User feedback and ratings, providing insight into the tool's overall effectiveness and areas for improvement.
 
-## Performance Monitoring
-Performance monitoring is essential to identify bottlenecks and areas for optimization in the Accessibility Checker. The following approach will be taken:
+## Data Collection
+To collect data on these KPIs, we will implement the following:
 
-* Utilize a performance monitoring library (e.g. Lighthouse, WebPageTest) to measure the Accessibility Checker's website performance.
-* Configure the library to collect metrics such as page load time, first contentful paint, and time to interactive.
-* Integrate the performance monitoring library with the existing GitHub workflow (e.g. `.github/workflows/test.yml`) to automate the performance testing process.
+1. **Scan Logging**: Record each scan, including the website URL, scan date, and issues detected.
+2. **User Interaction Tracking**: Monitor user interactions, such as clicks, hovers, and time spent on the tool, using JavaScript events and analytics libraries.
+3. **Resolution Tracking**: Record user resolutions, including the issues fixed and the methods used to resolve them.
+4. **Feedback Mechanism**: Implement a feedback system, allowing users to rate their experience and provide comments on the tool's effectiveness.
 
-## Error Tracking
-Error tracking is vital to identify and resolve issues that may affect the Accessibility Checker's functionality. The following approach will be taken:
+## Data Analysis
+To analyze the collected data, we will use a combination of statistical methods and data visualization techniques, including:
 
-* Utilize an error tracking library (e.g. Sentry, ErrorBoundary) to collect and report errors that occur in the Accessibility Checker.
-* Configure the library to send notifications to the development team in case of errors.
-* Integrate the error tracking library with the existing GitHub workflow (e.g. `.github/workflows/self-scan.yml`) to automate the error tracking process.
+1. **Descriptive Statistics**: Calculate means, medians, and standard deviations for each KPI to understand the tool's performance.
+2. **Inferential Statistics**: Use hypothesis testing and confidence intervals to identify significant trends and correlations between KPIs.
+3. **Data Visualization**: Create interactive dashboards and charts to illustrate the tool's performance and facilitate data-driven decision-making.
 
-## Reporting and Alerting
-To ensure the development team is informed about uptime, performance, and error issues, a reporting and alerting system will be implemented. The following approach will be taken:
+## Monitoring and Evaluation
+To ensure the Accessibility Checker remains effective, we will:
 
-* Utilize a reporting and alerting library (e.g. PagerDuty, Splunk) to collect and display metrics and errors.
-* Configure the library to send notifications to the development team in case of issues.
-* Integrate the reporting and alerting library with the existing GitHub workflow (e.g. `.github/workflows/test.yml`) to automate the reporting and alerting process.
+1. **Regularly Review KPIs**: Schedule periodic reviews of KPIs to identify areas for improvement and track progress over time.
+2. **Conduct User Research**: Perform user research, including surveys, interviews, and usability testing, to gather feedback and understand user needs.
+3. **Update and Refine the Tool**: Use insights from data analysis and user research to update and refine the Accessibility Checker, ensuring it remains effective and user-friendly.
 
-## Implementation
-The implementation of the monitoring system will be done in the following steps:
+## Implementation Roadmap
+To implement the monitoring system, we will follow this roadmap:
 
-1. Set up uptime monitoring using a third-party service.
-2. Integrate performance monitoring library with the existing GitHub workflow.
-3. Implement error tracking using an error tracking library.
-4. Set up reporting and alerting using a reporting and alerting library.
-5. Integrate the monitoring system with the existing GitHub workflow.
+1. **Week 1-2**: Implement scan logging and user interaction tracking.
+2. **Week 3-4**: Develop a resolution tracking system and feedback mechanism.
+3. **Week 5-6**: Analyze collected data and create interactive dashboards.
+4. **Week 7-8**: Conduct user research and refine the tool based on feedback and insights.
 
-## Example Code
-The following example code demonstrates how to integrate the performance monitoring library with the existing GitHub workflow:
-```javascript
-// .github/workflows/test.yml
-name: Test
-on:
-  push:
-    branches:
-      - main
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Run performance test
-        uses: google/lighthouse@v1
-        with:
-          url: ${{ secrets.ACCESSIBILITY_CHECKER_URL }}
-          flags: --output=json
-      - name: Upload performance report
-        uses: actions/upload-artifact@v2
-        with:
-          name: performance-report
-          path: performance-report.json
-```
-The following example code demonstrates how to implement error tracking using an error tracking library:
-```javascript
-// scripts/add-testimonial.mjs
-import { ErrorBoundary } from 'error-boundary';
-
-const testimonialForm = document.getElementById('testimonial-form');
-
-testimonialForm.addEventListener('submit', async (event) => {
-  try {
-    // Submit testimonial form
-  } catch (error) {
-    ErrorBoundary.captureException(error);
-  }
-});
-```
-The following example code demonstrates how to set up reporting and alerting using a reporting and alerting library:
-```javascript
-// .github/workflows/self-scan.yml
-name: Self-Scan
-on:
-  schedule:
-    - cron: 0 0 * * *
-jobs:
-  self-scan:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - name: Run self-scan
-        uses: actions/self-scan@v1
-        with:
-          token: ${{ secrets.ACCESSIBILITY_CHECKER_TOKEN }}
-      - name: Upload self-scan report
-        uses: actions/upload-artifact@v2
-        with:
-          name: self-scan-report
-          path: self-scan-report.json
-      - name: Send notification
-        uses: actions/send-notification@v1
-        with:
-          token: ${{ secrets.ACCESSIBILITY_CHECKER_TOKEN }}
-          report: self-scan-report.json
-```
-By implementing a monitoring system, the Accessibility Checker can ensure high uptime, performance, and reliability, providing a better experience for users.
+By implementing this monitoring system, we can ensure the Accessibility Checker remains effective in improving customer accessibility and provide a valuable tool for small business owners and solo entrepreneurs to enhance their website's accessibility.
