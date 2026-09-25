@@ -1,8 +1,14 @@
 // Accessibility Checker service worker — makes the PWA installable and the
 // shell available offline. Scans stay network-only (a cached scan would be a
 // stale audit); only the static shell + discovery files are cached.
-const CACHE = 'a11y-shell-v2';
-const SHELL = ['/', '/manifest.json', '/favicon.svg', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png', '/robots.txt'];
+const CACHE = 'a11y-shell-v3';
+// Resolve the shell against the SW's own scope so this file works on both the
+// branded domain (scope "/") and the GitHub Pages mirror (scope
+// "/accessibility-checker/") — absolute "/" paths 404 under the subpath and
+// would make install fail there.
+const ROOT = new URL(self.registration.scope).pathname;
+const SHELL = ['', 'manifest.json', 'favicon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'robots.txt']
+  .map((p) => ROOT + p);
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -30,6 +36,6 @@ self.addEventListener('fetch', (e) => {
         }
         return r;
       })
-      .catch(() => caches.match(e.request).then((m) => m || caches.match('/'))),
+      .catch(() => caches.match(e.request).then((m) => m || caches.match(ROOT))),
   );
 });
