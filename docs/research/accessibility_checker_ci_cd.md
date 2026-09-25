@@ -1,32 +1,42 @@
-# Introduction to CI/CD for Accessibility Checker
-The Accessibility Checker is an AI-powered tool designed to scan small business websites for accessibility compliance issues and provide recommendations for improvement. As the project grows, implementing a Continuous Integration/Continuous Deployment (CI/CD) pipeline is crucial for automating testing and deployment processes, ensuring the tool remains reliable, efficient, and up-to-date.
+# Introduction to Continuous Integration and Continuous Deployment (CI/CD)
+The Accessibility Checker project aims to provide an AI-powered tool for scanning small business websites for accessibility compliance issues. To ensure the quality and reliability of the project, implementing Continuous Integration and Continuous Deployment (CI/CD) pipelines is crucial. This document outlines the approach and tools used to automate code quality checks, ensuring that the deployed site (index.html) becomes a working client-side version of the product.
 
-## CI/CD Pipeline Overview
-The CI/CD pipeline for Accessibility Checker will be designed to automate the following processes:
-- **Code Validation**: Automatically validate code changes for syntax errors, formatting, and best practices.
-- **Unit Testing**: Run unit tests to ensure individual components of the Accessibility Checker are functioning as expected.
-- **Integration Testing**: Perform integration tests to verify how different components interact with each other.
-- **Deployment**: Automatically deploy the Accessibility Checker to production after successful testing.
+## Current CI/CD Setup
+The existing repository contains two GitHub Actions workflows: `.github/workflows/self-scan.yml` and `.github/workflows/test.yml`. These workflows provide a basic foundation for automating tests and code quality checks. The `self-scan.yml` workflow is designed to scan the repository for accessibility issues, while the `test.yml` workflow runs automated tests.
 
-## Tools and Technologies
-For the CI/CD pipeline, we will utilize the following tools and technologies:
-- **GitHub Actions**: For automating the build, test, and deployment processes.
-- **Node.js**: As the runtime environment for the Accessibility Checker.
-- **Jest**: For unit testing and integration testing.
+## Automated Code Quality Checks
+To improve engineering efficiency, the following automated code quality checks will be implemented:
 
-## CI/CD Pipeline Steps
-The pipeline will consist of the following steps:
-1. **Checkout Code**: Checkout the code from the GitHub repository.
-2. **Install Dependencies**: Install all dependencies required for the project using `npm install`.
-3. **Linting and Formatting**: Run linting and formatting checks using `eslint` and `prettier`.
-4. **Unit Testing**: Execute unit tests using `jest`.
-5. **Integration Testing**: Perform integration tests using `jest`.
-6. **Build**: Build the Accessibility Checker for production.
-7. **Deployment**: Deploy the built Accessibility Checker to the production environment.
+1. **Linting**: Integrate ESLint to enforce coding standards and detect potential errors.
+2. **Code Formatting**: Use Prettier to ensure consistent code formatting throughout the repository.
+3. **Type Checking**: Utilize TypeScript to catch type-related errors and improve code maintainability.
+4. **Unit Tests**: Expand the existing test suite to cover more functionality and ensure that individual components work as expected.
+5. **Integration Tests**: Implement tests that verify the interactions between different components and ensure that the overall system functions correctly.
+6. **Accessibility Audits**: Run automated accessibility audits using tools like Lighthouse or axe-core to identify potential accessibility issues.
+7. **Security Audits**: Perform regular security audits using tools like Snyk or npm audit to detect vulnerabilities and ensure the project's security.
 
-## Implementing the CI/CD Pipeline
-To implement the CI/CD pipeline, we will create a new GitHub Actions workflow file named `.github/workflows/ci-cd.yml`.
+## CI/CD Pipeline
+The CI/CD pipeline will be designed to automate the following steps:
 
+1. **Build**: Run linting, code formatting, and type checking tools to ensure code quality.
+2. **Test**: Execute unit tests, integration tests, and accessibility audits to verify functionality and accessibility.
+3. **Security Audit**: Perform security audits to detect vulnerabilities.
+4. **Deploy**: Deploy the built and tested code to production, ensuring that the deployed site (index.html) becomes a working client-side version of the product.
+
+## Tools and Integrations
+The following tools and integrations will be used to implement the CI/CD pipeline:
+
+1. **GitHub Actions**: Utilize GitHub Actions to automate the CI/CD pipeline.
+2. **ESLint**: Integrate ESLint for linting and code quality checks.
+3. **Prettier**: Use Prettier for code formatting.
+4. **TypeScript**: Utilize TypeScript for type checking.
+5. **Jest**: Expand the existing test suite using Jest.
+6. **Lighthouse**: Use Lighthouse for accessibility audits.
+7. **axe-core**: Integrate axe-core for accessibility audits.
+8. **Snyk**: Utilize Snyk for security audits.
+
+## Example Code
+The following example code demonstrates how to integrate ESLint and Prettier into the CI/CD pipeline:
 ```yml
 name: CI/CD Pipeline
 
@@ -36,70 +46,51 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-
       - name: Install dependencies
         run: npm install
-
-      - name: Linting and formatting
-        run: |
-          npm run lint
-          npm run format
-
-      - name: Unit testing
-        run: npm run test:unit
-
-      - name: Integration testing
-        run: npm run test:integration
-
-      - name: Build
-        run: npm run build
-
-      - name: Deployment
-        uses: gh-pages/action@v2
+      - name: Lint code
+        run: npm run lint
+      - name: Format code
+        run: npm run format
+      - name: Run tests
+        run: npm run test
+      - name: Deploy to production
+        uses: gh-pages/deploy@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./build
 ```
-
-## Testing the CI/CD Pipeline
-To test the CI/CD pipeline, we will create test files for unit testing and integration testing using Jest.
-
 ```javascript
-// tests/unit/crawl.test.js
-import crawl from '../src/crawl';
+// .github/workflows/lint.yml
+name: Lint Code
 
-describe('crawl function', () => {
-  it('should crawl a website and return accessibility issues', async () => {
-    const websiteUrl = 'https://example.com';
-    const issues = await crawl(websiteUrl);
-    expect(issues).toBeInstanceOf(Array);
-  });
-});
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Install dependencies
+        run: npm install
+      - name: Lint code
+        run: npm run lint
 ```
-
 ```javascript
-// tests/integration/accessibility-checker.test.js
-import { AccessibilityChecker } from '../src/accessibility-checker';
-
-describe('AccessibilityChecker class', () => {
-  it('should create an instance of AccessibilityChecker', () => {
-    const checker = new AccessibilityChecker();
-    expect(checker).toBeInstanceOf(AccessibilityChecker);
-  });
-
-  it('should scan a website and return accessibility issues', async () => {
-    const websiteUrl = 'https://example.com';
-    const checker = new AccessibilityChecker();
-    const issues = await checker.scan(websiteUrl);
-    expect(issues).toBeInstanceOf(Array);
-  });
-});
+// package.json
+"scripts": {
+  "lint": "eslint .",
+  "format": "prettier --write .",
+  "test": "jest"
+}
 ```
-
-## Conclusion
-The CI/CD pipeline for Accessibility Checker automates testing and deployment processes, ensuring the tool remains reliable and efficient. By utilizing GitHub Actions, Node.js, and Jest, we can ensure that the Accessibility Checker is thoroughly tested and deployed to production after each code change.
+By implementing automated code quality checks and a CI/CD pipeline, the Accessibility Checker project can ensure that the deployed site (index.html) becomes a working client-side version of the product, while maintaining high code quality and reliability.
