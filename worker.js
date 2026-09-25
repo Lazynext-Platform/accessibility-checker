@@ -248,12 +248,12 @@ export default {
       if (fmt === 'csv') {
         const cell = (v) => `"${String(v ?? '').replaceAll('"', '""')}"`;
         const csv = ['rule,criterion,level,page,finding,fix', ...rep.issues.map((i) => [i.rule, ruleInfo[i.rule]?.name ?? '', ruleInfo[i.rule]?.level ?? '', i.url ?? '', i.message, i.fix ?? ''].map(cell).join(','))].join('\r\n');
-        return new Response(csv, { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="accessibility-report-${id}.csv"` } });
+        return new Response(csv, { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="accessibility-report-${id}.csv"`, 'cache-control': 'public, max-age=3600' } });
       }
       if (fmt === 'pdf') {
         const r = await platform(env, '/pdf', { method: 'POST', body: JSON.stringify({ url: `${url.origin}/report/${id}` }) });
         if (!r.ok) return respond({ error: 'pdf export unavailable' }, 502);
-        return new Response(r.body, { headers: { 'content-type': 'application/pdf', 'content-disposition': `attachment; filename="accessibility-report-${id}.pdf"` } });
+        return new Response(r.body, { headers: { 'content-type': 'application/pdf', 'content-disposition': `attachment; filename="accessibility-report-${id}.pdf"`, 'cache-control': 'public, max-age=3600' } });
       }
       const rows = rep.issues.map((i) => {
         const meta = ruleInfo[i.rule];
@@ -270,7 +270,7 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
 <p style="font-size:0.85em;color:#555">Embed this badge: <code style="user-select:all">${esc(`<a href="${url.origin}/report/${id}"><img src="${url.origin}/badge/${id}.svg" alt="Accessibility score"></a>`)}</code></p>
 <table style="width:100%;border-collapse:collapse">${rows || '<tr><td>No issues found.</td></tr>'}</table>
 <p><a href="/">Run your own scan →</a></p>`,
-        { headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" } });
+        { headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'", 'cache-control': 'public, max-age=3600' } });
     }
 
     // Redirect to a real Dodo checkout for the Pro plan via the platform.
