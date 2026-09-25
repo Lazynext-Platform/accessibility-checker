@@ -149,6 +149,47 @@ test('POST /cancel 404s for a well-formed but non-Pro email', async () => {
   assert.equal(r.status, 404);
 });
 
+// ── Marketing-email unsubscribe ───────────────────────────────────────────
+// /unsubscribe verifies an HMAC(email, PLATFORM_TOKEN) sig — the platform
+// worker mints the same sig from API_TOKEN (same secret), so valid links
+// forward to the platform's /unsubscribe mutator and bad ones die at 403.
+import { createHmac } from 'node:crypto';
+const unsubSig = (email) =>
+  createHmac('sha256', 'test-token').update(email.toLowerCase()).digest('hex').slice(0, 24);
+
+test('GET /unsubscribe 403s without a valid sig', async () => {
+  for (const p of ['/unsubscribe', '/unsubscribe?email=a@b.test', '/unsubscribe?email=a@b.test&sig=deadbeef']) {
+    const r = await get(p);
+    assert.equal(r.status, 403, p);
+  }
+});
+
+test('GET /unsubscribe with a valid sig forwards the email and confirms', async () => {
+  let forwarded;
+  const env = mockEnv({}, {
+    '/unsubscribe': async (req) => { forwarded = (await req.json()).email; return Response.json({ ok: true }); },
+  });
+  const r = await get(`/unsubscribe?email=${encodeURIComponent('A@B.TEST')}&sig=${unsubSig('A@B.TEST')}`, {}, env);
+  assert.equal(r.status, 200);
+  assert.match(await r.text(), /unsubscribed/i);
+  assert.equal(forwarded, 'a@b.test'); // normalized lowercase at the mutator boundary
+});
+
+test('POST /unsubscribe answers RFC 8058 one-click JSON for mailbox providers', async () => {
+  const email = 'list@x.test';
+  const r = await raw('POST', `/unsubscribe?email=${encodeURIComponent(email)}&sig=${unsubSig(email)}`,
+    { headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: 'List-Unsubscribe=One-Click' });
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).ok, true);
+});
+
+test('POST /unsubscribe 502s when the platform mutation fails', async () => {
+  const email = 'down@x.test';
+  const env = mockEnv({}, { '/unsubscribe': async () => new Response('boom', { status: 500 }) });
+  const r = await raw('POST', `/unsubscribe?email=${encodeURIComponent(email)}&sig=${unsubSig(email)}`, {}, env);
+  assert.equal(r.status, 502);
+});
+
 // ── Platform KV write failures ────────────────────────────────────────────
 // Regression for the deploy incident: PLATFORM_TOKEN was wiped and kvPut
 // swallowed the 4xx — scans returned report URLs that 404'd. Writes now throw;

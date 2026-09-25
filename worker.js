@@ -100,12 +100,26 @@ async function requestConfirm(env, origin, email, action, extra = {}) {
   if (!r.ok) throw new Error(`confirmation email failed: ${r.status}`);
 }
 
-function confirmPage(title, inner) {
+function confirmPage(title, inner, status = 200) {
   return new Response(`<!doctype html><meta charset="utf-8"><title>${title}</title>
 <body style="font-family:system-ui;max-width:640px;margin:4rem auto;padding:0 1rem">
 <h1>${title}</h1>${inner}
 <p><a href="/">Back to Accessibility Checker</a></p>`,
-    { headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" } });
+    { status, headers: { 'content-type': 'text/html', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" } });
+}
+
+// HMAC-SHA256(email, PLATFORM_TOKEN) — PLATFORM_TOKEN is the platform
+// worker's API_TOKEN, so this verifies the sig embedded in unsubscribe
+// links its marketing sends mint (see unsubSig in worker/src/services.ts).
+// Wrong/missing sig → 403: only the real recipient can opt themselves out.
+async function unsubSig(env, email) {
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(env.PLATFORM_TOKEN ?? ''),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const buf = await crypto.subtle.sign(
+    'HMAC', key, new TextEncoder().encode(String(email).toLowerCase()));
+  return Array.from(new Uint8Array(buf))
+    .map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 24);
 }
 
 export default {
@@ -167,6 +181,30 @@ export default {
       const r = await platform(env, '/leads', { method: 'POST', body: JSON.stringify({ email: b.email, source: 'accessibility-checker' }) });
       const d = await r.json().catch(() => ({}));
       return respond({ ok: r.ok, ...(r.ok ? {} : { detail: d }) }, r.ok ? 200 : 502);
+    }
+
+    // Marketing-email opt-out (CAN-SPAM / GDPR / RFC 8058 one-click). GET is
+    // the link a human clicks in the footer; POST is the mailbox-provider
+    // one-click (List-Unsubscribe=One-Click body). Both verify the signed
+    // email+sig pair, then the platform writes KV flag + D1 opt-out + Brevo
+    // blacklist in one mutation path.
+    if ((request.method === 'GET' || request.method === 'POST') && url.pathname === '/unsubscribe') {
+      const email = (url.searchParams.get('email') ?? '').toLowerCase();
+      const sig = url.searchParams.get('sig') ?? '';
+      const valid = isEmail(email) && sig === await unsubSig(env, email);
+      if (!valid) {
+        if (request.method === 'POST') return respond({ error: 'invalid link' }, 403);
+        return confirmPage('Invalid link',
+          '<p>This unsubscribe link is invalid. Check that you used the complete URL from the email.</p>', 403);
+      }
+      const r = await platform(env, '/unsubscribe', { method: 'POST', body: JSON.stringify({ email }) });
+      if (request.method === 'POST') return respond({ ok: r.ok }, r.ok ? 200 : 502);
+      if (!r.ok) {
+        return confirmPage('Something went wrong',
+          '<p>We could not process your unsubscribe. Please try again in a few minutes or email support@lazynext.com.</p>', 502);
+      }
+      return confirmPage("You're unsubscribed",
+        `<p><b>${esc(email)}</b> will no longer receive marketing emails from Lazynext.</p>`);
     }
 
     // Rule coverage manifest — every WCAG criterion the scanner can emit, with
