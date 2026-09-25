@@ -9,8 +9,8 @@ taken against the live deployment (2026-09-25), not generic recommendations.
 |---|---|---|
 | `GET /`, `/health`, `/rules` | ~50ms | Static + JSON, edge-served |
 | `POST /scan` (pasted HTML) | ~410ms | Pure ruleset — no network |
-| `POST /scan` (URL, small page) | ~9s | Rendered scan after fix (was ~48-64s) |
-| `POST /scan` (URL, heavy page) | ~30-55s | Deep interactive trace — see below |
+| `POST /scan` (URL, small page) | ~7s | Rendered scan after fix (was ~48-64s) |
+| `POST /scan` (URL, heavy page) | ~12s | 1184-focusable Wikipedia page, all probes active |
 | Platform `/kv/get`, `/query` | ~90-130ms | KV + D1 round-trips |
 | `/checkout` redirect | ~310ms | Dodo session creation |
 | `GET /api/v1/billing/funnel` | ~460ms | Multi-KV aggregate |
@@ -44,10 +44,20 @@ startup is not a bottleneck.
 - **Browser session reuse** — `puppeteer.sessions()` + `connect` to an idle
   session before falling back to `launch(keep_alive: 120s)`; `disconnect()`
   leaves the browser warm for the next request instead of terminating it.
+- **Deep-probe gating** — Escape, backtrace and click probes are skipped when
+  the focusable census is empty or the forward trace already hard-stalled
+  (≥4): the trap signature is established and ~20 round-trips inside a
+  trapped page cannot change the outcome. The backtrace also early-exits on
+  reaching `body` or the first forward-focused element (both are excluded
+  downstream anyway) or a completed 2-cycle tail; the Escape probe's
+  before-state and in-dialog reads are merged into one evaluate and skipped
+  entirely when focus sits on `<body>`.
 
-Result: a minimal page renders+probes in ~9s (was 48-64s). Heavy pages
-(~50+ focusables) still take 30-55s — comparable to Lighthouse-style
-interactive audits, and inherent to pressing Tab across a real page.
+Result: a minimal page renders+probes in ~7s (was 48-64s). A 1184-focusable
+page runs the full probe suite in ~12s with warm session reuse. Trapped and
+keyboard-inaccessible pages are the fastest class — the gate fires before
+the deep probes. trap.html/trap2.html verified end-to-end post-change with
+identical wcag-2.4.3 + wcag-2.1.2 findings.
 
 ## Remaining levers (not yet needed)
 
