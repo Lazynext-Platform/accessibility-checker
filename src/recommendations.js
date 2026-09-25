@@ -8,6 +8,7 @@
 const FIXES = {
   "wcag-1.1.1": "Add descriptive alt text to informative images; alt=\"\" for decorative ones.",
   "wcag-1.2.1": "Give prerecorded audio/video a text alternative: captions for video, a transcript for audio.",
+  "wcag-1.2.5": "Add a <track kind=\"descriptions\"> for prerecorded video, or verify the audio track already describes the visuals.",
   "wcag-1.3.1": "Use semantic landmarks (main/nav/header/footer), headings in order, and real form labels — don't fake structure with divs.",
   "wcag-1.3.3": "Don't rely on color, shape, or position alone in instructions — name the control or describe it in text.",
   "wcag-1.3.4": "Don't lock orientation — support both portrait and landscape unless one is essential.",
@@ -33,6 +34,7 @@ const FIXES = {
   "wcag-2.4.2": "Give the page a descriptive <title> that names its topic or purpose.",
   "wcag-2.4.3": "Remove positive tabindex values — use tabindex=0 or let DOM order carry focus.",
   "wcag-2.4.4": "Make link purpose clear from the link text or context — 'click here' and dead/javascript: hrefs fail everyone.",
+  "wcag-2.4.9": "Links sharing text but pointing to different targets need distinct labels — add an aria-label or make the text unique.",
   "wcag-2.4.5": "Offer a second way to find pages — search, a sitemap link, or a table of contents alongside nav.",
   "wcag-2.4.6": "Give every heading real text content — an empty or icon-only heading announces nothing.",
   "wcag-2.4.7": "Restore a visible focus indicator: outline, ring, or underline on :focus-visible.",

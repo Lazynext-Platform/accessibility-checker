@@ -616,6 +616,41 @@ export function scanAdditionalHtml(html) {
     break;
   }
 
+  // WCAG 1.2.5 (AA) — prerecorded video needs audio description (or a media
+  // alternative). Burned-in description satisfies it, so warn-class "verify".
+  // Skip silent/visual-only video (<video muted> can't carry meaningful audio).
+  for (const m of src.matchAll(/<video\b([^>]*)>([\s\S]*?)<\/video>/gi)) {
+    if (/\bmuted\b/i.test(m[1])) continue;
+    if (/<track\b[^>]*\bkind\s*=\s*["']descriptions["']/i.test(m[2])) continue;
+    issues.push({
+      rule: "wcag-1.2.5",
+      message: "<video> has no <track kind=descriptions> — verify the audio track is self-describing or provide audio description (AA)",
+    });
+    break;
+  }
+
+  // WCAG 2.4.9 (AAA) — links whose purpose can't be determined from link text
+  // alone. Detectable statically: the same visible text pointing at different
+  // hrefs is ambiguous out of context ("Read more" → /a and → /b). Inverse of
+  // 3.2.4 (same target, different labels). Warn-class.
+  {
+    const byText = new Map();
+    for (const m of src.matchAll(/<a\b[^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+      const href = m[1].trim();
+      const text = m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().toLowerCase();
+      if (!text || /^(?:#|javascript:|mailto:|tel:)/i.test(href)) continue;
+      if (!byText.has(text)) byText.set(text, new Set());
+      byText.get(text).add(href.split(/[?#]/)[0]);
+    }
+    for (const [text, hrefs] of byText) {
+      if (hrefs.size < 2) continue;
+      issues.push({
+        rule: "wcag-2.4.9",
+        message: `link text "${text.slice(0, 40)}" points at ${hrefs.size} different targets — purpose is ambiguous out of context (AAA)`,
+      });
+    }
+  }
+
   // WCAG 3.2.1 — autofocus moves focus on load without a user request,
   // disorienting screen-reader and keyboard users (same criterion as the
   // rendered-facts check; this covers static scans).

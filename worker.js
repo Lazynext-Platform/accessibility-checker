@@ -78,6 +78,16 @@ async function isPro(env, license) {
   return v === 'pro';
 }
 
+// Per-key daily counters via platform KV. Returns true when the counter is at
+// the cap; otherwise increments and returns false. Fail-open like kvGet — a
+// KV outage shouldn't 503 every request.
+async function rlHit(env, key, limit) {
+  const used = parseInt((await kvGet(env, key)) ?? '0', 10);
+  if (used >= limit) return true;
+  await kvPut(env, key, String(used + 1), 90000).catch(() => {});
+  return false;
+}
+
 // License = buyer email, which is guessable, so mutating license actions
 // (cancel / monitor add/remove) require mailbox proof: POST creates a
 // pending:<token> record and emails a confirmation link; GET /confirm
@@ -285,6 +295,14 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
       const b = await request.json().catch(() => ({}));
       if (!isEmail(b.license)) return respond({ error: 'purchase email required' }, 400);
       if (!(await isPro(env, b.license))) return respond({ error: 'no active Pro license for that email' }, 404);
+      // The license is a guessable email — bound confirm-email sends so a
+      // stranger can't mail-bomb a licensed address via repeated POSTs.
+      const cDay = new Date().toISOString().slice(0, 10);
+      const cIp = request.headers.get('cf-connecting-ip') ?? 'anon';
+      if (await rlHit(env, `rl:confirm:${String(b.license).toLowerCase()}:${cDay}`, 10) ||
+          await rlHit(env, `rl:confirmip:${cIp}:${cDay}`, 30)) {
+        return respond({ error: 'too many requests — try again tomorrow' }, 429);
+      }
       try {
         await requestConfirm(env, url.origin, b.license, 'cancel');
       } catch {
@@ -342,6 +360,12 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
           return respond({ error: 'free limit reached (3/day)', upgrade: '/checkout' }, 402);
         }
         await kvPut(env, rlKey, String(used + 1), 90000).catch(() => {});
+      }
+      // Licensed scans still cost real Browser-Rendering time — a leaked Pro
+      // email would otherwise let a script run unlimited renders on our bill.
+      // 100/day/IP is effectively unlimited for a human and fatal for a bot.
+      if (pro && body.url && await rlHit(env, `rl:pro:${ip}:${day}`, 100)) {
+        return respond({ error: 'daily scan quota exceeded — try again tomorrow' }, 429);
       }
 
       let issues = [];
@@ -432,6 +456,16 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
       const b = await request.json().catch(() => ({}));
       if (!(await isPro(env, b.license))) return respond({ error: 'pro license required', upgrade: '/checkout' }, 402);
       if (!isHttpUrl(b.url)) return respond({ error: 'provide {"url"}' }, 400);
+      // Every monitor is a daily rendered rescan forever — cap per license.
+      const ml = await platform(env, '/kv/list', { method: 'POST', body: JSON.stringify({ prefix: `mon:${String(b.license).toLowerCase()}:` }) });
+      const mCount = ml.ok ? ((await ml.json().catch(() => ({}))).keys ?? []).length : 0;
+      if (mCount >= 50) return respond({ error: 'monitor limit reached (50) — remove one first' }, 429);
+      const cDay = new Date().toISOString().slice(0, 10);
+      const cIp = request.headers.get('cf-connecting-ip') ?? 'anon';
+      if (await rlHit(env, `rl:confirm:${String(b.license).toLowerCase()}:${cDay}`, 10) ||
+          await rlHit(env, `rl:confirmip:${cIp}:${cDay}`, 30)) {
+        return respond({ error: 'too many requests — try again tomorrow' }, 429);
+      }
       try {
         await requestConfirm(env, url.origin, b.license, 'monitor_add', { url: b.url });
       } catch {
@@ -443,6 +477,12 @@ ${Array.isArray(rep.pages) && rep.pages.length ? `<table style="width:100%;borde
       const b = await request.json().catch(() => ({}));
       if (!(await isPro(env, b.license))) return respond({ error: 'pro license required' }, 402);
       if (!b.url) return respond({ error: 'provide {"url"}' }, 400);
+      const cDay = new Date().toISOString().slice(0, 10);
+      const cIp = request.headers.get('cf-connecting-ip') ?? 'anon';
+      if (await rlHit(env, `rl:confirm:${String(b.license).toLowerCase()}:${cDay}`, 10) ||
+          await rlHit(env, `rl:confirmip:${cIp}:${cDay}`, 30)) {
+        return respond({ error: 'too many requests — try again tomorrow' }, 429);
+      }
       try {
         await requestConfirm(env, url.origin, b.license, 'monitor_del', { url: b.url });
       } catch {

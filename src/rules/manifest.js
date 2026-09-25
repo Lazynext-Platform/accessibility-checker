@@ -9,6 +9,7 @@ export const RULES = [
   // ── Perceivable ────────────────────────────────────────────────────────
   { rule: "wcag-1.1.1",  name: "Non-text Content",          level: "A",   wcag: "2.0", how: "static",    detects: "img/area/image-input/embed/svg/canvas/object missing alt, title, or fallback text" },
   { rule: "wcag-1.2.1",  name: "Audio-only and Video-only (Prerecorded)", level: "A", wcag: "2.0", how: "rendered", detects: "<video>/<audio> elements without captions or a text alternative" },
+  { rule: "wcag-1.2.5",  name: "Audio Description (Prerecorded)", level: "AA", wcag: "2.0", how: "static",   detects: "<video> without <track kind=descriptions> and not muted (warn-class — burned-in description satisfies it)" },
   { rule: "wcag-1.3.1",  name: "Info and Relationships",    level: "A",   wcag: "2.0", how: "static",    detects: "heading skips/no <h1>/no headings, missing <main> landmark, stray <li>/<dt>/<dd>, <fieldset> w/o <legend>, <optgroup> w/o label, tables w/o <th>, duplicate landmarks" },
   { rule: "wcag-1.3.3",  name: "Sensory Characteristics",   level: "A",   wcag: "2.0", how: "static",    detects: "instructions relying on position/shape/sound alone (e.g. 'the menu on the left')" },
   { rule: "wcag-1.3.4",  name: "Orientation",               level: "AA",  wcag: "2.1", how: "static",    detects: "CSS locking orientation (orientation: media query w/o fallback)" },
@@ -36,6 +37,7 @@ export const RULES = [
   { rule: "wcag-2.4.2",  name: "Page Titled",               level: "A",   wcag: "2.0", how: "static",    detects: "missing or empty <title>" },
   { rule: "wcag-2.4.3",  name: "Focus Order",               level: "A",   wcag: "2.0", how: "rendered",  detects: "positive tabindex, focusables Tab never reaches, focus entering regions it can't exit, dialogs that open without receiving focus" },
   { rule: "wcag-2.4.4",  name: "Link Purpose (In Context)", level: "A",   wcag: "2.0", how: "static",    detects: "vague link text ('click here'), javascript:/dead '#'-only links, dangling fragment targets" },
+  { rule: "wcag-2.4.9",  name: "Link Purpose (Link Only)", level: "AAA", wcag: "2.0", how: "static",   detects: "same link text pointing at different hrefs — purpose ambiguous out of context (warn-class)" },
   { rule: "wcag-2.4.5",  name: "Multiple Ways",             level: "AA",  wcag: "2.0", how: "static",    detects: "sites offering only one way to find pages (no search/sitemap/consistent nav)" },
   { rule: "wcag-2.4.6",  name: "Headings and Labels",       level: "AA",  wcag: "2.0", how: "static",    detects: "empty headings, empty <label> wrapping no control" },
   { rule: "wcag-2.4.7",  name: "Focus Visible",             level: "AA",  wcag: "2.0", how: "static",    detects: "inline or stylesheet outline:none/0 without a :focus-visible replacement" },

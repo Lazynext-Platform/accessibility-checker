@@ -23,6 +23,7 @@ const FPC = {
 const WCAG_TO_FPC = {
   "wcag-1.1.1": [FPC.WITHOUT_VISION],
   "wcag-1.2.1": [FPC.WITHOUT_VISION],
+  "wcag-1.2.5": [FPC.WITHOUT_VISION],
   "wcag-1.3.1": [FPC.WITHOUT_VISION],
   "wcag-1.3.3": [FPC.WITHOUT_VISION],
   "wcag-1.3.4": [FPC.LIMITED_MANIPULATION],
@@ -49,6 +50,7 @@ const WCAG_TO_FPC = {
   "wcag-2.4.2": [FPC.LIMITED_COGNITIVE],
   "wcag-2.4.3": [FPC.LIMITED_MANIPULATION],
   "wcag-2.4.4": [FPC.LIMITED_COGNITIVE],
+  "wcag-2.4.9": [FPC.LIMITED_COGNITIVE],
   "wcag-2.4.5": [FPC.LIMITED_COGNITIVE],
   "wcag-2.4.6": [FPC.LIMITED_COGNITIVE],
   "wcag-2.4.7": [FPC.LIMITED_VISION],

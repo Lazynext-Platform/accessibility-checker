@@ -474,3 +474,24 @@ test("aria-label on generic elements flags wcag-4.1.2; naming roles pass", () =>
   // no label — nothing to check
   assert.ok(!rules(scanAdditionalHtml("<div>x</div>")).includes("wcag-4.1.2"));
 });
+
+// WCAG 1.2.5 — audio description for prerecorded video (warn-class heuristic)
+test("video without descriptions track flagged (1.2.5)", () => {
+  const bad = scanAdditionalHtml('<video src="v.mp4"><track kind="captions" src="c.vtt"></video>');
+  assert.ok(rules(bad).includes("wcag-1.2.5"));
+});
+test("descriptions track or muted video not flagged (1.2.5)", () => {
+  assert.ok(!rules(scanAdditionalHtml('<video src="v.mp4"><track kind="descriptions" src="d.vtt"></video>')).includes("wcag-1.2.5"));
+  assert.ok(!rules(scanAdditionalHtml('<video muted src="v.mp4"></video>')).includes("wcag-1.2.5"));
+});
+
+// WCAG 2.4.9 — same link text to different targets is ambiguous (AAA warn-class)
+test("identical link text to different hrefs flagged (2.4.9)", () => {
+  const bad = scanAdditionalHtml('<a href="/post/1">Read more</a> <a href="/post/2">Read more</a>');
+  assert.ok(rules(bad).includes("wcag-2.4.9"));
+});
+test("same text to same target or query variants not flagged (2.4.9)", () => {
+  assert.ok(!rules(scanAdditionalHtml('<a href="/a">Home</a> <a href="/a">Home</a>')).includes("wcag-2.4.9"));
+  assert.ok(!rules(scanAdditionalHtml('<a href="/list?page=1">Next</a> <a href="/list?page=2">Next</a>')).includes("wcag-2.4.9"));
+  assert.ok(!rules(scanAdditionalHtml('<a href="/a">About us</a> <a href="/b">Contact us</a>')).includes("wcag-2.4.9"));
+});

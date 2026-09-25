@@ -289,3 +289,47 @@ test('crawlSite survives pages whose links are all malformed', async () => {
   });
   assert.equal(r.pages.length, 1);
 });
+
+// --- worker.js: confirm-email + Pro-scan rate limits --------------------------
+
+const kvWriteback = (kv) => ({
+  '/kv/put': async (req) => {
+    const b = await req.json();
+    kv[b.key] = b.value;
+    return Response.json({ ok: true });
+  },
+});
+const today = () => new Date().toISOString().slice(0, 10);
+
+test('POST /cancel 429s once the license hits the daily confirm cap', async () => {
+  const kv = { ...PRO, [`rl:confirm:pro@x.com:${today()}`]: '10' };
+  const r = await post('/cancel', { license: 'pro@x.com' }, {}, mockEnv(kv, kvWriteback(kv)));
+  assert.equal(r.status, 429);
+  // A fresh license under the cap still goes through.
+  const kv2 = { ...PRO };
+  const ok = await post('/cancel', { license: 'pro@x.com' }, {}, mockEnv(kv2, kvWriteback(kv2)));
+  assert.equal((await ok.json()).confirm, 'email');
+});
+
+test('POST /monitor + DELETE /monitor share the per-license confirm cap', async () => {
+  const kv = { ...PRO, [`rl:confirm:pro@x.com:${today()}`]: '10' };
+  const env = mockEnv(kv, kvWriteback(kv));
+  assert.equal((await post('/monitor', { license: 'pro@x.com', url: 'https://x.test' }, {}, env)).status, 429);
+  const del = (body) => worker.fetch(
+    new Request('https://checker.test/monitor', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), env);
+  assert.equal((await del({ license: 'pro@x.com', url: 'https://x.test' })).status, 429);
+});
+
+test('POST /monitor 429s at the 50-monitor license cap', async () => {
+  const kv = { ...PRO };
+  for (let i = 0; i < 50; i++) kv[`mon:pro@x.com:m${i}`] = JSON.stringify({ url: `https://x${i}.test`, email: 'pro@x.com' });
+  const r = await post('/monitor', { license: 'pro@x.com', url: 'https://new.test' }, {}, mockEnv(kv, kvWriteback(kv)));
+  assert.equal(r.status, 429);
+  assert.match((await r.json()).error, /monitor limit reached/);
+});
+
+test('POST /scan 429s a Pro IP over the daily licensed-scan quota', async () => {
+  const kv = { ...PRO, [`rl:pro:anon:${today()}`]: '100' };
+  const r = await post('/scan', { url: 'https://x.test', license: 'pro@x.com' }, {}, mockEnv(kv, kvWriteback(kv)));
+  assert.equal(r.status, 429);
+});
