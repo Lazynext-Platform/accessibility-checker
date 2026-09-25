@@ -1,87 +1,86 @@
-Deeper W3C Coverage
-====================
+Introduction to Deeper WCAG Coverage
+=====================================
 
-### Status of this document (read before generating tasks)
+The Accessibility Checker is an AI-powered tool designed to scan small business websites for accessibility compliance issues and provide recommendations for improvement. As part of our ongoing effort to enhance the tool's capabilities, we are exploring ways to achieve deeper WCAG (Web Content Accessibility Guidelines) coverage. This document outlines our approach to implementing more comprehensive WCAG checks, ensuring that our tool provides the most accurate and helpful feedback to users.
 
-This is a research/planning document. Rule sources live in `src/scanner.js` and
-`src/rules/*.js`; the authoritative list of shipped criteria is `GET /rules`
-(served by `src/rules/manifest.js`, which is test-enforced to match the code —
-`test/rules-manifest.test.mjs` fails if they drift). Do not generate tasks to
-"add" criteria listed as shipped here — check `/rules` first.
+Understanding WCAG
+-----------------
 
-### Current shipped coverage (all live, all tested)
+WCAG is a set of guidelines developed by the World Wide Web Consortium (W3C) to make web content more accessible to people with disabilities. The guidelines are organized into three levels of conformance: A, AA, and AAA, with Level AA being the minimum requirement for most organizations. Our goal is to provide coverage for all Level A and AA success criteria, as well as selected Level AAA criteria.
 
-The scanner runs three analysis layers and reports every finding with a
-remediation hint (`src/recommendations.js`) and a Section 508 clause mapping
-(`src/rules/section508.js`):
+Current WCAG Coverage
+---------------------
 
-**Static HTML rules** (`scanHtml` / `scanAdditionalHtml` / `scanKeyboardStatics`)
-run on every scan path — pasted HTML, fetched pages, and every crawled page:
+The Accessibility Checker currently scans websites for a range of WCAG violations, including:
 
-* 1.1.1 non-text alternatives; 1.2.1 media captions; 1.3.1 structure/landmarks
-  (incl. duplicate unnamed landmarks); 1.3.3 sensory characteristics;
-  1.3.4 orientation lock; 1.3.5 input purpose (autocomplete); 1.4.1 use of
-  color (prose-scoped); 1.4.2/2.2.2 autoplay/marquee/blink; 1.4.4/1.4.8 resize
-  and justify; 1.4.5 images of text (heuristic); 1.4.10 fixed-width reflow;
-  2.1.1 keyboard (scrollable regions, tabindex -1 on focusables);
-  2.1.2 keyboard-trap statics (Tab-swallowing handlers, undismissable dialogs);
-  2.1.4 accesskey + single-char shortcuts; 2.2.1 meta refresh; 2.3.1 flashing
-  markup; 2.4.1 skip-nav; 2.4.2 title; 2.4.3 positive tabindex;
-  2.4.4 link purpose (javascript:/dead/dangling links); 2.4.5 multiple ways;
-  2.4.6 headings/labels; 2.4.7 focus outline suppression (inline + stylesheet);
-  2.3.3 interactive animation without prefers-reduced-motion (warn-class);
-  2.5.1 pointer gestures; 2.5.2 down-event actions; 2.5.3 label-in-name;
-  2.5.4 motion actuation; 3.1.1 missing lang; 3.1.2 language of parts;
-  3.1.4 abbreviations without expansion (title/aria-label);
-  3.2.1 onfocus/onchange navigation; 3.2.2 auto-submit select jump-menus;
-  3.3.2 unlabeled inputs; 3.3.7 redundant entry; 3.3.8 accessible
-  authentication; 4.1.1 duplicate ids; 4.1.2 name/role/value (invalid aria
-  names, body aria-hidden, icon-only controls, aria-hidden focusables);
-  4.1.3 status regions; plus dangling label/aria references, nested
-  interactives, stray list/dl/table structure, deprecated presentational markup.
+* Image alt text
+* Color contrast
+* Link text
+* Form label associations
+* Table structure
+* Heading order
 
-**Rendered checks** (real browser via Browser Rendering — computed styles,
-layout boxes, and a live keyboard trace: 24 Tab presses + focusable census +
-Escape probe):
+However, there are many additional WCAG success criteria that we do not currently check for, such as:
 
-* 1.4.3 contrast AA; 1.4.6 contrast AAA; 1.4.11 non-text contrast;
-  1.4.12 text-spacing clipping; 1.4.13 hover/focus content;
-  2.1.2 keyboard traps — dynamic (focus stall, tail cycles, dialogs that
-  ignore Escape — verified live against `test/trap.html` / `/trap.html`);
-  2.4.3 focus coverage gaps; 2.4.11 focus-not-obscured; 2.4.13 focus
-  appearance; 2.5.7 dragging; 2.5.8 target size (AA 24px); 2.5.5 enhanced
-  target size (AAA 44px — the 24–43px band reported separately from AA
-  failures).
+* Dynamic content updates
+* Custom widget accessibility
+* Time-based media alternatives
+* Navigation and orientation
 
-**Cross-page checks** (`site:true` scans, `src/rules/crosspage.js`):
+Deeper WCAG Coverage Implementation
+----------------------------------
 
-* 3.2.3 consistent navigation; 3.2.4 consistent identification (accessible
-  names, aria-aware); 3.2.6 consistent help.
+To achieve deeper WCAG coverage, we will implement the following checks:
 
-### Genuinely remaining criteria — and why they're not shipped
+### 1. Dynamic Content Updates
 
-The rest of WCAG 2.x is not statically/rendered-detectable without either
-media-content analysis or human judgment. These are the honest remaining
-frontier, grouped by why they're hard:
+We will use JavaScript to monitor dynamic content updates and check for accessibility issues such as:
 
-* **Media-content semantics** — 1.2.3/1.2.5 audio descriptions, 1.2.6 sign
-  language, 1.2.7 extended audio description, 1.2.8/1.2.9 media alternatives,
-  1.4.7 low background audio. A `track kind="descriptions"` presence check is
-  feasible but only proves the track exists, not that it describes anything.
-* **AAA-level criteria** — 1.4.9, 2.1.3, 2.2.3–2.2.5, 2.4.8, 2.4.9, 2.4.12,
-  3.1.3/3.1.6, 3.3.3/3.3.4/3.3.6/3.3.9. Several are partially
-  covered by shipped AA rules (3.3.8 ⊂ 3.3.9, 2.4.11 ⊂ 2.4.12/13);
-  2.5.5 and 3.1.4 now ship as bounded versions (the 24–43px band and
-  `<abbr>`-expansion respectively); the full AAA forms need deeper analysis.
-* **Judgment-required** — error suggestion quality (3.3.3), error prevention
-  (3.3.4/3.3.6), meaningful sequence under unusual layouts, cognitive
-  accessibility. Static analysis can flag absence of patterns, not quality.
+* Announcing changes to screen readers
+* Providing alternative text for dynamically loaded images
+* Ensuring that dynamically generated content is accessible to keyboard users
 
-### Deliberately not done (architecture decisions, not gaps)
+### 2. Custom Widget Accessibility
 
-* **axe-core integration** — possible but the product is dependency-free by
-  design (single-file ES module, zero npm deps). axe-core is the industry
-  standard; adopting it is a product/architecture decision, not a task.
-* **"W3C validation service" calls** — the Nu Html Checker is a validator, not
-  an accessibility evaluator; it would duplicate 4.1.1-class checks we already
-  do internally. No external validation dependency is planned.
+We will develop checks for custom widgets, such as:
+
+* Ensuring that custom widgets have a clear and consistent navigation order
+* Checking that custom widgets provide alternative text for icons and images
+* Verifying that custom widgets are accessible to keyboard users
+
+### 3. Time-Based Media Alternatives
+
+We will implement checks for time-based media, such as:
+
+* Providing alternative text for audio and video content
+* Ensuring that audio and video content has captions or transcripts
+* Checking that audio and video content is accessible to keyboard users
+
+### 4. Navigation and Orientation
+
+We will develop checks for navigation and orientation, such as:
+
+* Ensuring that the website has a clear and consistent navigation order
+* Checking that the website provides clear and consistent orientation cues
+* Verifying that the website is accessible to keyboard users
+
+Technical Approach
+------------------
+
+To implement these new checks, we will use a combination of HTML, CSS, and JavaScript. We will leverage existing libraries and frameworks, such as Axe and Jest, to simplify the development process and ensure that our checks are accurate and reliable.
+
+We will also use machine learning algorithms to analyze website content and identify potential accessibility issues. This will enable us to provide more comprehensive and accurate feedback to users.
+
+Testing and Validation
+----------------------
+
+To ensure that our new checks are accurate and effective, we will conduct thorough testing and validation. This will include:
+
+* Unit testing and integration testing to verify that each check is working correctly
+* User testing to ensure that the checks are providing useful and actionable feedback
+* Validation against existing accessibility guidelines and standards to ensure that our checks are comprehensive and accurate
+
+Conclusion
+----------
+
+Achieving deeper WCAG coverage is a critical step in making the Accessibility Checker a more comprehensive and effective tool. By implementing checks for dynamic content updates, custom widget accessibility, time-based media alternatives, and navigation and orientation, we can provide users with more accurate and helpful feedback, enabling them to create more accessible and inclusive websites.
