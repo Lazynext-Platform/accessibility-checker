@@ -26,7 +26,7 @@ export const RULES = [
   { rule: "wcag-1.4.13", name: "Content on Hover or Focus", level: "AAA", wcag: "2.1", how: "static",    detects: "title-attr/popup content with no dismiss mechanism (warn-class heuristic)" },
   // ── Operable ───────────────────────────────────────────────────────────
   { rule: "wcag-2.1.1",  name: "Keyboard",                  level: "A",   wcag: "2.0", how: "rendered",  detects: "no focusable elements, unreachable focusables, tabindex=-1 on natively focusable elements, scrollable regions not keyboard-reachable" },
-  { rule: "wcag-2.1.2",  name: "No Keyboard Trap",          level: "A",   wcag: "2.0", how: "rendered",  detects: "Tab-swallowing keydown handlers, undismissable dialogs, focus stall/cycle in a real 24-press Tab trace, Escape ignored inside dialogs" },
+  { rule: "wcag-2.1.2",  name: "No Keyboard Trap",          level: "A",   wcag: "2.0", how: "rendered",  detects: "Tab-swallowing keydown handlers, undismissable dialogs, focus stall/cycle in a real 24-press Tab trace, Escape ignored inside dialogs, Shift+Tab backward stalls/cycles, click-opened dialogs with no keyboard exit" },
   { rule: "wcag-2.1.4",  name: "Character Key Shortcuts",   level: "A",   wcag: "2.1", how: "static",    detects: "accesskey attributes / single-character key handlers with no remapping or off switch" },
   { rule: "wcag-2.2.1",  name: "Timing Adjustable",         level: "A",   wcag: "2.0", how: "static",    detects: "<meta http-equiv=refresh> timed reload/redirect" },
   { rule: "wcag-2.2.2",  name: "Pause, Stop, Hide",         level: "A",   wcag: "2.0", how: "static",    detects: "<marquee> and auto-moving content with no pause control" },
@@ -34,7 +34,7 @@ export const RULES = [
   { rule: "wcag-2.3.3",  name: "Animation from Interactions", level: "AAA", wcag: "2.1", how: "static",   detects: "transition/animation on :hover/:focus/:active with no prefers-reduced-motion support (warn-class, inline <style> only)" },
   { rule: "wcag-2.4.1",  name: "Bypass Blocks",             level: "A",   wcag: "2.0", how: "rendered",  detects: "no skip-navigation link to main content" },
   { rule: "wcag-2.4.2",  name: "Page Titled",               level: "A",   wcag: "2.0", how: "static",    detects: "missing or empty <title>" },
-  { rule: "wcag-2.4.3",  name: "Focus Order",               level: "A",   wcag: "2.0", how: "rendered",  detects: "positive tabindex, focusables Tab never reaches, focus entering regions it can't exit" },
+  { rule: "wcag-2.4.3",  name: "Focus Order",               level: "A",   wcag: "2.0", how: "rendered",  detects: "positive tabindex, focusables Tab never reaches, focus entering regions it can't exit, dialogs that open without receiving focus" },
   { rule: "wcag-2.4.4",  name: "Link Purpose (In Context)", level: "A",   wcag: "2.0", how: "static",    detects: "vague link text ('click here'), javascript:/dead '#'-only links, dangling fragment targets" },
   { rule: "wcag-2.4.5",  name: "Multiple Ways",             level: "AA",  wcag: "2.0", how: "static",    detects: "sites offering only one way to find pages (no search/sitemap/consistent nav)" },
   { rule: "wcag-2.4.6",  name: "Headings and Labels",       level: "AA",  wcag: "2.0", how: "static",    detects: "empty headings, empty <label> wrapping no control" },

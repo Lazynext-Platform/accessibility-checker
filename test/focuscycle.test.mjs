@@ -124,6 +124,84 @@ test('text clipping under spacing overrides flags wcag-1.4.12', () => {
   assert.match(f.message, /div#card/);
 });
 
+test('backward stall mid-order flags wcag-2.1.2 as a Shift+Tab trap', () => {
+  const trace = ['0:a:top', '1:a:mid', '2:b:go', '3:c:end'];
+  const back = ['3:c:end', '2:b:go', '2:b:go', '2:b:go', '2:b:go', '2:b:go'];
+  const issues = checkFocusDepth(trace, 4, null, { backtrace: back });
+  const t = issues.find((i) => i.rule === 'wcag-2.1.2' && /Shift\+Tab/.test(i.message));
+  assert.ok(t, 'mid-order backward stall should flag');
+  assert.match(t.message, /2:b:go/);
+});
+
+test('backward stall on the first focused element is the natural boundary — no flag', () => {
+  const trace = ['0:a:top', '1:b:two'];
+  const back = ['0:a:top', '0:a:top', '0:a:top', '0:a:top', '0:a:top'];
+  assert.deepEqual(checkFocusDepth(trace, 2, null, { backtrace: back }).filter((i) => /Shift\+Tab/.test(i.message)), []);
+});
+
+test('backward stall on body (browser chrome transition) is not a page trap', () => {
+  const trace = ['0:a', '1:b'];
+  const back = ['0:a', 'body', 'body', 'body', 'body', 'body'];
+  assert.deepEqual(checkFocusDepth(trace, 2, null, { backtrace: back }).filter((i) => /Shift\+Tab/.test(i.message)), []);
+});
+
+test('backward stall on the forward endpoint is owned by the forward check', () => {
+  const trace = ['0:a', '1:b', '1:b', '1:b', '1:b', '1:b'];
+  const back = ['1:b', '1:b', '1:b', '1:b', '1:b'];
+  const issues = checkFocusDepth(trace, 3, null, { backtrace: back });
+  assert.equal(issues.filter((i) => /Shift\+Tab/.test(i.message)).length, 0);
+});
+
+test('backward tail cycle flags a Shift+Tab trap', () => {
+  const trace = ['0:a', '1:b', '2:c', '3:d'];
+  const back = ['3:d', '1:b', '2:c', '1:b', '2:c', '1:b', '2:c'];
+  const issues = checkFocusDepth(trace, 4, null, { backtrace: back });
+  assert.ok(issues.some((i) => i.rule === 'wcag-2.1.2' && /retreat/.test(i.message)));
+});
+
+test('backward cycle inside the forward cycle does not double-flag the same trap', () => {
+  const trace = ['0:a', '1:x', '2:y', '1:x', '2:y', '1:x', '2:y'];
+  const back = ['2:y', '1:x', '2:y', '1:x', '2:y', '1:x'];
+  const issues = checkFocusDepth(trace, 4, null, { backtrace: back });
+  assert.equal(issues.filter((i) => /Shift\+Tab/.test(i.message)).length, 0);
+});
+
+test('missing/empty backtrace is inconclusive — no findings', () => {
+  const trace = ['0:a', '1:b'];
+  assert.deepEqual(checkFocusDepth(trace, 2, null, { backtrace: [] }).filter((i) => /Shift\+Tab/.test(i.message)), []);
+  assert.deepEqual(checkFocusDepth(trace, 2, null, {}).filter((i) => /Shift\+Tab/.test(i.message)), []);
+});
+
+test('click-opened dialog with focus left outside flags wcag-2.4.3', () => {
+  const issues = checkFocusDepth(['0:a', '1:b'], 2, null, {
+    clickTraps: [{ trigger: '2:button#open', focusOutside: true, escapeDead: true, noExit: false }],
+  });
+  const f = issues.find((i) => i.rule === 'wcag-2.4.3' && /button#open/.test(i.message));
+  assert.ok(f, 'focus-outside dialog should flag 2.4.3');
+});
+
+test('click-opened dialog: focus inside + dead Escape + zero controls is a hard trap', () => {
+  const issues = checkFocusDepth(['0:a'], 1, null, {
+    clickTraps: [{ trigger: '1:button#m', focusOutside: false, escapeDead: true, noExit: true }],
+  });
+  const t = issues.find((i) => i.rule === 'wcag-2.1.2' && /exited by keyboard/.test(i.message));
+  assert.ok(t, 'dialog with no keyboard exit should flag 2.1.2');
+});
+
+test('click-opened dialog with a reachable control is compliant containment — no trap flag', () => {
+  const issues = checkFocusDepth(['0:a'], 1, null, {
+    clickTraps: [{ trigger: '1:button#m', focusOutside: false, escapeDead: true, noExit: false }],
+  });
+  assert.deepEqual(issues.filter((i) => i.rule === 'wcag-2.1.2'), []);
+});
+
+test('click-opened dialog with live Escape is clean', () => {
+  const issues = checkFocusDepth(['0:a'], 1, null, {
+    clickTraps: [{ trigger: '1:button#m', focusOutside: false, escapeDead: false, noExit: true }],
+  });
+  assert.deepEqual(issues.filter((i) => i.rule === 'wcag-2.1.2'), []);
+});
+
 test("24–43px targets flag wcag-2.5.5 (AAA band); <24px stays 2.5.8-only", () => {
   const trace = ["a", "b"];
   const mid = checkFocusDepth(trace, 3, null, { undersizedAAA: [{ d: "0:button#go", w: 30, h: 30 }] });

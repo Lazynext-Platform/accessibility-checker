@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Click-activated trap fixture</title></head>
+<body>
+  <main>
+    <h1>Click-activated trap fixture</h1>
+    <a href="#top">top link</a>
+    <!-- Probe order matters: a dialog that won't close ends probing, so the
+         dismissible focus-outside dialog comes first. -->
+    <button id="open-nofocus" type="button">open unfocused dialog</button>
+    <button id="open-trap" type="button">open trapped dialog</button>
+    <a href="#tail">tail link</a>
+
+    <!-- Dialog 1: opens on click but focus stays on the trigger — keyboard
+         users can't reach the opened content (wcag-2.4.3). Closes on a
+         backdrop click, so probing can continue afterwards. -->
+    <div id="nofocus-dialog" role="dialog" aria-label="Unfocused" hidden>
+      <p>Content that never receives focus.</p>
+      <button id="nf-close" type="button">close</button>
+    </div>
+
+    <!-- Dialog 2: opens on click, takes focus, but swallows Escape and
+         contains no focusable control — a hard keyboard trap (wcag-2.1.2). -->
+    <div id="trap-dialog" role="dialog" aria-label="Trapped" tabindex="-1" hidden>
+      <p>You are trapped. No button, no Escape.</p>
+    </div>
+  </main>
+  <script>
+    const nf = document.getElementById('nofocus-dialog');
+    const trap = document.getElementById('trap-dialog');
+    document.getElementById('open-nofocus').addEventListener('click', () => {
+      nf.hidden = false; // dialog appears; focus stays on the trigger
+    });
+    document.getElementById('nf-close').addEventListener('click', () => { nf.hidden = true; });
+    // Backdrop click dismisses dialog 1 (realistic) — lets the render pass
+    // restore state and probe the next trigger.
+    document.addEventListener('click', (e) => {
+      if (!nf.hidden && !nf.contains(e.target) && e.target.id !== 'open-nofocus') nf.hidden = true;
+    });
+    document.getElementById('open-trap').addEventListener('click', () => {
+      trap.hidden = false;
+      trap.focus(); // focus goes in, but nothing inside is operable
+    });
+    // Swallow Escape + Tab while the trap dialog is open — no way out.
+    trap.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' || e.key === 'Tab') e.preventDefault();
+    });
+  </script>
+</body>
+</html>

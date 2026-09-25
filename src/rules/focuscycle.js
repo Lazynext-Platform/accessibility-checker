@@ -8,8 +8,9 @@
 // focusable: total count of visible focusable elements on the page
 // escape:    { inDialog, responds } from the Escape probe, or null
 // rendered:  { undersized: [{d,w,h}], undersizedAAA: [{d,w,h}],
-//            obscured: [trace-entry strings], ... } —
-//            geometry facts captured during the render pass
+//            obscured: [trace-entry strings], backtrace: [Shift+Tab trace],
+//            clickTraps: [{trigger,focusOutside,escapeDead,noExit}], ... } —
+//            geometry + interaction facts captured during the render pass
 
 export function checkFocusDepth(trace, focusable, escape, rendered = {}) {
   const issues = [];
@@ -50,6 +51,58 @@ export function checkFocusDepth(trace, focusable, escape, rendered = {}) {
     issues.push({
       rule: 'wcag-2.1.2',
       message: 'focus is inside a dialog and Escape does not close or move it — keyboard users cannot exit',
+    });
+  }
+
+  // Backward trace — the render pass also pressed Shift+Tab from wherever
+  // forward focus ended. A stall mid-order means focus can enter a region
+  // but not retreat out of it. Exclusions: 'body' (browser chrome transition,
+  // not page content), the first forward-focused element (the natural start
+  // boundary — nothing to retreat to), the forward trace's last entry and
+  // forward-cycle members (the forward checks already own that trap).
+  const back = rendered.backtrace ?? [];
+  if (Array.isArray(back) && back.length > 0) {
+    const firstFwd = trace.find((t) => t && t !== 'body');
+    const lastFwd = trace[trace.length - 1];
+    let run = 1, maxRun = 1, stuck = null;
+    for (let i = 1; i < back.length; i++) {
+      run = back[i] === back[i - 1] ? run + 1 : 1;
+      if (run > maxRun) { maxRun = run; stuck = back[i]; }
+    }
+    if (maxRun >= 4 && stuck && stuck !== 'body' && stuck !== firstFwd && stuck !== lastFwd && !(cycle && cycle.has(stuck))) {
+      issues.push({
+        rule: 'wcag-2.1.2',
+        message: `possible keyboard trap — Shift+Tab cannot retreat past ${stuck} (${maxRun} consecutive presses)`,
+      });
+    }
+    const bcycle = findTailCycle(back);
+    if (bcycle && ![...bcycle].every((e) => e === 'body') && !(cycle && [...bcycle].every((e) => cycle.has(e)))) {
+      issues.push({
+        rule: 'wcag-2.1.2',
+        message: `possible keyboard trap — Shift+Tab focus cycles among ${bcycle.size} element(s) instead of retreating`,
+      });
+    }
+  }
+
+  // Click-activated dialogs — the render pass clicked likely triggers and a
+  // dialog/alertdialog actually appeared. Focus staying outside the opened
+  // dialog is a focus-order failure (keyboard users can't reach the new
+  // content). Focus inside with Escape dead AND zero focusable controls is a
+  // hard trap — containment alone is compliant only when a keyboard exit
+  // exists, so dialogs with reachable controls are not flagged.
+  const clicks = rendered.clickTraps ?? [];
+  const outside = clicks.filter((c) => c.focusOutside);
+  if (outside.length > 0) {
+    issues.push({
+      rule: 'wcag-2.4.3',
+      message: `${outside.length} dialog(s) opened by click but focus stayed outside — keyboard users cannot reach the opened content (trigger: ${outside.slice(0, 3).map((c) => c.trigger).join(', ')})`,
+    });
+  }
+  const trapped = clicks.filter((c) => !c.focusOutside && c.escapeDead && c.noExit);
+  if (trapped.length > 0) {
+    issues.push({
+      rule: 'wcag-2.1.2',
+      message: `${trapped.length} click-opened dialog(s) cannot be exited by keyboard — Escape does nothing and no focusable control exists inside (trigger: ${trapped.slice(0, 3).map((c) => c.trigger).join(', ')})`,
     });
   }
 
