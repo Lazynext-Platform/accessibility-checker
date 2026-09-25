@@ -1,0 +1,11 @@
+node_modules/
+.git/
+.github/
+test/
+docs/
+sdk/
+scripts/
+*.md
+wrangler.jsonc
+package.json
+package-lock.json

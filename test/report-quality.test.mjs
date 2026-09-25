@@ -83,9 +83,9 @@ test('CSV fills the page column from per-issue url attribution', async () => {
   const env = mockEnv({ 'report:site': siteReport });
   const csv = await (await get('/report/site.csv', {}, env)).text();
   const lines = csv.trim().split('\r\n');
-  assert.equal(lines[0], 'rule,page,finding,fix');
-  assert.ok(lines[1].startsWith('"wcag-1.3.1","https://x/",'));
-  assert.ok(lines[2].startsWith('"wcag-1.4.3","https://x/about",'));
+  assert.equal(lines[0], 'rule,criterion,level,page,finding,fix');
+  assert.ok(lines[1].startsWith('"wcag-1.3.1","Info and Relationships","A","https://x/",'));
+  assert.ok(lines[2].startsWith('"wcag-1.4.3","Contrast (Minimum)","AA","https://x/about",'));
 });
 
 test('report page embeds a badge snippet ready to paste', async () => {

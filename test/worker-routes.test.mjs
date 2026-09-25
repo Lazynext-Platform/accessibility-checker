@@ -95,7 +95,7 @@ test('GET /report/:id.csv exports findings as CSV', async () => {
   assert.match(r.headers.get('content-type'), /text\/csv/);
   assert.match(r.headers.get('content-disposition'), /accessibility-report-abc\.csv/);
   const csv = await r.text();
-  assert.ok(csv.startsWith('rule,page,finding,fix'));
+  assert.ok(csv.startsWith('rule,criterion,level,page,finding,fix'));
   assert.ok(csv.includes('"say ""hi"""'), 'quotes escaped');
   assert.ok(csv.includes('"fix, it"'), 'commas quoted');
 });

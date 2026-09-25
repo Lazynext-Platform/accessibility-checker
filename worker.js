@@ -188,9 +188,13 @@ export default {
       const raw = await kvGet(env, `report:${id}`);
       if (!raw) return respond({ error: 'report not found or expired' }, 404);
       const rep = JSON.parse(raw);
+      // Join findings against the rules manifest so reports carry the criterion
+      // name and conformance level — "wcag-1.3.1 · Info and Relationships (A)"
+      // tells a customer what to prioritise; a bare rule id does not.
+      const ruleInfo = Object.fromEntries(RULES.map((r) => [r.rule, r]));
       if (fmt === 'csv') {
         const cell = (v) => `"${String(v ?? '').replaceAll('"', '""')}"`;
-        const csv = ['rule,page,finding,fix', ...rep.issues.map((i) => [i.rule, i.url ?? '', i.message, i.fix ?? ''].map(cell).join(','))].join('\r\n');
+        const csv = ['rule,criterion,level,page,finding,fix', ...rep.issues.map((i) => [i.rule, ruleInfo[i.rule]?.name ?? '', ruleInfo[i.rule]?.level ?? '', i.url ?? '', i.message, i.fix ?? ''].map(cell).join(','))].join('\r\n');
         return new Response(csv, { headers: { 'content-type': 'text/csv; charset=utf-8', 'content-disposition': `attachment; filename="accessibility-report-${id}.csv"` } });
       }
       if (fmt === 'pdf') {
@@ -198,7 +202,11 @@ export default {
         if (!r.ok) return respond({ error: 'pdf export unavailable' }, 502);
         return new Response(r.body, { headers: { 'content-type': 'application/pdf', 'content-disposition': `attachment; filename="accessibility-report-${id}.pdf"` } });
       }
-      const rows = rep.issues.map((i) => `<tr><td style="font-family:monospace">${esc(i.rule)}</td><td>${esc(i.message)}${i.fix ? `<br><span style="color:#555;font-size:0.9em">Fix: ${esc(i.fix)}</span>` : ''}</td></tr>`).join('');
+      const rows = rep.issues.map((i) => {
+        const meta = ruleInfo[i.rule];
+        const label = meta ? `<br><span style="color:#555;font-size:0.9em">${esc(meta.name)} · Level ${esc(meta.level)}</span>` : '';
+        return `<tr><td style="font-family:monospace">${esc(i.rule)}${label}</td><td>${esc(i.message)}${i.fix ? `<br><span style="color:#555;font-size:0.9em">Fix: ${esc(i.fix)}</span>` : ''}</td></tr>`;
+      }).join('');
       return new Response(`<!doctype html><meta charset="utf-8"><title>Accessibility report — ${esc(rep.url ?? 'paste')}</title>
 <body style="font-family:system-ui;max-width:800px;margin:2rem auto;padding:0 1rem">
 <h1>Accessibility report</h1><p><b>${esc(rep.url ?? 'pasted HTML')}</b> · ${new Date(rep.ts).toUTCString()} · rendered: ${rep.rendered}</p>
