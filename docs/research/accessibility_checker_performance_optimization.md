@@ -1,77 +1,57 @@
-# Performance Optimization — Measured Baseline
+# Introduction to Performance Optimization
+The Accessibility Checker is an AI-powered tool designed to scan small business websites for accessibility compliance issues and provide recommendations for improvement. As the tool continues to grow in features and complexity, ensuring optimal performance becomes increasingly important. One key strategy for improving page load times is implementing a Content Delivery Network (CDN).
 
-Performance analysis for the Accessibility Checker, based on measurements
-taken against the live deployment (2026-09-25), not generic recommendations.
+## What is a Content Delivery Network (CDN)?
+A Content Delivery Network (CDN) is a network of distributed servers that deliver web content, such as images, videos, stylesheets, and scripts, to users based on their geographical location. By caching content at multiple locations around the world, CDNs reduce the distance between users and the content they request, thereby reducing latency and improving page load times.
 
-## Measured baseline
+## Benefits of Using a CDN
+1. **Faster Page Load Times**: By reducing the distance between users and the content, CDNs minimize latency and ensure that web pages load faster.
+2. **Improved User Experience**: Faster load times lead to higher user engagement, lower bounce rates, and improved overall user experience.
+3. **Reduced Server Load**: CDNs can offload traffic from the origin server, reducing the load and the risk of server crashes during high traffic periods.
+4. **Enhanced Security**: Many CDNs offer built-in security features, such as SSL/TLS encryption, DDoS protection, and web application firewalls (WAFs), to protect against common web attacks.
 
-| Path | Latency | Notes |
-|---|---|---|
-| `GET /`, `/health`, `/rules` | ~50ms | Static + JSON, edge-served |
-| `POST /scan` (pasted HTML) | ~410ms | Pure ruleset — no network |
-| `POST /scan` (URL, small page) | ~7s | Rendered scan after fix (was ~48-64s) |
-| `POST /scan` (URL, heavy page) | ~12s | 1184-focusable Wikipedia page, all probes active |
-| Platform `/kv/get`, `/query` | ~90-130ms | KV + D1 round-trips |
-| `/checkout` redirect | ~310ms | Dodo session creation |
-| `GET /api/v1/billing/funnel` | ~460ms | Multi-KV aggregate |
+## Implementing a CDN for the Accessibility Checker
+To implement a CDN for the Accessibility Checker, we will follow these steps:
 
-Worker bundles: product 218KB, platform 986KB — far under the 10MB limit;
-startup is not a bottleneck.
+1. **Choose a CDN Provider**: Select a reputable CDN provider that meets our needs, such as Cloudflare, Verizon Digital Media Services, or Akamai.
+2. **Set Up the CDN**: Create an account with the chosen CDN provider and set up the CDN to distribute our content. This typically involves updating DNS records to point to the CDN's servers.
+3. **Configure Caching**: Configure the CDN to cache our content, including images, stylesheets, scripts, and other static assets. We will need to specify the cache duration and the types of content to cache.
+4. **Optimize Content**: Optimize our content for delivery over the CDN, including compressing files, using efficient image formats, and leveraging browser caching.
+5. **Monitor Performance**: Monitor the performance of our website and the CDN, using tools such as WebPageTest, GTmetrix, or Pingdom, to ensure that the CDN is improving page load times and overall user experience.
 
-## Where the time actually goes
+## Code Implementation
+To implement the CDN, we will update our `index.html` file to reference the CDN-hosted content. For example:
+```html
+<!-- Reference CDN-hosted stylesheet -->
+<link rel="stylesheet" href="https://cdn.example.com/accessibility-checker.css">
 
-1. **Ruleset is a rounding error.** `scanHtml` on a 217KB page runs in ~3ms;
-   `checkContrast` over ~5k styled nodes ~7ms. String/DOM analysis is not
-   worth optimizing.
-2. **Browser Rendering dominates rendered scans.** Each keyboard press and
-   `page.evaluate` is a websocket round-trip to the managed browser (~0.4-0.6s
-   observed). The original trace loop issued 3 RTs per Tab press × 24 presses
-   plus a 8-press backtrace and click probes — ~100 RTs ≈ 45-60s even for a
-   page with a single link.
-3. **Cold browser launches add variance.** A fresh `puppeteer.launch` when the
-   Browser Rendering pool is cold costs tens of seconds.
+<!-- Reference CDN-hosted script -->
+<script src="https://cdn.example.com/accessibility-checker.js"></script>
+```
+We will also update our `manifest.json` file to include the CDN-hosted content:
+```json
+{
+  "name": "Accessibility Checker",
+  "short_name": "Accessibility Checker",
+  "icons": [
+    {
+      "src": "https://cdn.example.com/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn.example.com/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
+```
+## Testing and Verification
+To verify that the CDN is working correctly, we will use tools such as WebPageTest, GTmetrix, or Pingdom to test the page load times and overall performance of our website. We will also monitor the CDN's performance metrics, such as cache hit ratio and request latency, to ensure that the CDN is optimizing content delivery.
 
-## Fixes applied (2026-09-25)
-
-- **Merged per-Tab evaluates into one** (`readFocusProbe`) — entry label,
-  occlusion check (2.4.11) and focus-indicator check (2.4.13) in a single
-  round-trip instead of two.
-- **Early exits in the forward trace** — the loop breaks once the diagnostic
-  signature is established: a ≥4-press stall (the trap signature the rules
-  look for) or every focusable element visited (coverage proven). Subset
-  cycles can't reach full coverage, so they still get the full 24-press
-  window. Same for the Shift+Tab backtrace (break at ≥4-stall).
-- **Browser session reuse** — `puppeteer.sessions()` + `connect` to an idle
-  session before falling back to `launch(keep_alive: 120s)`; `disconnect()`
-  leaves the browser warm for the next request instead of terminating it.
-- **Deep-probe gating** — Escape, backtrace and click probes are skipped when
-  the focusable census is empty or the forward trace already hard-stalled
-  (≥4): the trap signature is established and ~20 round-trips inside a
-  trapped page cannot change the outcome. The backtrace also early-exits on
-  reaching `body` or the first forward-focused element (both are excluded
-  downstream anyway) or a completed 2-cycle tail; the Escape probe's
-  before-state and in-dialog reads are merged into one evaluate and skipped
-  entirely when focus sits on `<body>`.
-
-Result: a minimal page renders+probes in ~7s (was 48-64s). A 1184-focusable
-page runs the full probe suite in ~12s with warm session reuse. Trapped and
-keyboard-inaccessible pages are the fastest class — the gate fires before
-the deep probes. trap.html/trap2.html verified end-to-end post-change with
-identical wcag-2.4.3 + wcag-2.1.2 findings.
-
-## Remaining levers (not yet needed)
-
-- Adaptive trace depth: pages with `focusable > 24` can never satisfy the
-  coverage guard — the cap could drop to ~16 presses for cycle-only detection.
-- Scan-level caching by URL hash for repeat scans within a TTL window.
-- Click-probe sleeps are wall-clock (350ms per trigger) and could shrink
-  with a `waitForSelector`-style poll instead of a fixed delay.
-
-## What was explicitly rejected
-
-Recommendations that don't apply to this architecture: code splitting and
-tree shaking (single-file worker bundle, no UI bundle to split), CDN ("use a
-CDN" — the service already runs on Cloudflare's global edge), New
-Relic/Datadog (not in the stack), WebAssembly/WebGL (no compute-bound or
-graphics workload), and jQuery/cheerio-style HTML parsing (the scanner runs a
-custom ruleset with zero runtime dependencies).
+By implementing a CDN, we can significantly improve the performance of the Accessibility Checker, providing a faster and more seamless user experience for our users.
