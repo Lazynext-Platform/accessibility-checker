@@ -1,6 +1,6 @@
 # WCAG Coverage Reference
 
-64 success criteria implemented across three detection layers. This document
+74 success criteria implemented across three detection layers. This document
 is the authoritative map: each rule, its WCAG level/version, the detection
 layer that evaluates it, and what it flags. Live source: `GET /rules`.
 
@@ -8,7 +8,7 @@ Layers: **static** = string-scan of fetched HTML (every scan), **rendered** =
 Browser Rendering trace (contrast census, focus cycle, target measurements),
 **crosspage** = multi-page consistency (site scans only).
 
-## Static layer (44 criteria)
+## Static layer (54 criteria)
 
 | Criterion | Level | WCAG | What it flags |
 |---|---|---|---|
@@ -24,15 +24,18 @@ Browser Rendering trace (contrast census, focus cycle, target measurements),
 | wcag-1.4.2 — Audio Control | A | 2.0 | autoplaying <audio>/<video> (unmuted) without pause/stop controls |
 | wcag-1.4.4 — Resize Text | AA | 2.0 | viewport user-scalable=no or maximum-scale < 2 |
 | wcag-1.4.5 — Images of Text | AA | 2.0 | images whose alt text suggests they carry significant text (heuristic) |
+| wcag-1.4.7 — Low or No Background Audio | AAA | 2.0 | unmuted <audio> — verify background audio is absent, 20dB quieter, or user-switchable (warn-class) |
 | wcag-1.4.8 — Visual Presentation | AAA | 2.0 | text-align: justify without hyphenation support |
+| wcag-1.4.9 — Images of Text (No Exception) | AAA | 2.0 | non-logo images carrying text — AAA permits no images of text outside decoration/logotype |
 | wcag-1.4.10 — Reflow | AA | 2.1 | fixed pixel widths on content containers that prevent reflow at 320px |
 | wcag-1.4.13 — Content on Hover or Focus | AAA | 2.1 | title-attr/popup content with no dismiss mechanism (warn-class heuristic) |
 | wcag-2.1.3 — Keyboard (No Exception) | AAA | 2.0 | scrollable region not keyboard-reachable — the same failure is an outright AAA violation |
 | wcag-2.1.4 — Character Key Shortcuts | A | 2.1 | accesskey attributes / single-character key handlers with no remapping or off switch |
 | wcag-2.2.1 — Timing Adjustable | A | 2.0 | <meta http-equiv=refresh> timed reload/redirect |
-| wcag-2.2.4 — Interruptions | AAA | 2.0 | any <meta http-equiv=refresh> — AAA bans timed refreshes outright |
+| wcag-2.2.4 — Interruptions | AAA | 2.0 | any <meta http-equiv=refresh> or modal alert/confirm/prompt — AAA bans postponable interruptions outright |
 | wcag-2.2.2 — Pause, Stop, Hide | A | 2.0 | <marquee> and auto-moving content with no pause control |
 | wcag-2.3.1 — Three Flashes | A | 2.0 | <blink> / text-decoration:blink flashing content |
+| wcag-2.3.2 — Three Flashes (AAA) | AAA | 2.0 | flashing markup — at AAA nothing may flash at all, even under the A/AA threshold |
 | wcag-2.3.3 — Animation from Interactions | AAA | 2.1 | transition/animation on :hover/:focus/:active with no prefers-reduced-motion support (warn-class, inline <style> only) |
 | wcag-2.4.2 — Page Titled | A | 2.0 | missing or empty <title> |
 | wcag-2.4.4 — Link Purpose (In Context) | A | 2.0 | vague link text ('click here'), javascript:/dead '#'-only links, dangling fragment targets |
@@ -49,11 +52,18 @@ Browser Rendering trace (contrast census, focus cycle, target measurements),
 | wcag-3.1.1 — Language of Page | A | 2.0 | <html> missing lang |
 | wcag-3.1.2 — Language of Parts | AA | 2.0 | content in a different language than the page without a lang attribute |
 | wcag-3.1.4 — Abbreviations | AAA | 2.0 | <abbr> without title/aria-label — no expanded-form mechanism |
+| wcag-3.1.5 — Reading Level | AAA | 2.0 | prose estimated beyond lower-secondary grade (Flesch–Kincaid >9 on ≥150 words) — needs a simplified alternative (warn-class) |
 | wcag-3.2.1 — On Focus | A | 2.0 | autofocus and onfocus handlers that navigate/submit/click |
 | wcag-3.2.2 — On Input | A | 2.0 | onchange/oninput auto-submission and select jump-menus |
+| wcag-3.3.1 — Error Identification | A | 2.0 | controls marked invalid with no associated error text (aria-errormessage/describedby) — warn-class |
 | wcag-3.3.2 — Labels or Instructions | A | 2.0 | inputs without label/aria-label/aria-labelledby (placeholders don't count) |
+| wcag-3.3.3 — Error Suggestion | AA | 2.0 | invalid control whose error text names the failure but suggests no correction — warn-class |
+| wcag-3.3.4 — Error Prevention (Legal, Financial, Data) | AA | 2.0 | transactional forms with no check/reverse/confirm mechanism — warn-class |
+| wcag-3.3.5 — Help | AAA | 2.0 | substantial forms (3+ fields) with no context-sensitive help mechanism — warn-class |
+| wcag-3.3.6 — Error Prevention (All) | AAA | 2.0 | any form lacking a check/reverse/confirm step — warn-class |
 | wcag-3.3.7 — Redundant Entry | A | 2.2 | same information requested twice in one form (duplicate fields) |
 | wcag-3.3.8 — Accessible Authentication (Minimum) | AA | 2.2 | password fields blocking paste or missing autocomplete, forcing cognitive recall |
+| wcag-3.3.9 — Accessible Authentication (Enhanced) | AAA | 2.2 | CAPTCHA/cognitive-challenge markup — AAA exempts no cognitive test |
 | wcag-4.1.2 — Name, Role, Value | A | 2.0 | icon-only controls with no accessible name, iframes w/o title, invalid aria-* names, aria-hidden on <body> or focusable content, nested interactive elements |
 | wcag-4.1.3 — Status Messages | AA | 2.1 | status/alert regions without role=status/alert or aria-live |
 

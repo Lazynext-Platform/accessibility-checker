@@ -235,6 +235,16 @@ export function scanAdditionalHtml(html) {
         rule: "wcag-1.4.5",
         message: `image appears to present text — use real text instead of an image of text: alt="${alt.slice(0, 60)}"`,
       });
+      // WCAG 1.4.9 (AAA) — Images of Text (No Exception): Level AAA permits
+      // no images of text at all except pure decoration and logotypes —
+      // the AA customization/essential escape doesn't exist. Same
+      // heuristic minus the logo/brand exemption.
+      if (!/logo|brand|badge/i.test(m[0] + alt)) {
+        issues.push({
+          rule: "wcag-1.4.9",
+          message: `non-logo image of text fails AAA outright (only decoration/logotype exempt): alt="${alt.slice(0, 60)}"`,
+        });
+      }
     }
     // WCAG 1.1.1 — an alt that just echoes the image filename ("IMG_2045.jpg",
     // "logo.png") isn't a text alternative; it conveys nothing to AT. Flag alt
@@ -863,6 +873,10 @@ export function scanAdditionalHtml(html) {
   // unambiguous violations; CSS keyframe names only flag blink/flash verbs.
   if (/<blink\b/i.test(src) || /text-decoration\s*:\s*[^;}]*blink/i.test(css) || /<[a-z][^>]*\bstyle\s*=\s*["'][^"']*text-decoration\s*:\s*[^;"']*blink/i.test(src)) {
     issues.push({ rule: "wcag-2.3.1", message: "blinking text (<blink>/text-decoration:blink) — flashing content can trigger seizures" });
+    // WCAG 2.3.2 (AAA) — Three Flashes: at Level AAA nothing may flash at
+    // all, even below the A/AA 3-per-second threshold — same detection
+    // emits the stricter-tier finding.
+    issues.push({ rule: "wcag-2.3.2", message: "flashing content is banned outright at Level AAA — no flashing element is permitted (2.3.2)" });
   }
 
   // WCAG 1.3.3 — instructions that rely on color/shape/position alone.
@@ -931,6 +945,168 @@ export function scanAdditionalHtml(html) {
         rule: "wcag-2.3.3",
         message: "interactive animation (transition/animation on :hover/:focus) with no prefers-reduced-motion support — motion can't be disabled (AAA advisory)",
       });
+    }
+  }
+
+  // WCAG 3.3.1 (A) — Error Identification: a control already marked invalid
+  // (aria-invalid or error styling) must have the error identified and
+  // described in reachable text. With no aria-errormessage/aria-describedby
+  // reference the announcement is just "invalid" — nothing explains what
+  // went wrong. Warn-class: an adjacent live region could carry the
+  // description this string scan can't correlate.
+  for (const m of src.matchAll(/<(input|select|textarea)\b([^>]*)>/gi)) {
+    const attrs = m[2];
+    const markedInvalid =
+      /\baria-invalid\s*=\s*["']?(?:true|grammar|spelling)/i.test(attrs) ||
+      /\bclass\s*=\s*["'][^"']*\b(?:is-invalid|invalid|field-?error|has-?error)\b/i.test(attrs);
+    if (!markedInvalid) continue;
+    const ref = attrs.match(/\baria-(?:errormessage|describedby)\s*=\s*["']([^"'\s]+)["']/i)?.[1];
+    if (!ref) {
+      issues.push({
+        rule: "wcag-3.3.1",
+        message: `control is marked invalid but references no error text — the error must be identified and described (aria-errormessage/aria-describedby): ${m[0].slice(0, 70)}`,
+      });
+      break;
+    }
+    // WCAG 3.3.3 (AA) — Error Suggestion: when the correction is knowable
+    // the error text must say how to fix it, not just name the failure. The
+    // referenced element's text resolves statically — a bare "error" or
+    // "invalid" carries no suggestion.
+    const esc = ref.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const tgt = new RegExp(`<\\w+\\b[^>]*\\bid\\s*=\\s*["']${esc}["'][^>]*>([\\s\\S]*?)<\\/\\w+>`, "i").exec(src);
+    const errText = tgt?.[1]?.replace(/<[^>]+>/g, "").trim() ?? "";
+    if (!errText || /^(error|invalid|wrong|incorrect|failed|required)\b[\s.!]*$/i.test(errText)) {
+      issues.push({
+        rule: "wcag-3.3.3",
+        message: `error text "${(errText || "(empty)").slice(0, 40)}" names the failure but suggests no correction — state the expected format or a valid example`,
+      });
+      break;
+    }
+  }
+
+  // WCAG 3.3.4 (AA) / 3.3.6 (AAA) — Error Prevention: submissions with
+  // legal/financial/data consequences (3.3.4) — and at AAA every submission
+  // (3.3.6) — must be reversible, checked, or confirmed before finalizing.
+  // Counted affordances: a confirm() in the submit/click handler, a named
+  // agree/consent/confirm control, or a review step. Warn-class: server-side
+  // multi-step review can't be seen, but the absence of any client-side
+  // signal is the flag worth reporting.
+  {
+    const FILLABLE = /<(?:input|select|textarea)\b[^>]*>/gi;
+    const SKIPPED = /type\s*=\s*["'](?:hidden|submit|button|checkbox|radio|file|image|reset)["']/i;
+    for (const m of src.matchAll(/<form\b([^>]*)>([\s\S]*?)<\/form>/gi)) {
+      const formAttrs = m[1], inner = m[2];
+      const submits = inner.match(/<button\b[\s\S]*?<\/button>|<input\b[^>]*type\s*=\s*["']submit["'][^>]*>/gi) ?? [];
+      if (!submits.length) continue; // no submit affordance — not a submission
+      const affordance = submits.join(" ") + " " + formAttrs;
+      const transactional = /\b(pay(?:ment)?|checkout|purchas|buy|\border\b|transfer|donat|book(?:ing)?|reserv|invoice|delet|terminat|contract|subscri)\b/i.test(affordance);
+      const hasReview =
+        /\bon(?:submit|click)\s*=\s*["'][^"']*\bconfirm\s*\(/i.test(m[0]) ||
+        /\b(?:name|id|value)\s*=\s*["'][^"']*(?:confirm|agree|consent|accept|terms|acknowledge|review)/i.test(inner) ||
+        /<button\b[^>]*>[\s\S]{0,120}?\b(?:review|confirm)\b/i.test(inner);
+      if (hasReview) continue;
+      if (transactional) {
+        issues.push({
+          rule: "wcag-3.3.4",
+          message: "form appears transactional (payment/order/deletion/legal) with no review-or-confirm step — legal, financial, and data submissions must be checked, reversible, or confirmed",
+        });
+        break;
+      }
+      const fillable = [...inner.matchAll(FILLABLE)].filter((t) => !SKIPPED.test(t[0])).length;
+      if (fillable >= 2) {
+        issues.push({
+          rule: "wcag-3.3.6",
+          message: "form has no check/reverse/confirm mechanism — at Level AAA every submission must let users review or undo their input (advisory)",
+        });
+        break;
+      }
+    }
+  }
+
+  // WCAG 3.3.5 (AAA) — Help: context-sensitive help must be available where
+  // forms ask for input. Counted mechanisms: aria-describedby/title hints on
+  // fields, help/hint-class text, or a help/support/FAQ link inside the
+  // form. Fires once on the first substantial form with none — advisory.
+  for (const m of src.matchAll(/<form\b[^>]*>([\s\S]*?)<\/form>/gi)) {
+    const inner = m[1];
+    const fields = [...inner.matchAll(/<(?:input|select|textarea)\b[^>]*>/gi)]
+      .filter((t) => !/type\s*=\s*["'](?:hidden|submit|button|checkbox|radio|file|image|reset)["']/i.test(t[0]));
+    if (fields.length < 3) continue;
+    const hasHelp =
+      /\baria-describedby\s*=|\btitle\s*=\s*["'][^"']+["']/i.test(inner) ||
+      /class\s*=\s*["'][^"']*\b(?:help|hint|tip|form-text|field-hint|instruction)/i.test(inner) ||
+      /<a\b[^>]*href\s*=\s*["'][^"']*(?:help|faq|support)/i.test(inner);
+    if (!hasHelp) {
+      issues.push({
+        rule: "wcag-3.3.5",
+        message: `form with ${fields.length} fields offers no context-sensitive help (hints, describedby text, or a help link) — AAA advisory`,
+      });
+      break;
+    }
+  }
+
+  // WCAG 3.3.9 (AAA) — Accessible Authentication (Enhanced): where 3.3.8
+  // (AA) tolerates object-recognition and personal-content tests, AAA allows
+  // no cognitive function test at all — only non-cognitive paths (passkey,
+  // OAuth, magic link, copy-paste). CAPTCHA/challenge markup is the signal.
+  if (/g-recaptcha|h-captcha|cf-turnstile|turnstile|hcaptcha|arkose|funcaptcha|geetest|\bcaptcha\b/i.test(src)) {
+    issues.push({
+      rule: "wcag-3.3.9",
+      message: "CAPTCHA/cognitive-challenge markup found — at Level AAA authentication needs a fully non-cognitive path (passkey, magic link, OAuth)",
+    });
+  }
+
+  // WCAG 1.4.7 (AAA) — Low or No Background Audio: speech must have no
+  // background audio, a ≥20dB-quieter background, or a user switch to turn
+  // it off. Any unmuted <audio> is advisory-flagged — a string scan can't
+  // measure the mix.
+  for (const m of src.matchAll(/<audio\b([^>]*)>/gi)) {
+    if (/\bmuted\b/i.test(m[1])) continue;
+    issues.push({
+      rule: "wcag-1.4.7",
+      message: `unmuted <audio> — verify no background audio plays under speech, or that it's 20dB lower / user-switchable (AAA advisory): ${m[0].slice(0, 60)}`,
+    });
+    break;
+  }
+
+  // WCAG 2.2.4 (AAA) — Interruptions (markup leg): alert()/confirm()/
+  // prompt() are modal interruptions the user can neither postpone nor
+  // suppress — banned at AAA outside emergencies. (Meta-refresh emits above.)
+  for (const m of src.matchAll(/\bon\w+\s*=\s*(["'])([\s\S]*?)\1/gi)) {
+    const fn = m[2].match(/\b(alert|confirm|prompt)\s*\(/)?.[1];
+    if (fn) {
+      issues.push({
+        rule: "wcag-2.2.4",
+        message: `${fn}() is a modal interruption the user can't postpone or suppress — banned at Level AAA`,
+      });
+      break;
+    }
+  }
+
+  // WCAG 3.1.5 (AAA) — Reading Level: text more advanced than lower-
+  // secondary education needs a simplified alternative or supplemental
+  // aids. Flesch–Kincaid grade > ~9 estimates "beyond lower secondary" on
+  // substantial prose — advisory.
+  {
+    const text = src.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<[^>]+>/g, " ")
+      .replace(/&[a-z#0-9]+;/gi, " ").replace(/\s+/g, " ").trim();
+    const words = text.split(" ").filter((w) => /[a-zA-Z]{2,}/.test(w));
+    const sentences = text.split(/[.!?]+/).filter((s) => s.trim().split(/\s+/).length >= 3);
+    if (words.length >= 150 && sentences.length >= 3) {
+      const countSyl = (w) => {
+        w = w.toLowerCase().replace(/[^a-z]/g, "");
+        if (w.length <= 3) return 1;
+        w = w.replace(/(?:[^laeiouy]e|ed|es)$/, "").replace(/^y/, "");
+        return Math.max(1, (w.match(/[aeiouy]{1,2}/g) ?? []).length);
+      };
+      const syl = words.reduce((t, w) => t + countSyl(w), 0);
+      const grade = 0.39 * (words.length / sentences.length) + 11.8 * (syl / words.length) - 15.59;
+      if (grade > 9) {
+        issues.push({
+          rule: "wcag-3.1.5",
+          message: `estimated reading level ≈ grade ${grade.toFixed(1)} — beyond lower-secondary; provide a simplified version or supplemental aids (AAA advisory, Flesch–Kincaid estimate)`,
+        });
+      }
     }
   }
 

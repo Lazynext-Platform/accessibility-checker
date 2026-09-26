@@ -532,3 +532,108 @@ test("widget role with required attr or no widget role not flagged (4.1.2)", () 
   assert.ok(!rules(scanAdditionalHtml('<div role="slider" aria-valuenow="3" tabindex="0"></div>')).includes("wcag-4.1.2"));
   assert.ok(!rules(scanAdditionalHtml('<div role="navigation"></div>')).includes("wcag-4.1.2"));
 });
+
+// WCAG 3.3.1 — invalid-marked controls need an associated error text
+test("invalid control without error association flagged (3.3.1)", () => {
+  const bad = scanAdditionalHtml('<form><input type="email" aria-invalid="true"><button>Go</button></form>');
+  assert.ok(rules(bad).includes("wcag-3.3.1"));
+});
+test("invalid control with describedby not flagged (3.3.1)", () => {
+  const ok = scanAdditionalHtml('<input type="email" aria-invalid="true" aria-describedby="e1"><p id="e1">Enter a real email</p>');
+  assert.ok(!rules(ok).includes("wcag-3.3.1"));
+});
+test("aria-invalid=false is not a marking (3.3.1)", () => {
+  assert.ok(!rules(scanAdditionalHtml('<input type="email" aria-invalid="false">')).includes("wcag-3.3.1"));
+});
+
+// WCAG 3.3.3 — error text must suggest a correction when knowable
+test("generic error text flagged (3.3.3)", () => {
+  const bad = scanAdditionalHtml('<input aria-invalid="true" aria-describedby="e"><p id="e">Invalid</p>');
+  assert.ok(rules(bad).includes("wcag-3.3.3"));
+});
+test("correction-suggesting error text not flagged (3.3.3)", () => {
+  const ok = scanAdditionalHtml('<input aria-invalid="true" aria-describedby="e"><p id="e">Enter a valid email like name@site.com</p>');
+  assert.ok(!rules(ok).includes("wcag-3.3.3"));
+});
+
+// WCAG 3.3.4 — transactional forms need a prevent step
+test("checkout form with no confirm flagged (3.3.4)", () => {
+  const bad = scanAdditionalHtml('<form><input name="card"><input name="exp"><button>Pay now</button></form>');
+  assert.ok(rules(bad).includes("wcag-3.3.4"));
+});
+test("transactional form with confirm() or terms checkbox not flagged (3.3.4)", () => {
+  assert.ok(!rules(scanAdditionalHtml('<form onsubmit="return confirm(\'Charge card?\')"><input name="card"><button>Pay now</button></form>')).includes("wcag-3.3.4"));
+  assert.ok(!rules(scanAdditionalHtml('<form><input name="card"><input type="checkbox" name="agree_terms"><button>Pay now</button></form>')).includes("wcag-3.3.4"));
+});
+
+// WCAG 3.3.6 — at AAA every form needs review/reverse/confirm
+test("plain form without confirm flagged (3.3.6)", () => {
+  const bad = scanAdditionalHtml('<form><input name="city"><input name="zip"><button>Send</button></form>');
+  assert.ok(rules(bad).includes("wcag-3.3.6"));
+});
+test("single-field or review-bearing form not flagged (3.3.6)", () => {
+  assert.ok(!rules(scanAdditionalHtml('<form><input type="email" name="e"><button>Join</button></form>')).includes("wcag-3.3.6"));
+  assert.ok(!rules(scanAdditionalHtml('<form><input name="a"><input name="b"><button>Review order</button></form>')).includes("wcag-3.3.6"));
+});
+
+// WCAG 3.3.5 — substantial forms need context-sensitive help
+test("3+ field form with no help flagged (3.3.5)", () => {
+  const bad = scanAdditionalHtml('<form><input name="a"><input name="b"><input name="c"><button>Go</button></form>');
+  assert.ok(rules(bad).includes("wcag-3.3.5"));
+});
+test("form with hint text or small form not flagged (3.3.5)", () => {
+  assert.ok(!rules(scanAdditionalHtml('<form><input name="a" aria-describedby="h"><span id="h" class="hint">fmt</span><input name="b"><input name="c"><button>Go</button></form>')).includes("wcag-3.3.5"));
+  assert.ok(!rules(scanAdditionalHtml('<form><input name="a"><button>Go</button></form>')).includes("wcag-3.3.5"));
+});
+
+// WCAG 3.3.9 — CAPTCHA markup fails AAA authentication
+test("captcha markup flagged (3.3.9)", () => {
+  assert.ok(rules(scanAdditionalHtml('<div class="g-recaptcha" data-sitekey="x"></div>')).includes("wcag-3.3.9"));
+  assert.ok(rules(scanAdditionalHtml('<div class="cf-turnstile"></div>')).includes("wcag-3.3.9"));
+});
+test("no captcha markup not flagged (3.3.9)", () => {
+  assert.ok(!rules(scanAdditionalHtml('<form><input type="email" autocomplete="email"><button>Sign in</button></form>')).includes("wcag-3.3.9"));
+});
+
+// WCAG 1.4.7 — unmuted audio gets the background-audio advisory
+test("unmuted audio flagged, muted not (1.4.7)", () => {
+  assert.ok(rules(scanAdditionalHtml('<audio src="talk.mp3" controls></audio>')).includes("wcag-1.4.7"));
+  assert.ok(!rules(scanAdditionalHtml('<audio src="talk.mp3" muted controls></audio>')).includes("wcag-1.4.7"));
+});
+
+// WCAG 1.4.9 — non-logo image-of-text fails AAA too
+test("text-carrying image flagged at AAA minus logo exemption (1.4.9)", () => {
+  const bad = scanAdditionalHtml('<img src="banner.png" alt="Our annual spring sale starts Monday with fifty percent off everything in store">');
+  assert.ok(rules(bad).includes("wcag-1.4.9"));
+  const logo = scanAdditionalHtml('<img src="acme-logo.png" alt="Acme Corporation logo with the words we make it happen since nineteen seventy">');
+  assert.ok(!rules(logo).includes("wcag-1.4.9"));
+});
+
+// WCAG 2.3.2 — flashing markup fails AAA alongside 2.3.1
+test("blink flagged at both 2.3.1 and 2.3.2", () => {
+  const bad = scanAdditionalHtml('<blink>SALE</blink>');
+  assert.ok(rules(bad).includes("wcag-2.3.1"));
+  assert.ok(rules(bad).includes("wcag-2.3.2"));
+});
+
+// WCAG 2.2.4 — modal dialog calls in inline handlers are interruptions
+test("inline alert/confirm/prompt flagged (2.2.4)", () => {
+  assert.ok(rules(scanAdditionalHtml('<button onclick="alert(\'hi\')">x</button>')).includes("wcag-2.2.4"));
+  assert.ok(rules(scanAdditionalHtml('<a href="/" onclick="return confirm(\'sure?\')">x</a>')).includes("wcag-2.2.4"));
+});
+test("handlers without modal calls not flagged for interruptions (2.2.4)", () => {
+  assert.ok(!rules(scanAdditionalHtml('<button onclick="toggleMenu()">x</button>')).includes("wcag-2.2.4"));
+});
+
+// WCAG 3.1.5 — reading level beyond lower-secondary needs an alternative
+test("dense academic prose flagged (3.1.5)", () => {
+  const dense = "<p>" + "The epistemological ramifications of institutionalized socioeconomic stratification fundamentally reconceptualize hegemonic power structures. ".repeat(15) + "</p>";
+  assert.ok(rules(scanAdditionalHtml(dense)).includes("wcag-3.1.5"));
+});
+test("plain prose not flagged (3.1.5)", () => {
+  const plain = "<p>" + "The cat sat on the mat. It was a warm day. We went to the park. ".repeat(30) + "</p>";
+  assert.ok(!rules(scanAdditionalHtml(plain)).includes("wcag-3.1.5"));
+});
+test("short content skipped (3.1.5)", () => {
+  assert.ok(!rules(scanAdditionalHtml('<p>Short page.</p>')).includes("wcag-3.1.5"));
+});

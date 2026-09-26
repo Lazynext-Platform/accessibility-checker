@@ -32,10 +32,21 @@ run on every scan path — pasted HTML, fetched pages, and every crawled page:
   2.3.3 interactive animation without prefers-reduced-motion (warn-class);
   2.5.1 pointer gestures; 2.5.2 down-event actions; 2.5.3 label-in-name;
   2.5.4 motion actuation; 3.1.1 missing lang; 3.1.2 language of parts;
-  3.1.4 abbreviations without expansion (title/aria-label);
+  3.1.4 abbreviations without expansion (title/aria-label); 3.1.5 reading
+  level beyond lower-secondary (Flesch–Kincaid >9 estimate, warn-class);
   3.2.1 onfocus/onchange navigation; 3.2.2 auto-submit select jump-menus;
-  3.3.2 unlabeled inputs; 3.3.7 redundant entry; 3.3.8 accessible
-  authentication; 4.1.1 duplicate ids; 4.1.2 name/role/value (invalid aria
+  3.3.1 error identification (invalid-marked control with no associated
+  error text, warn-class); 3.3.2 unlabeled inputs; 3.3.3 error suggestion
+  (generic non-corrective error text, warn-class); 3.3.4 error prevention
+  for transactional forms (no check/reverse/confirm, warn-class);
+  3.3.5 context-sensitive help (3+ field forms with none, warn-class);
+  3.3.6 error prevention all forms (AAA warn-class); 3.3.7 redundant entry;
+  3.3.8 accessible authentication; 3.3.9 enhanced authentication (CAPTCHA
+  markup — no cognitive exemption at AAA); 1.4.7 low/no background audio
+  (unmuted <audio> advisory); 1.4.9 images of text no-exception (non-logo
+  image-of-text); 2.2.4 interruptions (meta refresh + modal
+  alert/confirm/prompt); 2.3.2 three flashes AAA (flashing markup banned
+  outright); 4.1.1 duplicate ids; 4.1.2 name/role/value (invalid aria
   names, body aria-hidden, icon-only controls, aria-hidden focusables);
   4.1.3 status regions; plus dangling label/aria references, nested
   interactives, stray list/dl/table structure, deprecated presentational markup.
@@ -65,17 +76,21 @@ media-content analysis or human judgment. These are the honest remaining
 frontier, grouped by why they're hard:
 
 * **Media-content semantics** — 1.2.3/1.2.5 audio descriptions, 1.2.6 sign
-  language, 1.2.7 extended audio description, 1.2.8/1.2.9 media alternatives,
-  1.4.7 low background audio. A `track kind="descriptions"` presence check is
-  feasible but only proves the track exists, not that it describes anything.
-* **AAA-level criteria** — 1.4.9, 2.1.3, 2.2.3–2.2.5, 2.4.8, 2.4.9, 2.4.12,
-  3.1.3/3.1.6, 3.3.3/3.3.4/3.3.6/3.3.9. Several are partially
+  language, 1.2.7 extended audio description, 1.2.8/1.2.9 media alternatives.
+  A `track kind="descriptions"` presence check is feasible but only proves
+  the track exists, not that it describes anything (1.2.5/1.4.7 ship as
+  presence/advisory warns for the same reason).
+* **AAA-level criteria** — 2.1.3 (partially shipped via the scrollable-region
+  leg), 2.2.3/2.2.5/2.2.6 timeouts/re-authentication (need session behaviour),
+  2.4.12 (partially shipped), 2.5.6 concurrent input modalities, 1.3.6
+  identify purpose (needs personalization semantics), 3.1.3 unusual words /
+  3.1.6 pronunciation (need language judgment). Several are partially
   covered by shipped AA rules (3.3.8 ⊂ 3.3.9, 2.4.11 ⊂ 2.4.12/13);
-  2.5.5 and 3.1.4 now ship as bounded versions (the 24–43px band and
-  `<abbr>`-expansion respectively); the full AAA forms need deeper analysis.
-* **Judgment-required** — error suggestion quality (3.3.3), error prevention
-  (3.3.4/3.3.6), meaningful sequence under unusual layouts, cognitive
-  accessibility. Static analysis can flag absence of patterns, not quality.
+  2.5.5, 3.1.4, 3.1.5, 1.4.7, 1.4.9, 2.3.2, 3.3.1/3.3.3–3.3.6/3.3.9 now ship
+  as bounded warn-class versions — the full AAA forms need deeper analysis.
+* **Judgment-required** — meaningful sequence under unusual layouts, help
+  quality, cognitive accessibility. Static analysis can flag absence of
+  patterns, not quality (3.3.x ship as pattern-absence warns).
 
 ### Deliberately not done (architecture decisions, not gaps)
 
