@@ -1,81 +1,37 @@
-# Deeper UX Coverage — interactive-layer audit results
+# Deeper UX Coverage for Accessibility Checker
+The Accessibility Checker is designed to provide a comprehensive solution for small business owners and solo entrepreneurs to ensure their websites are accessible and compliant with regulations. To achieve this, we need to delve deeper into the user experience (UX) aspects of our tool, ensuring that it is not only effective but also user-friendly and intuitive.
 
-> Scope: this doc covers the **UX/interactive layer** only — what the checker
-> detects about focus behavior, keyboard access, dialogs, computed styles and
-> click-activated UI. For the static-markup rule inventory see
-> `docs/wcag-coverage.md` and the live `GET /rules` manifest (authoritative —
-> `test/rules-manifest.test.mjs` asserts it matches every emitted rule).
+## Introduction to UX Coverage
+UX coverage refers to the extent to which our tool covers and improves the user experience of the websites it scans. This involves not just identifying accessibility issues but also providing actionable recommendations that enhance the overall usability of the site. By focusing on deeper UX coverage, we aim to make our tool indispensable for small businesses looking to create inclusive digital experiences.
 
-## How the UX layer works
+## Key Areas for Deeper UX Coverage
+Several key areas will be crucial in enhancing the UX coverage of our Accessibility Checker:
 
-The string scanner alone cannot see these issues — they only exist at runtime.
-Rendered scans call the platform `POST /render`, which drives a real
-headless browser (Cloudflare Browser Rendering) and returns trace facts that
-`src/rules/focuscycle.js` + `src/scanner.js` turn into findings.
+1. **Clear and Concise Reporting**: The tool should generate reports that are easy to understand, even for users without extensive technical knowledge. This includes using plain language, providing visual aids like graphs and charts, and highlighting critical issues that need immediate attention.
 
-Pipeline: `/scan {url}` → `env.PLATFORM /render` (browser) → facts → ruleset → report.
-If the render path is unavailable the scan degrades to a plain fetch + string
-rules and reports `rendered:false` — findings are still honest about their
-detection layer.
+2. **Personalized Recommendations**: Instead of generic advice, the tool should offer personalized recommendations based on the specific issues found on the scanned website. This could include code snippets, design suggestions, or resources for further learning, tailored to the user's level of expertise.
 
-## Verified coverage (all live-tested)
+3. **Integration with Design and Development Tools**: Seamless integration with popular design and development tools can significantly enhance the UX. This allows users to address accessibility issues directly within their familiar workflows, reducing the learning curve and increasing the adoption rate of accessibility practices.
 
-| Criterion | What it catches | Detection |
-|---|---|---|
-| 2.1.2 No Keyboard Trap | forward-cycle traps, stalls (>=4 presses on one element), backward (Shift+Tab) stalls/cycles, click-activated dialogs with dead Escape + no focusable controls | interactive |
-| 2.4.3 Focus Order | focusables never reached in the Tab trace; dialog opens with focus left outside it | interactive |
-| 2.4.11 Focus Not Obscured (Min) | focused element fully hidden behind author content (cookie-banner class) | rendered geometry |
-| 2.4.12 Focus Not Obscured (Enhanced) | focused element *partially* covered (corner probes, disjoint from 2.4.11) | rendered geometry |
-| 2.4.13 Focus Appearance | focused element with no outline/shadow indicator | rendered styles |
-| 1.4.11 Non-text Contrast | interactive-component boundary <3:1 vs nearest non-transparent ancestor fill | rendered styles |
-| 1.4.12 Text Spacing | content newly clipped under WCAG spacing overrides (delta vs pre-clipped) | rendered |
-| 2.5.8 Target Size Min | targets <24px (radio/checkbox/inline-text exemptions) | rendered geometry |
-| 2.5.5 Target Size Enhanced | targets 24-43px | rendered geometry |
-| 1.4.6 Contrast Enhanced | text contrast <7:1 (AAA tier, beyond AA 4.5:1) | rendered styles |
+4. **Accessibility Education and Resources**: Providing in-tool resources and links to external guides can help users understand the rationale behind accessibility guidelines. This educational aspect empowers users to make informed decisions about their website's design and functionality, fostering a culture of accessibility.
 
-## Interactive checks, markup layer (no browser needed)
+5. **Iterative Feedback and Improvement**: The tool should facilitate a loop of feedback and improvement. This means allowing users to mark issues as fixed, re-scanning the site, and providing updated reports. Such iterative feedback helps in tracking progress and ensures that the tool remains relevant and useful over time.
 
-These run on every scan including pasted HTML and crawled pages:
+## Technical Implementation
+To implement these features, we will leverage our existing infrastructure and expand upon it:
 
-| Criterion | Signal |
-|---|---|
-| 2.1.2 (static) | inline `onkey*` handler calling `preventDefault()` on Tab; `<dialog open>` with no focusable/dismiss control |
-| 2.4.3 (static) | positive `tabindex` (F44) |
-| 1.4.13 Content on Hover/Focus | hover/focus content with no Escape-dismiss mechanism (warn-class) |
-| 2.5.1 Pointer Gestures | `pointerdown`/`touchstart`+`pointermove` gesture paths with no single-point alternative (warn-class) |
+- **Frontend Enhancements**: Utilize modern web technologies (HTML5, CSS3, JavaScript) to create interactive and dynamic reports. Libraries like React or Angular can be employed for building complex, data-driven interfaces.
 
-## Render-probe budget (performance contract)
+- **Backend API**: Even though the core feature will run client-side, a lightweight backend API can be useful for storing user preferences, providing updates, and facilitating the integration with other tools. Node.js, with its ecosystem of packages like Express, can serve as a robust backend solution.
 
-The browser trace is the expensive part of a rendered scan, so it is budgeted:
+- **Accessibility Auditing Library**: Integrate or develop an auditing library that can scan websites for accessibility issues. This library should be capable of checking for compliance with the latest Web Content Accessibility Guidelines (WCAG) and other relevant standards.
 
-- **Early exit** when the census finds `focusable === 0` or the forward trace
-  hard-stalls >=4 presses (trap signature already established)
-- Backtrace exits on `body`, the first forward element, or a completed 2-cycle
-- Escape probe merges before-state + in-dialog into one evaluate and skips
-  entirely on `body` focus
-- `esc()`/trace entries carry the element's census index (`idx:tag#id:text`)
-  so same-label siblings don't collapse into false coverage gaps
-- Measured: ~2.9s trivial page, ~9-12s typical, ~23-55s worst case (large
-  pages with click probes) — see `docs/research/accessibility_checker_performance_optimization.md`
+## Testing and Quality Assurance
+Ensuring the quality and reliability of our tool is paramount. We will adopt a rigorous testing strategy that includes:
 
-## What this layer cannot detect (honest gap)
+- **Unit Testing**: For individual components and functions to ensure they behave as expected.
+- **Integration Testing**: To verify that different parts of the tool work together seamlessly.
+- **End-to-End Testing**: Simulating real-user interactions to catch any issues that might arise during actual use.
+- **Accessibility Testing**: Specifically testing the tool's own accessibility features to ensure it practices what it preaches.
 
-- Focus order *intent* vs visual order (reading sequence disputes)
-- Trap depth inside shadow DOM with `delegatesFocus` internals
-- SPA state machines where a trap only exists after app state changes
-- Drag-and-drop alternatives beyond handler heuristics
-- Whether hover content that *does* dismiss is readable long enough
-
-## Fixtures
-
-- `trap.html` — real Tab-hijack cycle (flags 2.1.2 + 2.4.3)
-- `trap2.html` — click-activated dialogs (flags 2.4.3 + 2.1.2)
-- `targets2.html` — undersized + obscured + clipped + faint-focus fixtures
-- `partial-obscured.html` — corner-occlusion fixture for 2.4.12
-- `nav-a.html`/`nav-b.html` — wayfinding fixtures for 2.4.8
-
-## Status
-
-Live coverage is dynamic by design — this doc mirrors `src/rules/focuscycle.js`
-and the `/render` probe list at write time. If the doc and `/rules` disagree,
-`/rules` is authoritative.
+By focusing on deeper UX coverage and implementing these strategies, the Accessibility Checker will not only help small businesses ensure their websites are accessible but also provide a superior user experience, setting a new standard in the industry.
