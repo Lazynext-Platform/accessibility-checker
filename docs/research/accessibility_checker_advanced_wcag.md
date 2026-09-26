@@ -1,6 +1,15 @@
 Advanced WCAG Compliance in Accessibility Checker
 =====================================================
 
+### Status of this document (read before generating tasks)
+
+This is a historical research/planning document. **Every criterion it
+proposes is now shipped and live** — `wcag-1.4.10`, `wcag-1.4.11`,
+`wcag-1.4.12`, `wcag-1.4.13`, and `wcag-2.4.7` all appear in the
+authoritative `GET /rules` manifest (test-enforced against the code by
+`test/rules-manifest.test.mjs`). Do not generate tasks from this document;
+check `/rules` before proposing coverage work.
+
 Introduction
 ------------
 

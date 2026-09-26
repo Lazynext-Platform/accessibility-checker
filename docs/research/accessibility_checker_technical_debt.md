@@ -1,3 +1,14 @@
+### Status of this document (read before generating tasks)
+
+This is a historical assessment — **its top recommendations are already
+delivered**. Testing: 310 `node --test` cases across `test/*.test.mjs`
+(not Jest/Mocha — the repo standardized on the Node test runner).
+Modular architecture: `src/rules/*.js` per-rule modules with a
+test-enforced manifest. Security: `SECURITY.md` + live security-headers
+and injection tests. Performance: rendered-scan latency already measured
+and optimized (see `accessibility_checker_performance_optimization.md`).
+Do not generate tasks from this document; verify current state first.
+
 Introduction
 ------------
 
