@@ -48,6 +48,12 @@ export async function runScan(env, kv, { url, html, site, license, email_report,
   if (pro && url && await kv.rlHit(env, `rl:pro:${ip}:${day}`, 100)) {
     return { ok: false, status: 429, payload: { error: 'daily scan quota exceeded — try again tomorrow' } };
   }
+  // Per-license companion cap: a leaked key rotated across IPs slips past
+  // the per-IP limit, so the license itself carries a 500/day ceiling —
+  // far above any human seat, fatal for a farmed key.
+  if (pro && url && license && await kv.rlHit(env, `rl:prokey:${license}:${day}`, 500)) {
+    return { ok: false, status: 429, payload: { error: 'daily scan quota exceeded — try again tomorrow' } };
+  }
 
   let issues = [];
   let rendered = false;
